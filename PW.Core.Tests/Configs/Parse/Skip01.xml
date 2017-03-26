@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<config>
+  <v m="vint" t="int">23</v>
+  <v i="1" />
+  <v i="sss" />
+  <vm m="vst1">
+    <mist>
+      <mehr />
+    </mist>
+  </vm>
+  <v m="vstr" t="string">Hallo Welt</v>
+  <v m="vstr3" t="string">
+    <mist>
+      <mehr />
+    </mist>
+  </v>
+  <v m="vst2" />
+</config>

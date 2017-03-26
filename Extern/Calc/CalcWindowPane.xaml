@@ -1,0 +1,54 @@
+﻿<ui:PwWindowPane x:Class="Neo.PerfectWorking.Calc.CalcWindowPane"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Neo.PerfectWorking.Calc"
+             xmlns:ui="clr-namespace:Neo.PerfectWorking.UI;assembly=PW.Wpf"
+             mc:Ignorable="d" 
+             Title="Rechner"
+             Image="Resources/calculator_16.png"
+             d:DesignHeight="300" d:DesignWidth="300">
+	<ui:PwWindowPane.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceDictionary Source="pack://application:,,,/PW.Wpf;component/Themes/CommonIcons.xaml" />
+			</ResourceDictionary.MergedDictionaries>
+		</ResourceDictionary>
+	</ui:PwWindowPane.Resources>
+    <Grid>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition />
+			<ColumnDefinition Width="120" />
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition />
+			<RowDefinition Height="23" />
+			<RowDefinition Height="23" />
+			<RowDefinition Height="23" />
+			<RowDefinition Height="23" />
+		</Grid.RowDefinitions>
+
+		<ListBox Grid.Column="0" Grid.RowSpan="4" />
+		<ui:PwTextBoxCommand Grid.Column="0" Grid.Row="4">
+			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
+		</ui:PwTextBoxCommand>
+
+		<GridSplitter Grid.RowSpan="5" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="4" />
+
+		<ListBox Grid.Column="1" Grid.Row="0" />
+
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="1">
+			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
+		</ui:PwTextBoxCommand>
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="2">
+			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
+		</ui:PwTextBoxCommand>
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="3">
+			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
+		</ui:PwTextBoxCommand>
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="4">
+			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
+		</ui:PwTextBoxCommand>
+	</Grid>
+</ui:PwWindowPane>

@@ -1,0 +1,30 @@
+﻿<Window x:Class="Neo.PerfectWorking.UI.DashBoardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="clr-namespace:Neo.PerfectWorking.UI"
+        x:Name="dashBoardWindow"
+        mc:Ignorable="d" Height="60" Width="500" ResizeMode="NoResize" Topmost="True" ShowInTaskbar="False" Title="{x:Static ui:App.Title}" WindowStyle="None" Opacity="0.95"
+        AllowsTransparency="True"
+        Background="{x:Static SystemColors.WindowFrameBrush}"
+        BorderBrush="{x:Static SystemColors.ControlDarkDarkBrush}"
+        BorderThickness="1">
+    <Window.Resources>
+        <Storyboard x:Key="showAnimation" FillBehavior="Stop">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                         From="0.0"
+                                         To="0.95"
+                                         Duration="0:0:0.2" />
+        </Storyboard>
+        <Storyboard x:Key="hideAnimation" FillBehavior="Stop">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                         From="0.95"
+                                         To="0.0"
+                                         Duration="0:0:0.2" />
+        </Storyboard>
+    </Window.Resources>
+    <Grid>
+        <TextBlock Text="{Binding ElementName=dashBoardWindow,Path=Title,Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="30" Foreground="{x:Static SystemColors.ControlLightLightBrush}" />
+    </Grid>
+</Window>

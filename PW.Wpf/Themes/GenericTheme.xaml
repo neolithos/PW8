@@ -1,0 +1,19 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:Neo.PerfectWorking.Themes">
+	<Color x:Key="BackgroundColor">#EEEEF2</Color>
+	<Color x:Key="ContentBackgroundColor">#FFFFFF</Color>
+	<Color x:Key="ContentForegroundColor">#000000</Color>
+	<Color x:Key="ContentGrayColor">#808080</Color>
+	<Color x:Key="BorderColor">#CCCEDB</Color>
+	<Color x:Key="HighlightColor">#007ACC</Color>
+	<Color x:Key="SelectionColor">#C9DEF5</Color>
+
+	<SolidColorBrush x:Key="BackgroundBrush" Color="{DynamicResource BackgroundColor}" />
+	<SolidColorBrush x:Key="ContentBackgroundBrush" Color="{DynamicResource ContentBackgroundColor}" />
+	<SolidColorBrush x:Key="ContentForegroundBrush" Color="{DynamicResource ContentForegroundColor}" />
+	<SolidColorBrush x:Key="ContentGrayBrush" Color="{DynamicResource ContentGrayColor}" />
+	<SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}" />
+	<SolidColorBrush x:Key="BorderHighlightBrush" Color="{DynamicResource HighlightColor}" />
+	<SolidColorBrush x:Key="SelectionBrush" Color="{DynamicResource SelectionColor}" />
+</ResourceDictionary>

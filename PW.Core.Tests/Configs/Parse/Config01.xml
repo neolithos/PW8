@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<v m="vint" t="int">23</v>
+	<v m="vstr" t="string">Hallo Welt</v>
+	<t m="t1">
+		<v m="subv" t="int">42</v>
+		<v m="subdt" t="datetime">05/26/1982 00:00:00</v>
+		<t m="subsubt">
+			<v i="1" t="int">1</v>
+			<v i="2" t="int">2</v>
+			<v i="10" t="int">10</v>
+			<v m="v" t="string"><![CDATA[Hallo
+	Welt]]></v>
+			<v m="v2" t="string"><![CDATA[<text>]]></v>
+			<x m="xv">
+				<inline>
+					<test>wert</test>
+				</inline>
+			</x>
+		</t>
+		<t m="subsube" />
+	</t>
+</config>

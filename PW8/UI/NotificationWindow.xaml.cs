@@ -1,0 +1,128 @@
+﻿using System;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
+
+namespace Neo.PerfectWorking.UI
+{
+	public partial class NotificationWindow : Window
+	{
+		#region -- class TextImageContent -----------------------------------------------
+
+		public sealed class TextImageContent
+		{
+			public TextImageContent(string text, object image)
+			{
+				this.Text = text;
+				this.Image = image;
+			} // ctor
+
+			public string Text { get; }
+			public object Image { get; }
+		} // class TextImageContent
+
+		#endregion
+
+		private readonly Storyboard windowStoryboard;
+
+		private readonly FrameworkElement textTemplate;
+
+		public NotificationWindow()
+		{
+			InitializeComponent();
+
+			windowStoryboard = (Storyboard)FindResource(nameof(windowStoryboard));
+			textTemplate = (FrameworkElement)FindResource(nameof(textTemplate));
+		} // ctor
+
+		protected override void OnClosing(CancelEventArgs e)
+		{
+			base.OnClosing(e);
+			e.Cancel = true;
+		} // proc OnClosing
+
+		protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+		{
+			base.OnPropertyChanged(e);
+			if (e.Property == Window.ActualWidthProperty ||
+				e.Property == Window.ActualHeightProperty)
+				RecalcPosition(true);
+		} // proc OnPropertyChanged
+
+		public void RecalcPosition(bool force = false)
+		{
+			if (force || IsVisible)
+			{
+				var rc = SystemParameters.WorkArea;
+
+				Left = rc.Left + (rc.Width - ActualWidth) / 2;
+				Top = rc.Top + (rc.Height - ActualHeight) * 4 / 5;
+			}
+		} // proc RecalcPosition
+
+		private void SetContent(FrameworkElement control)
+		{
+			this.DataContext = control;
+			RecalcPosition(true);
+		} // proc SetContent
+
+		private void SetTextContent(string text, object image)
+		{
+			textTemplate.DataContext = new TextImageContent(text, image);
+			SetContent(textTemplate);
+		} // proc SetTextContent
+
+		private void SetImageContent(ImageSource source)
+		{
+			SetTextContent("not impl", null);
+		} // proc SetImageContent
+
+		private void SetUriContent(Uri uri)
+		{
+			SetTextContent("not impl", null);
+		} // proc SetUriContent
+
+		public void Show(object message, object image)
+		{
+			switch (message)
+			{
+				case string text:
+					SetTextContent(text, image);
+					break;
+				case ImageSource img:
+					SetImageContent(img);
+					break;
+				case Uri uri:
+					SetUriContent(uri);
+					break;
+				case FrameworkElement control:
+					SetContent(control);
+					break;
+				case null:
+					break;
+				default:
+					SetTextContent(message.ToString(), null);
+					return;
+			}
+
+			if (Visibility == Visibility.Visible) // reset storyboard
+			{
+				windowStoryboard.Seek(TimeSpan.FromMilliseconds(500), TimeSeekOrigin.BeginTime);
+			}
+			else // start storyboard
+			{
+				Opacity = 0.0;
+				Show();
+				windowStoryboard.Begin();
+			}
+		} // proc Show
+
+		private void WindowStoryboard_Completed(object sender, EventArgs e)
+		{
+			Hide();
+		} // event WindowStoryboard_Completed
+	} // class NotificationWindow
+}
