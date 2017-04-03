@@ -10,6 +10,24 @@ namespace Neo.PerfectWorking.Stuff
 {
 	public static class Procs
 	{
+		public static bool EqualBytes(byte[] v1, byte[] v2)
+		{
+			if (Object.ReferenceEquals(v1, v2))
+				return true;
+			else if (v1 == null || v2 == null || v1.Length != v2.Length)
+				return false;
+			else
+			{
+				var l = v1.Length;
+				for (var i = 0; i < l; i++)
+				{
+					if (v1[i] != v2[i])
+						return false;
+				}
+				return true;
+			}
+		} // func EqualBytes
+
 		public static object ChangeType(object value, Type typeTo)
 			=> Lua.RtConvertValue(value, typeTo);
 

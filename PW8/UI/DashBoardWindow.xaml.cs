@@ -14,6 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Win32;
+using System.Diagnostics;
 
 namespace Neo.PerfectWorking.UI
 {
@@ -41,6 +42,8 @@ namespace Neo.PerfectWorking.UI
 			mousePositionTimer.Tick += (sender, e) => CheckMousePosition();
 
 			RecalcPosition();
+
+			Visibility = Visibility.Hidden;
 		} // ctor
 
 		public void RecalcPosition()
@@ -56,7 +59,7 @@ namespace Neo.PerfectWorking.UI
 
 		public void BeginShow(int x, int y)
 		{
-			if (!IsVisible)
+			if (Visibility != Visibility.Visible)
 			{
 				BeginStoryboard(showAnimation);
 				Show();

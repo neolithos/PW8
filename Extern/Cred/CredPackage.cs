@@ -21,11 +21,13 @@ namespace Neo.PerfectWorking.Cred
 	public sealed class CredPackage : PwPackageBase, ICredentials
 	{
 		private readonly IPwCollection<ICredentialProvider> credentialProviders;
+		private readonly IPwCollection<ICredentialProtector> credentialProtectors;
 
 		public CredPackage(IPwGlobal global) 
 			: base(global, nameof(CredPackage))
 		{
 			this.credentialProviders = global.RegisterCollection<ICredentialProvider>(this);
+			this.credentialProtectors = global.RegisterCollection<ICredentialProtector>(this);
 
 			global.RegisterObject(this, nameof(CredPackagePane), new CredPackagePane(this));
 		} // ctor
@@ -52,6 +54,33 @@ namespace Neo.PerfectWorking.Cred
 			}
 			return found;
 		} // func GetCredential
+
+		public object EncryptPassword(SecureString password, ICredentialProtector protector)
+		{
+			if (password == null || password.Length == 0)
+				return null;
+			if (protector == null)
+				throw new ArgumentNullException(nameof(protector));
+
+			// encrypt the password
+			return protector.Encrypt(password);
+		} // proc EncryptPasswordFromString
+
+		public SecureString DeryptPassword(object encryptedPassword, ICredentialProtector protector = null)
+		{
+			SecureString password;
+			if (protector != null && protector.TryDecrypt(encryptedPassword, out password))
+				return password;
+			else
+			{
+				foreach (var p in credentialProtectors)
+				{
+					if (p.TryDecrypt(encryptedPassword, out password))
+						return password;
+				}
+				return null;
+			}
+		} // proc EncryptPasswordFromString
 
 		public IPwCollection<ICredentialProvider> CredentialProviders => credentialProviders;
 	} // class CredPackage

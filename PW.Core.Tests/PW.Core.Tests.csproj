@@ -59,7 +59,10 @@
   <ItemGroup>
     <Compile Include="CalcTests.cs" />
     <Compile Include="ConfigTests.cs" />
+    <Compile Include="CryptTests.cs" />
+    <Compile Include="GlobalMock.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WinCred.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -68,6 +71,10 @@
     <ProjectReference Include="..\Extern\Calc\Calc.csproj">
       <Project>{bca90365-4041-4d50-a890-2e94d9c6a617}</Project>
       <Name>Calc</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Extern\Cred\Cred.csproj">
+      <Project>{B96472D4-F3CB-4E84-9EA9-25FA88996273}</Project>
+      <Name>Cred</Name>
     </ProjectReference>
     <ProjectReference Include="..\PW.Core\PW.Core.csproj">
       <Project>{a9b32763-cc24-4739-a866-760b641b55cb}</Project>

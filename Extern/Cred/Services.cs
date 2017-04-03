@@ -46,4 +46,27 @@ namespace Neo.PerfectWorking.Cred
 		/// <summary>Is this credentialinfo editable</summary>
 		bool IsReadOnly { get; }
 	} // interface ICredentialProvider
+
+	public interface ICredentialProtector
+	{
+		/// <summary>Decrypts the data to an password.</summary>
+		/// <param name="encrypt">Encrypted data.</param>
+		/// <param name="password">Decrypted password.</param>
+		/// <returns><c>true</c>, if the decrypt was successful</returns>
+		bool TryDecrypt(object encrypted, out SecureString password);
+		/// <summary>Encrypts the data.</summary>
+		/// <param name="password">Password to encrypt.</param>
+		/// <returns>Encrypted password</returns>
+		object Encrypt(SecureString password);
+		/// <summary>Checks the header of the current encrypted data.</summary>
+		/// <param name="encrypted">Encrypted data.</param>
+		/// <returns><c>true</c>, if decrypt can encrypt the password.</returns>
+		bool CanDecryptPrefix(object encrypted);
+	} // interface ICredentialProtector
+
+	public interface ICredentialProtectorUI : ICredentialProtector
+	{
+		/// <summary>Human readable name for the protector.</summary>
+		string Name { get; }
+	} // interface ICredentialProtectorUI
 }

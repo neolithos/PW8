@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26228.9
+VisualStudioVersion = 15.0.26228.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PW8", "PW8\PW8.csproj", "{39A8FCF0-E1DA-461C-8A64-FEB9EDE19502}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -35,8 +35,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CredTw", "CredTw", "{C667A475-6583-4D1D-B8A9-C67725584F43}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CredTw", "Extern\CredTw\CredTw\CredTw.csproj", "{B53AF3BB-1CFD-4658-897F-FFE68215396E}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CredTwTests", "Extern\CredTw\CredTwTests\CredTwTests.csproj", "{A17119A4-76DA-4D68-8B17-3A078F34FCD2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -88,10 +86,6 @@ Global
 		{B53AF3BB-1CFD-4658-897F-FFE68215396E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B53AF3BB-1CFD-4658-897F-FFE68215396E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B53AF3BB-1CFD-4658-897F-FFE68215396E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A17119A4-76DA-4D68-8B17-3A078F34FCD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A17119A4-76DA-4D68-8B17-3A078F34FCD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A17119A4-76DA-4D68-8B17-3A078F34FCD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A17119A4-76DA-4D68-8B17-3A078F34FCD2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -105,6 +99,5 @@ Global
 		{CEC32913-E576-48D8-A7A5-E998ACD53C99} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
 		{C667A475-6583-4D1D-B8A9-C67725584F43} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
 		{B53AF3BB-1CFD-4658-897F-FFE68215396E} = {C667A475-6583-4D1D-B8A9-C67725584F43}
-		{A17119A4-76DA-4D68-8B17-3A078F34FCD2} = {C667A475-6583-4D1D-B8A9-C67725584F43}
 	EndGlobalSection
 EndGlobal

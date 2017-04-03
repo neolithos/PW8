@@ -68,7 +68,10 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="Provider\FileCredentialProvider.cs" />
+    <Compile Include="Provider\ProtectorHelper.cs" />
     <Compile Include="Services.cs" />
+    <Compile Include="Provider\WindowsCredentialProvider.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

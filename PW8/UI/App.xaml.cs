@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
@@ -9,10 +10,8 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
-using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.Win32;
 using static Neo.PerfectWorking.Win32.NativeMethods;
-using System.IO;
 
 namespace Neo.PerfectWorking.UI
 {
@@ -255,8 +254,9 @@ namespace Neo.PerfectWorking.UI
 
 					dashBoardWindow.BeginHide(true);
 
-					contextMenu.HorizontalOffset = x;
-					contextMenu.VerticalOffset = y;
+					var pt = this.hwnd.CompositionTarget.TransformFromDevice.Transform(new Point(x, y));
+					contextMenu.HorizontalOffset = pt.X;
+					contextMenu.VerticalOffset = pt.Y;
 					contextMenu.IsOpen = true;
 
 					SetForegroundWindow(hwnd);

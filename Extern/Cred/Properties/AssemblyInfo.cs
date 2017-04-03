@@ -58,3 +58,5 @@ using System.Windows;
 
 
 [assembly: PwPackage(typeof(CredPackage))]
+
+[assembly: InternalsVisibleTo("PW.Core.Tests")]
