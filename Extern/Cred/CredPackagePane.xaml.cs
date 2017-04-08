@@ -58,7 +58,7 @@ namespace Neo.PerfectWorking.Cred
 			private readonly CollectionViewSource credentialProviderCollectionView;
 			private readonly CollectionViewSource credentialInfoCollectionView;
 
-			private readonly PasswordGenerator generator = new PasswordGenerator();
+			private readonly PasswordGenerator generator;
 			private readonly NewCredentialInfo newCredentialInfo;
 			private readonly ChangeCredentialInfo changeCredentialInfo;
 
@@ -66,6 +66,7 @@ namespace Neo.PerfectWorking.Cred
 			{
 				this.package = package;
 				this.credentialProviderChanged = CredentialProvider_CollectionChanged;
+				this.generator = new PasswordGenerator(package);
 				this.newCredentialInfo = new NewCredentialInfo(package.Global.UI);
 				this.changeCredentialInfo = new ChangeCredentialInfo();
 

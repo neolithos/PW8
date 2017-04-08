@@ -29,6 +29,8 @@ namespace Neo.PerfectWorking.Cred
 		private readonly IPwCollection<ICredentialProvider> credentialProviders;
 		private readonly IPwCollection<ICredentialProtector> credentialProtectors;
 
+		private ICredentialProtector defaultProtector = NoProtector;
+
 		#region -- Ctor -----------------------------------------------------------------
 
 		public CredPackage(IPwGlobal global) 
@@ -137,15 +139,13 @@ namespace Neo.PerfectWorking.Cred
 			return found;
 		} // func GetCredential
 
-		public object EncryptPassword(SecureString password, ICredentialProtector protector)
+		public object EncryptPassword(SecureString password, ICredentialProtector protector = null)
 		{
 			if (password == null || password.Length == 0)
 				return null;
-			if (protector == null)
-				throw new ArgumentNullException(nameof(protector));
 
 			// encrypt the password
-			return protector.Encrypt(password);
+			return (protector ?? defaultProtector) .Encrypt(password);
 		} // proc EncryptPassword
 
 		public SecureString DecryptPassword(object encryptedPassword, ICredentialProtector protector = null)
@@ -156,8 +156,12 @@ namespace Neo.PerfectWorking.Cred
 			{
 				foreach (var p in credentialProtectors)
 				{
-					if (p.TryDecrypt(encryptedPassword, out password))
-						return password;
+					try
+					{
+						if (p.TryDecrypt(encryptedPassword, out password))
+							return password;
+					}
+					catch { }
 				}
 				return null;
 			}
@@ -188,6 +192,17 @@ namespace Neo.PerfectWorking.Cred
 		#endregion
 
 		public IPwCollection<ICredentialProvider> CredentialProviders => credentialProviders;
+		/// <summary>Define the default protector for the encryption text box.</summary>
+		public ICredentialProtector DefaultProtector
+		{
+			get => defaultProtector;
+			set
+			{
+				if (value == null)
+					throw new ArgumentNullException();
+				defaultProtector = value;
+			}
+		} // prop DefaultProtector
 
 		/// <summary>Publish the no protector</summary>
 		public static ICredentialProtector NoProtector => Protector.NoProtector;

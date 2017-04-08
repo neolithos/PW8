@@ -27,6 +27,7 @@ namespace Neo.PerfectWorking.Cred.Data
 {
 	internal sealed class PasswordGenerator : ObservableObject
 	{
+		private readonly CredPackage package;
 		private readonly SimpleCommand generatePasswordCommand;
 
 		private bool[] flags = { true, true, true, true };
@@ -35,9 +36,10 @@ namespace Neo.PerfectWorking.Cred.Data
 		private string decrypted;
 		private string encrypted;
 
-		public PasswordGenerator()
+		public PasswordGenerator(CredPackage package)
 		{
-			generatePasswordCommand = new SimpleCommand(
+			this.package = package;
+			this.generatePasswordCommand = new SimpleCommand(
 				p => GenerateNextPassword(),
 				p => length >= 4 && flags.Any(c => c)
 			);
@@ -102,35 +104,23 @@ namespace Neo.PerfectWorking.Cred.Data
 
 		private void EncryptPassword(string value)
 		{
-			// get current mode
-			var m = String.IsNullOrEmpty(encrypted) ? '2' : encrypted[0];
-			string newEncrypted;
-			switch (m)
+			string EncryptValue()
 			{
-				case '0': // none
-				default:
-					newEncrypted = "0" + value;
-					break;
-				//case '1':
-				//	if (String.IsNullOrEmpty(value))
-				//		newEncrypted = "1";
-				//	else
-				//	{
-				//		using (var ss = value.CreateSecureString())
-				//			newEncrypted = ss.EncryptString(EncryptMethod.SimpleXor);
-				//	}
-				//	break;
-				//default:
-				//	if (String.IsNullOrEmpty(value))
-				//		newEncrypted = "2";
-				//	else
-				//	{
-				//		using (var ss = value.CreateSecureString())
-				//			newEncrypted = ss.EncryptString(EncryptMethod.DES); // DES with default key
-				//	}
-				//	break;
+				using (var ss = value.CreateSecureString())
+				{
+					switch (package.EncryptPassword(ss))
+					{
+						case byte[] b:
+							return b.ToHexString();
+						case string s:
+							return s;
+						default:
+							return null;
+					}
+				}
 			}
 
+			var newEncrypted = EncryptValue();
 			if (newEncrypted != encrypted)
 			{
 				encrypted = newEncrypted;
@@ -144,9 +134,10 @@ namespace Neo.PerfectWorking.Cred.Data
 				decrypted = String.Empty;
 			else
 			{
-				//using (var ss = value.DecryptString())
-				//	decrypted = ss.GetPassword();
+				using (var pwd = package.DecryptPassword(value))
+					decrypted = pwd.GetPassword();
 			}
+
 			OnPropertyChanged(nameof(Decrypted));
 		} // proc DecryptPassword
 
