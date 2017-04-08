@@ -13,24 +13,13 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
-using Neo.PerfectWorking.Data;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using System.Collections;
 using System.IO;
-using System.Xml;
-using System.Globalization;
-using System.ComponentModel;
+using System.Net;
 using System.Security;
-using System.Collections.Specialized;
-using System.Xml.Linq;
-using Neo.PerfectWorking.Cred.Data;
-using System.Windows.Media;
+using System.Text;
 using Neo.PerfectWorking.Cred.Provider;
+using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.Stuff;
 
 namespace Neo.PerfectWorking.Cred
@@ -61,13 +50,21 @@ namespace Neo.PerfectWorking.Cred
 		public ICredentialProtector CreateBinaryDesProtector(SecureString key)
 			=> new DesEncryptProtectorBinary(key);
 
+		public ICredentialProtector CreateStaticDesProtector(string prefix, string keyInfo)
+		{
+			if (keyInfo.TryFromHexString(out var bytes))
+				return CreateStaticDesProtector(prefix, bytes);
+			else
+				throw new FormatException();
+		} // func CreateStaticDesProtector
+
 		public ICredentialProtector CreateStaticDesProtector(string prefix, byte[] keyInfo)
 			=> new DesEncryptProtectorStatic(prefix, keyInfo);
 
 		public ICredentialProtector CreateStringDesProtector(SecureString key)
 			=> new DesEncryptProtectorString(key);
 
-		public ICredentialProtector CreateWindowsCryptProtectorbool(bool emitBinary = false, bool localMachine = false, byte[] secureKey = null)
+		public ICredentialProtector CreateWindowsCryptProtector(bool emitBinary = false, bool localMachine = false, byte[] secureKey = null)
 			=> new WindowsCryptProtector(emitBinary, localMachine, secureKey);
 
 		public ICredentialProtector CreatePowerShellProtector(object key)
@@ -149,9 +146,9 @@ namespace Neo.PerfectWorking.Cred
 
 			// encrypt the password
 			return protector.Encrypt(password);
-		} // proc EncryptPasswordFromString
+		} // proc EncryptPassword
 
-		public SecureString DeryptPassword(object encryptedPassword, ICredentialProtector protector = null)
+		public SecureString DecryptPassword(object encryptedPassword, ICredentialProtector protector = null)
 		{
 			if (protector != null && protector.TryDecrypt(encryptedPassword, out var password))
 				return password;
@@ -164,11 +161,11 @@ namespace Neo.PerfectWorking.Cred
 				}
 				return null;
 			}
-		} // proc EncryptPasswordFromString
+		} // proc DecryptPassword
 
 		#endregion
 
-		#region -- Protector creation ---------------------------------------------------
+		#region -- Provider creation ----------------------------------------------------
 
 		public ICredentialProvider CreateFileCredentialProvider(string fileName, ICredentialProtector protector = null, bool readOnly = false)
 		{

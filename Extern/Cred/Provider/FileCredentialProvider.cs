@@ -148,7 +148,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			} // proc SetPassword
 
 			public SecureString GetPassword()
-				=> provider.package.DeryptPassword(encryptedPassword, provider.protector);
+				=> provider.package.DecryptPassword(encryptedPassword, provider.protector);
 
 			private void SetProperty(string propertyName, ref string value, string newValue)
 			{

@@ -14,7 +14,13 @@ quickConnect = package("PW.QuickConnect.dll;QuickConnectPackage");
 
 -- register my crypt protectors
 if File:Exists(CryptProtectorInit) then
-	package("mycreds", CryptProtectorInit)
+	cryptKey = package("cryptKey", CryptProtectorInit);
+else
+	cryptKey = package("dbgcrypt",
+		function(self)
+			self.myPwd = creds:NoProtector;
+		end
+	);
 end;
 
 local sleep = clr.System.Threading.Thread.Sleep;
@@ -38,7 +44,7 @@ end; -- executeMessageNotify
 
 package("test",
 	function (self)
-		--self.passwordStore = creds:CreateCredentialProvider("pwds");
+		self.passwordStore = creds:CreateFileCredentialProvider("pwds", cryptKey.Protector);
 		self.connectTecWareHome = quickConnect:CreateConnection("TecWare Home", [[\\Garten\Stein$]], "M:", "pwd://garten/stein");
 
 		self.testProgress = CreateAction(title = "Test Progress", label = "Zeigt die Progressbar", func = executeTestProgress);
@@ -49,6 +55,3 @@ package("test",
 
 	end
 );
-
-
--- package("assebly qualified name")
