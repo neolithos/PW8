@@ -131,6 +131,9 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <None Include="..\PW.Core\pw.licenseheader">
+      <Link>pw.licenseheader</Link>
+    </None>
     <None Include="Config\Debug.lua" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">

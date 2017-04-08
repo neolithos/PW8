@@ -55,5 +55,10 @@
     <Resource Include="Resources\NetDriveConnected.png" />
     <Resource Include="Resources\NetDriveDisconnected.png" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\PW.Core\pw.licenseheader">
+      <Link>pw.licenseheader</Link>
+    </None>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
