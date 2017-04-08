@@ -25,6 +25,8 @@ using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Cred
 {
+	#region -- interface ICredentialInfo ------------------------------------------------
+
 	/// <summary>Information of one credential</summary>
 	public interface ICredentialInfo : INotifyPropertyChanged
 	{
@@ -46,6 +48,10 @@ namespace Neo.PerfectWorking.Cred
 		ICredentialProvider Provider { get; }
 	} // interface ICredentialInfo
 
+	#endregion
+
+	#region -- interface ICredentialProvider --------------------------------------------
+
 	public interface ICredentialProvider : ICredentials, IEnumerable<ICredentialInfo>, INotifyCollectionChanged
 	{
 		/// <summary>Adds the new credential item.</summary>
@@ -62,7 +68,11 @@ namespace Neo.PerfectWorking.Cred
 		bool IsReadOnly { get; }
 	} // interface ICredentialProvider
 
-	public interface ICredentialProtector
+	#endregion
+
+	#region -- interface ICredentialProtector -------------------------------------------
+
+	public interface ICredentialProtector : IDisposable
 	{
 		/// <summary>Decrypts the data to an password.</summary>
 		/// <param name="encrypt">Encrypted data.</param>
@@ -79,9 +89,5 @@ namespace Neo.PerfectWorking.Cred
 		bool CanDecryptPrefix(object encrypted);
 	} // interface ICredentialProtector
 
-	public interface ICredentialProtectorUI : ICredentialProtector
-	{
-		/// <summary>Human readable name for the protector.</summary>
-		string Name { get; }
-	} // interface ICredentialProtectorUI
+	#endregion
 }

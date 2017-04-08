@@ -44,56 +44,56 @@ namespace PW.Core.Tests
 		[TestMethod]
 		public void TestCryptSimple()
 		{
-			var p = new XorEncryptProtector("XorSimple", "AA", "Perfect Working 8 @ 2017".CreateSecureString());
+			var p = new XorEncryptProtector("AA", "Perfect Working 8 @ 2017".CreateSecureString());
 			EncryptDecrypt(p);
 		}
 
 		[TestMethod]
 		public void TestCryptDESstatic()
 		{
-			var p = new DesEncryptProtectorStatic("DES Static", "AA", new byte[] { 0x03, 0x01, 0x20, 0x17, 0x56, 0x38, 0x22, 0x38, 0xAF, 0xFE, 0x56, 0x18, 0x55, 0x71, 0xE4, 0xF4 });
+			var p = new DesEncryptProtectorStatic("AA", new byte[] { 0x03, 0x01, 0x20, 0x17, 0x56, 0x38, 0x22, 0x38, 0xAF, 0xFE, 0x56, 0x18, 0x55, 0x71, 0xE4, 0xF4 });
 			EncryptDecrypt(p, "AADbXAmqadEY+xhmzjC269Ow==");
 		}
 
 		[TestMethod]
 		public void TestCryptDESstring()
 		{
-			var p = new DesEncryptProtectorString("DES Static", "Perfect Working 8 @ 2017".CreateSecureString());
+			var p = new DesEncryptProtectorString("Perfect Working 8 @ 2017".CreateSecureString());
 			EncryptDecrypt(p);
 		}
 
 		[TestMethod]
 		public void TestWindowsWithIV()
 		{
-			var p = new WindowsCryptProtector("Windows With IV", false, false, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
+			var p = new WindowsCryptProtector(false, false, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
 			EncryptDecrypt(p);
 		}
 
 		[TestMethod]
 		public void TestWindowsNoIV()
 		{
-			var p = new WindowsCryptProtector("Windows No IV");
+			var p = new WindowsCryptProtector();
 			EncryptDecrypt(p);
 		}
 
 		[TestMethod]
 		public void TestPowerShellNoKey()
 		{
-			var p = new PowerShellProtector("PowerShell NoKey");
+			var p = new PowerShellProtector();
 			EncryptDecrypt(p);
 		}
 
 		[TestMethod]
 		public void TestPowerShellWithKey()
 		{
-			var p = new PowerShellProtector("PowerShell WithKey", "testtesttesttest".CreateSecureString());
+			var p = new PowerShellProtector("testtesttesttest".CreateSecureString());
 			EncryptDecrypt(p);
 		}
 
 		[TestMethod]
 		public void TestPowerShellDecrypt()
 		{
-			var p = new PowerShellProtector("PowerShell NoKey", "testtesttesttest".CreateSecureString());
+			var p = new PowerShellProtector("testtesttesttest".CreateSecureString());
 			if (p.TryDecrypt("76492d1116743f0423413b16050a5345MgB8AGMAeAArAGsAbwBNAHUAWAA3AHEAbgB0ADYATABSADcASABoAEgAWgBlAFEAPQA9AHwAOQAwAGYAZABkADgAZQAwADIAYQAyADIANgA3AGEAZQBhAGUAYQBkADgANQA3AGYANwBmADQANAA4AGUANQA1AA==", out var ss))
 				Assert.AreEqual("géh€im", ss.GetPassword());
 			else

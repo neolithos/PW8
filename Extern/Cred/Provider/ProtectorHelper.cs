@@ -28,19 +28,17 @@ namespace Neo.PerfectWorking.Cred.Provider
 {
 	#region -- class XorEncryptProtector ------------------------------------------------
 
-	public sealed class XorEncryptProtector : ICredentialProtector, ICredentialProtectorUI, IDisposable
+	public sealed class XorEncryptProtector : ICredentialProtector
 	{
 		private const string cryptSimpleKeyChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-_";
 
-		private readonly string name;
 		private readonly string prefix;
 		private readonly SecureString protectorKey;
 
 		#region -- Ctor/Dtor ------------------------------------------------------------
 
-		public XorEncryptProtector(string name, string prefix, SecureString key)
+		public XorEncryptProtector(string prefix, SecureString key)
 		{
-			this.name = name;
 			this.prefix = prefix;
 			this.protectorKey = key.Copy();
 		} // ctor
@@ -144,15 +142,13 @@ namespace Neo.PerfectWorking.Cred.Provider
 		} // func Encrypt
 
 		#endregion
-
-		public string Name => name;
 	} // class XorEncryptProtector
 
 	#endregion
 
 	#region -- class DesEncryptProtectorBase --------------------------------------------
 
-	public abstract class DesEncryptProtectorBase : ICredentialProtector, IDisposable
+	public abstract class DesEncryptProtectorBase : ICredentialProtector
 	{
 		#region -- Ctor/Dtor ------------------------------------------------------------
 
@@ -411,21 +407,19 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 	#region -- class DesEncryptProtectorStatic ------------------------------------------
 
-	public sealed class DesEncryptProtectorStatic : DesEncryptProtectorBase, ICredentialProtectorUI
+	public sealed class DesEncryptProtectorStatic : DesEncryptProtectorBase
 	{
-		private readonly string name;
 		private readonly string prefix;
 		private readonly byte[] keyPart;
 		private readonly byte[] ivPart;
 
 		#region -- Ctor/Dtor ------------------------------------------------------------
 
-		public DesEncryptProtectorStatic(string name, string prefix, byte[] keyInfo)
+		public DesEncryptProtectorStatic(string prefix, byte[] keyInfo)
 		{
 			if (keyInfo == null || keyInfo.Length != 16)
 				throw new ArgumentOutOfRangeException(nameof(keyInfo), "The key must be 16 bytes.");
 
-			this.name = name ?? throw new ArgumentNullException(nameof(name));
 			this.prefix = prefix ?? throw new ArgumentNullException(nameof(prefix));
 
 			keyPart = new byte[8];
@@ -504,24 +498,19 @@ namespace Neo.PerfectWorking.Cred.Provider
 		} // func Encrypt
 
 		#endregion
-
-		public string Name => name;
 	} // class DesEncryptProtectorStatic
 
 	#endregion
 
 	#region -- class DesEncryptProtectorString ------------------------------------------
 
-	public sealed class DesEncryptProtectorString : DesEncryptProtectorBinary, ICredentialProtectorUI
+	public sealed class DesEncryptProtectorString : DesEncryptProtectorBinary
 	{
-		private readonly string name;
-
 		#region -- Ctor/Dtor ------------------------------------------------------------
 
-		public DesEncryptProtectorString(string name, SecureString protectorKey)
+		public DesEncryptProtectorString(SecureString protectorKey)
 			: base(protectorKey)
 		{
-			this.name = name ?? throw new ArgumentNullException(nameof(name));
 		} // ctor
 
 		#endregion
@@ -572,17 +561,14 @@ namespace Neo.PerfectWorking.Cred.Provider
 		} // func TryConvertFromBase64
 
 		#endregion
-
-		public string Name => name;
 	} // class DesEncryptProtectorString
 
 	#endregion
 
 	#region -- class WindowsCryptProtector ----------------------------------------------
 
-	public sealed class WindowsCryptProtector : ICredentialProtector, ICredentialProtectorUI, IDisposable
+	public sealed class WindowsCryptProtector : ICredentialProtector
 	{
-		private readonly string name;
 		private readonly bool emitBinary;
 
 		private readonly bool localMachine = false;
@@ -590,9 +576,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		#region -- Ctor/Dtor ------------------------------------------------------------
 
-		public WindowsCryptProtector(string name, bool emitBinary = false, bool localMachine = false, byte[] secureKey = null)
+		public WindowsCryptProtector(bool emitBinary = false, bool localMachine = false, byte[] secureKey = null)
 		{
-			this.name = name ?? throw new ArgumentNullException(nameof(name));
 			this.emitBinary = emitBinary;
 			this.localMachine = localMachine;
 			this.secureKey = secureKey;
@@ -763,43 +748,37 @@ namespace Neo.PerfectWorking.Cred.Provider
 		} // func Encrypt
 
 		#endregion
-
-		public string Name => name;
 	} // class WindowsCryptProtector 
 
 	#endregion
 
 	#region -- class PowerShellProtector ------------------------------------------------
 
-	public sealed class PowerShellProtector : ICredentialProtector, ICredentialProtectorUI, IDisposable
+	public sealed class PowerShellProtector : ICredentialProtector
 	{
 		private static string secureStringHeader = "76492d1116743f0423413b16050a5345";
 
-		private readonly string name;
 		private readonly byte[] secureKey;
 
 		#region -- Ctor/Dtor ------------------------------------------------------------
 
-		public PowerShellProtector(string name, byte[] secureKey)
+		public PowerShellProtector(byte[] secureKey)
 		{
 			if (secureKey != null)
 			{
 				if (secureKey.Length != 16 && secureKey.Length != 24 && secureKey.Length != 32)
 					throw new ArgumentOutOfRangeException(nameof(secureKey), "Key must 128,192,256 bits long.");
 			}
-
-
-			this.name = name ?? throw new ArgumentNullException(nameof(name));
 			this.secureKey = secureKey;
 		} // ctor
 
-		public PowerShellProtector(string name)
-			: this(name, (byte[])null)
+		public PowerShellProtector()
+			: this((byte[])null)
 		{
 		} // ctor
 
-		public PowerShellProtector(string name, SecureString secureKey)
-			: this(name, GetUnicodeBytes(secureKey))
+		public PowerShellProtector(SecureString secureKey)
+			: this(GetUnicodeBytes(secureKey))
 		{
 		} // ctor
 
@@ -1035,8 +1014,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 				return r;
 			}
 		} // func GetUnicodeByte
-
-		public string Name => name;
 	} // class PowerShellProtector 
 
 	#endregion
@@ -1047,11 +1024,15 @@ namespace Neo.PerfectWorking.Cred.Provider
 	{
 		#region -- class NoEncryptImplementation ----------------------------------------
 
-		private sealed class NoEncryptImplementation : ICredentialProtector, ICredentialProtectorUI
+		private sealed class NoEncryptImplementation : ICredentialProtector
 		{
 			public NoEncryptImplementation()
 			{
 			} // ctor
+
+			public void Dispose()
+			{
+			} // proc Dispose
 
 			public bool CanDecryptPrefix(object encrypted)
 				=> CanDecryptPrefix(encrypted, out var t);
@@ -1086,8 +1067,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 			public object Encrypt(SecureString password)
 				=> "0" + password.GetPassword();
-
-			public string Name => "No encryption";
 		} // class NoEncryptImplementation
 
 		#endregion
@@ -1110,6 +1089,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 					return prefix + protectedCredentials.ToString(0, maxLength);
 				}
 			} // func Encrypt
+
+			public void Dispose()
+			{
+			} // proc Dispose
 
 			public bool CanDecryptPrefix(object encrypted)
 				=> CanDecryptPrefix(encrypted, out var t);

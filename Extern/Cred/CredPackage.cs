@@ -55,33 +55,33 @@ namespace Neo.PerfectWorking.Cred
 
 		#region -- Protector creation ---------------------------------------------------
 
-		public ICredentialProtector CreateXorProtector(string name, string prefix, SecureString key)
-			=> new XorEncryptProtector(name, prefix, key);
+		public ICredentialProtector CreateXorProtector(string prefix, SecureString key)
+			=> new XorEncryptProtector(prefix, key);
 
 		public ICredentialProtector CreateBinaryDesProtector(SecureString key)
 			=> new DesEncryptProtectorBinary(key);
 
-		public ICredentialProtector CreateStaticDesProtector(string name, string prefix, byte[] keyInfo)
-			=> new DesEncryptProtectorStatic(name, prefix, keyInfo);
+		public ICredentialProtector CreateStaticDesProtector(string prefix, byte[] keyInfo)
+			=> new DesEncryptProtectorStatic(prefix, keyInfo);
 
-		public ICredentialProtector CreateStringDesProtector(string name, string prefix, SecureString key)
-			=> new DesEncryptProtectorString(name, key);
+		public ICredentialProtector CreateStringDesProtector(SecureString key)
+			=> new DesEncryptProtectorString(key);
 
-		public ICredentialProtector CreateWindowsCryptProtector(string name, bool emitBinary = false, bool localMachine = false, byte[] secureKey = null)
-			=> new WindowsCryptProtector(name, emitBinary, localMachine, secureKey);
+		public ICredentialProtector CreateWindowsCryptProtectorbool(bool emitBinary = false, bool localMachine = false, byte[] secureKey = null)
+			=> new WindowsCryptProtector(emitBinary, localMachine, secureKey);
 
-		public ICredentialProtector CreatePowerShellProtector(string name, object key)
+		public ICredentialProtector CreatePowerShellProtector(object key)
 		{
 			switch (key)
 			{
 				case null:
-					return new PowerShellProtector(name);
+					return new PowerShellProtector();
 				case SecureString ss:
-					return new PowerShellProtector(name, ss);
+					return new PowerShellProtector(ss);
 				case string pwd:
-					return new PowerShellProtector(name, Encoding.Unicode.GetBytes(pwd));
+					return new PowerShellProtector(Encoding.Unicode.GetBytes(pwd));
 				case byte[] b:
-					return new PowerShellProtector(name, b);
+					return new PowerShellProtector(b);
 				default:
 					throw new ArgumentException("Invalid argument.", nameof(key));
 			}
@@ -120,17 +120,12 @@ namespace Neo.PerfectWorking.Cred
 
 		public SecureString GetPsSecureString(string data, string key)
 		{
-			var p = CreatePowerShellProtector("ps", key);
-			try
+			using (var p = CreatePowerShellProtector(key))
 			{
 				if (p.TryDecrypt(data, out var pwd))
 					return pwd;
 				else
 					throw new IOException("Can not decrypt password.");
-			}
-			finally
-			{
-				(p as IDisposable)?.Dispose();
 			}
 		} // func GetPsSecureString
 

@@ -497,6 +497,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private sealed class WindowsDecrypter : ICredentialProtector
 		{
 			public bool CanDecryptPrefix(object encrypted) => throw new NotImplementedException();
+			public void Dispose() { }
 			public object Encrypt(SecureString password) 
 				=> throw new NotImplementedException();
 
