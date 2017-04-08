@@ -42,24 +42,62 @@ namespace PW.Core.Tests
 		}
 
 		[TestMethod]
-		public void TestCrypteSimple()
+		public void TestCryptSimple()
 		{
 			var p = new XorEncryptProtector("XorSimple", "AA", "Perfect Working 8 @ 2017".CreateSecureString());
 			EncryptDecrypt(p);
 		}
 
 		[TestMethod]
-		public void TestCrypteDESstatic()
+		public void TestCryptDESstatic()
 		{
 			var p = new DesEncryptProtectorStatic("DES Static", "AA", new byte[] { 0x03, 0x01, 0x20, 0x17, 0x56, 0x38, 0x22, 0x38, 0xAF, 0xFE, 0x56, 0x18, 0x55, 0x71, 0xE4, 0xF4 });
 			EncryptDecrypt(p, "AADbXAmqadEY+xhmzjC269Ow==");
 		}
 
 		[TestMethod]
-		public void TestCrypteDESstring()
+		public void TestCryptDESstring()
 		{
 			var p = new DesEncryptProtectorString("DES Static", "Perfect Working 8 @ 2017".CreateSecureString());
 			EncryptDecrypt(p);
+		}
+
+		[TestMethod]
+		public void TestWindowsWithIV()
+		{
+			var p = new WindowsCryptProtector("Windows With IV", false, false, new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 });
+			EncryptDecrypt(p);
+		}
+
+		[TestMethod]
+		public void TestWindowsNoIV()
+		{
+			var p = new WindowsCryptProtector("Windows No IV");
+			EncryptDecrypt(p);
+		}
+
+		[TestMethod]
+		public void TestPowerShellNoKey()
+		{
+			var p = new PowerShellProtector("PowerShell NoKey");
+			EncryptDecrypt(p);
+		}
+
+		[TestMethod]
+		public void TestPowerShellWithKey()
+		{
+			var p = new PowerShellProtector("PowerShell WithKey", "testtesttesttest".CreateSecureString());
+			EncryptDecrypt(p);
+		}
+
+		[TestMethod]
+		public void TestPowerShellDecrypt()
+		{
+			var p = new PowerShellProtector("PowerShell NoKey", "testtesttesttest".CreateSecureString());
+			if (p.TryDecrypt("76492d1116743f0423413b16050a5345MgB8AGMAeAArAGsAbwBNAHUAWAA3AHEAbgB0ADYATABSADcASABoAEgAWgBlAFEAPQA9AHwAOQAwAGYAZABkADgAZQAwADIAYQAyADIANgA3AGEAZQBhAGUAYQBkADgANQA3AGYANwBmADQANAA4AGUANQA1AA==", out var ss))
+				Assert.AreEqual("géh€im", ss.GetPassword());
+			else
+				Assert.Fail();
 		}
 	}
 }

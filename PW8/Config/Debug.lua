@@ -1,4 +1,6 @@
-﻿
+﻿const CryptProtectorInit = [[C:\Tools\PW8\Data\Crypt.lua]];
+const File typeof System.IO.File;
+
 resolvePath[[..\..\..\Extern\Calc\bin\Debug]];
 resolvePath[[..\..\..\Extern\Lua\bin\Debug]];
 resolvePath[[..\..\..\Extern\Cred\bin\Debug]];
@@ -9,6 +11,11 @@ creds = package("PW.Cred.dll;CredPackage");
 package("PW.Calc.dll;CalcPackage");
 package("PW.Lua.dll;LuaPackage");
 quickConnect = package("PW.QuickConnect.dll;QuickConnectPackage");
+
+-- register my crypt protectors
+if File:Exists(CryptProtectorInit) then
+	package("mycreds", CryptProtectorInit)
+end;
 
 local sleep = clr.System.Threading.Thread.Sleep;
 

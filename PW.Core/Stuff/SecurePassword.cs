@@ -29,10 +29,12 @@ namespace Neo.PerfectWorking.Stuff
 	{
 		private bool isDisposed;
 		private readonly IntPtr passwordPtr;
+		private readonly int dataLength;
 
 		public InteropSecurePassword(SecureString password, bool unicode = true)
 		{
-			passwordPtr = password == null ? IntPtr.Zero : Marshal.SecureStringToGlobalAllocUnicode(password);
+			this.passwordPtr = password == null ? IntPtr.Zero : Marshal.SecureStringToGlobalAllocUnicode(password);
+			this.dataLength = password == null ? 0 : (unicode ? password.Length * 2 : password.Length);
 		} // ctor
 
 		~InteropSecurePassword()
@@ -57,6 +59,7 @@ namespace Neo.PerfectWorking.Stuff
 		} // proc Dispose
 
 		public IntPtr Value => passwordPtr;
+		public int Size => dataLength;
 
 		public static implicit operator IntPtr (InteropSecurePassword v)
 			=> v.Value;

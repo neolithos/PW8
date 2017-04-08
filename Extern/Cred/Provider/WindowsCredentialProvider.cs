@@ -745,6 +745,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		[DllImport(kernel32, EntryPoint = "RtlZeroMemory", SetLastError = false)]
 		public static extern void ZeroMemory(IntPtr dest, IntPtr size);
+		[DllImport(kernel32, SetLastError = true)]
+		public static extern IntPtr LocalFree(IntPtr handle);
 	} // NativeMethods
 
 	#endregion

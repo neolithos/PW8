@@ -15,6 +15,7 @@
 #endregion
 using System;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -27,7 +28,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 {
 	#region -- class XorEncryptProtector ------------------------------------------------
 
-	public sealed class XorEncryptProtector : ICredentialProtectorUI
+	public sealed class XorEncryptProtector : ICredentialProtector, ICredentialProtectorUI, IDisposable
 	{
 		private const string cryptSimpleKeyChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321-_";
 
@@ -35,12 +36,23 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private readonly string prefix;
 		private readonly SecureString protectorKey;
 
+		#region -- Ctor/Dtor ------------------------------------------------------------
+
 		public XorEncryptProtector(string name, string prefix, SecureString key)
 		{
 			this.name = name;
 			this.prefix = prefix;
 			this.protectorKey = key.Copy();
 		} // ctor
+
+		public void Dispose()
+		{
+			protectorKey?.Dispose();
+		} // proc Dispose
+
+		#endregion
+
+		#region -- Decrypt --------------------------------------------------------------
 
 		public bool CanDecryptPrefix(object encrypted)
 			=> CanDecryptPrefix(encrypted, out var t);
@@ -68,15 +80,13 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var l = (encryptedString.Length - 1) >> 1;
 				var ss = new SecureString();
 
-				var keyPtr = Marshal.SecureStringToGlobalAllocUnicode(protectorKey);
-				var keyLength = protectorKey.Length * 2;
-				try
+				using (var keyPtr = new InteropSecurePassword(protectorKey))
 				{
 					byte GetNextKey()
 					{
 						var r = (byte)Marshal.ReadByte(keyPtr, k);
 						k += 2;
-						if (k >= keyLength)
+						if (k >= keyPtr.Size)
 							k = 0;
 						return r;
 					}
@@ -89,10 +99,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 						ss.AppendChar((char)(b2 << 8 | b1));
 					}
 				}
-				finally
-				{
-					Marshal.ZeroFreeGlobalAllocUnicode(keyPtr);
-				}
 
 				password = ss;
 				return true;
@@ -104,17 +110,19 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func TryDecrypt
 
+		#endregion
+
+		#region -- Encrypt --------------------------------------------------------------
+
 		public unsafe object Encrypt(SecureString password)
 		{
 			if (password == null || password.Length == 0)
 				return null;
 
-			var pwdPtr = Marshal.SecureStringToGlobalAllocUnicode(password);
-			var keyPtr = Marshal.SecureStringToGlobalAllocUnicode(protectorKey);
-			var keyLength = protectorKey.Length * 2;
-			try
+			using (var pwdPtr = new InteropSecurePassword(password))
+			using (var keyPtr = new InteropSecurePassword(protectorKey))
 			{
-				var p = (byte*)pwdPtr;
+				var p = (byte*)pwdPtr.Value;
 				var rand = new Random(Environment.TickCount);
 				var key = cryptSimpleKeyChars[rand.Next(cryptSimpleKeyChars.Length)];
 				var sb = new StringBuilder(password.Length << 2);
@@ -124,7 +132,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				{
 					var c = unchecked((byte)(*p ^ Marshal.ReadByte(keyPtr, j) ^ (byte)key));
 					j += 2;
-					if (j >= keyLength)
+					if (j >= keyPtr.Size)
 						j = 0;
 					sb.AppendFormat("{0:X2}", c);
 
@@ -133,11 +141,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 				return prefix + sb.ToString() + key;
 			}
-			finally
-			{
-				Marshal.ZeroFreeGlobalAllocUnicode(pwdPtr);
-			}
 		} // func Encrypt
+
+		#endregion
 
 		public string Name => name;
 	} // class XorEncryptProtector
@@ -146,18 +152,43 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 	#region -- class DesEncryptProtectorBase --------------------------------------------
 
-	public abstract class DesEncryptProtectorBase : ICredentialProtector
+	public abstract class DesEncryptProtectorBase : ICredentialProtector, IDisposable
 	{
+		#region -- Ctor/Dtor ------------------------------------------------------------
+
 		protected DesEncryptProtectorBase()
 		{
 		} // ctor
+
+		~DesEncryptProtectorBase()
+		{
+			Dispose(false);
+		} // dtor
+
+		public void Dispose()
+		{
+			GC.SuppressFinalize(this);
+			Dispose(true);
+		} // proc Dispose
+
+		protected virtual void Dispose(bool disposing)
+		{
+		} // proc Dispose
+
+		#endregion
+
+		#region -- GetKey ---------------------------------------------------------------
 
 		private SymmetricAlgorithm GetKey()
 			=> new DESCryptoServiceProvider()
 			{
 				Key = new byte[] { },
-				IV = new byte[] {   }
+				IV = new byte[] { }
 			};
+
+		#endregion
+
+		#region -- Decrypt --------------------------------------------------------------
 
 		public virtual bool CanDecryptPrefix(object encrypted)
 		{
@@ -172,9 +203,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 		{
 			if (CanDecryptPrefix(encrypted, out var encryptedBytes, out var key))
 			{
-				var ss = new SecureString();
 				using (key)
-				using (var m = new MemoryStream(encryptedBytes, 10, encryptedBytes.Length - 10, false))
+				using (var ss = new SecureString())
+				using (var m = new MemoryStream(encryptedBytes, false))
 				using (var src = new CryptoStream(m, key.CreateDecryptor(), CryptoStreamMode.Read))
 				{
 					while (true)
@@ -182,7 +213,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 						var bLow = src.ReadByte();
 						if (bLow == -1)
 						{
-							password = ss;
+							password = ss.Copy();
 							return true;
 						}
 						var bHigh = src.ReadByte();
@@ -198,6 +229,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func TryDecrypt
 
+		#endregion
+
+		#region -- Encrypt --------------------------------------------------------------
+
 		protected unsafe byte[] EncryptCore(SecureString password, SymmetricAlgorithm key)
 		{
 			if (password == null || password.Length == 0)
@@ -206,24 +241,20 @@ namespace Neo.PerfectWorking.Cred.Provider
 			using (var m = new MemoryStream())
 			using (var e = new CryptoStream(m, key.CreateEncryptor(), CryptoStreamMode.Write))
 			{
-				var pwdPtr = Marshal.SecureStringToGlobalAllocUnicode(password);
-				try
+				using (var pwdPtr = new InteropSecurePassword(password))
 				{
-					var l = password.Length * 2;
-					var b = (byte*)pwdPtr;
-					for (var i = 0; i < l; i++, b++)
+					var b = (byte*)pwdPtr.Value;
+					for (var i = 0; i < pwdPtr.Size; i++, b++)
 						e.WriteByte(*b);
 				}
-				finally
-				{
-					Marshal.ZeroFreeGlobalAllocUnicode(pwdPtr);
-				}
-				e.Close();
+				e.FlushFinalBlock();
 				return m.ToArray();
 			}
 		} // func EncryptCore
 
 		public abstract object Encrypt(SecureString password);
+
+		#endregion
 	} // class DesEncryptProtectorBase
 
 	#endregion
@@ -234,6 +265,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 	{
 		private readonly SecureString protectorKey;
 
+		#region -- Ctor/Dtor ------------------------------------------------------------
+
 		public DesEncryptProtectorBinary(SecureString protectorKey)
 		{
 			if (protectorKey.Length < 8)
@@ -242,14 +275,23 @@ namespace Neo.PerfectWorking.Cred.Provider
 			this.protectorKey = protectorKey.Copy();
 		} // ctor
 
+		protected override void Dispose(bool disposing)
+		{
+			base.Dispose(disposing);
+			protectorKey?.Dispose();
+		} // proc Dispose
+
+		#endregion
+
+		#region -- BuildKey -------------------------------------------------------------
+
 		private unsafe SymmetricAlgorithm BuildKey(byte[] ivData = null, int offset = 0)
 		{
 			var key = new byte[8];
-			var protectorKeyPtr = Marshal.SecureStringToGlobalAllocUnicode(protectorKey);
-			try
+			using (var protectorKeyPtr = new InteropSecurePassword(protectorKey))
 			{
 				var i = 0;
-				var c = (ushort*)protectorKeyPtr.ToPointer();
+				var c = (ushort*)protectorKeyPtr.Value;
 				var k = 0;
 				while (i < protectorKey.Length)
 				{
@@ -261,10 +303,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 					i += 2;
 					c++;
 				}
-			}
-			finally
-			{
-				Marshal.ZeroFreeGlobalAllocUnicode(protectorKeyPtr);
 			}
 
 			var algoritm = new DESCryptoServiceProvider()
@@ -288,6 +326,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 			return algoritm;
 		} // func BuildKey
 
+		#endregion
+
+		#region -- Decrypt --------------------------------------------------------------
+
 		private bool CanDecryptPrefix(object encrypted, out byte[] encryptedBytes)
 		{
 			if (encrypted is byte[] v && v.Length > 0 && v[0] == 0x26 && CalcSimpleCheckSum(v) == v[1])
@@ -307,9 +349,11 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		protected override bool CanDecryptPrefix(object encrypted, out byte[] encryptedBytes, out SymmetricAlgorithm key)
 		{
-			if (CanDecryptPrefix(encrypted, out encryptedBytes))
-			{	
-				key = BuildKey(encryptedBytes, 2);
+			if (CanDecryptPrefix(encrypted, out var data))
+			{
+				key = BuildKey(data, 2);
+				encryptedBytes = new byte[data.Length - 10];
+				Array.Copy(data, 10, encryptedBytes, 0, data.Length - 10);
 				return true;
 			}
 			else
@@ -319,6 +363,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 				return false;
 			}
 		} // func CanDecryptPrefix
+
+		#endregion
+
+		#region -- Encrypt --------------------------------------------------------------
 
 		protected byte[] EncryptCore(SecureString password)
 		{
@@ -348,6 +396,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		public override object Encrypt(SecureString password)
 			=> EncryptCore(password);
 
+		#endregion
 
 		private static byte CalcSimpleCheckSum(byte[] encryptedData)
 		{
@@ -369,6 +418,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private readonly byte[] keyPart;
 		private readonly byte[] ivPart;
 
+		#region -- Ctor/Dtor ------------------------------------------------------------
+
 		public DesEncryptProtectorStatic(string name, string prefix, byte[] keyInfo)
 		{
 			if (keyInfo == null || keyInfo.Length != 16)
@@ -383,12 +434,29 @@ namespace Neo.PerfectWorking.Cred.Provider
 			Array.Copy(keyInfo, 8, ivPart, 0, 8);
 		} // ctor
 
-		private SymmetricAlgorithm CreateKey() 
+		protected override void Dispose(bool disposing)
+		{
+			base.Dispose(disposing);
+			if (keyPart != null)
+				Array.Clear(keyPart, 0, keyPart.Length);
+			if (ivPart != null)
+				Array.Clear(ivPart, 0, ivPart.Length);
+		} // proc Dispose
+
+		#endregion
+
+		#region -- CreateKey ------------------------------------------------------------
+
+		private SymmetricAlgorithm CreateKey()
 			=> new DESCryptoServiceProvider()
 			{
 				Key = keyPart,
 				IV = ivPart
 			};
+
+		#endregion
+
+		#region -- Decrypt --------------------------------------------------------------
 
 		private bool CanDecryptPrefix(object encrypted, out byte[] encryptedBytes)
 		{
@@ -422,6 +490,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func CanDecryptPrefix
 
+		#endregion
+
+		#region -- Encrypt --------------------------------------------------------------
+
 		public override object Encrypt(SecureString password)
 		{
 			if (password == null || password.Length == 0)
@@ -431,16 +503,20 @@ namespace Neo.PerfectWorking.Cred.Provider
 				return prefix + Convert.ToBase64String(EncryptCore(password, key));
 		} // func Encrypt
 
+		#endregion
+
 		public string Name => name;
 	} // class DesEncryptProtectorStatic
 
 	#endregion
 
-	#region -- class DesEncryptProtectorBinary ------------------------------------------
+	#region -- class DesEncryptProtectorString ------------------------------------------
 
 	public sealed class DesEncryptProtectorString : DesEncryptProtectorBinary, ICredentialProtectorUI
 	{
 		private readonly string name;
+
+		#region -- Ctor/Dtor ------------------------------------------------------------
 
 		public DesEncryptProtectorString(string name, SecureString protectorKey)
 			: base(protectorKey)
@@ -448,6 +524,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 			this.name = name ?? throw new ArgumentNullException(nameof(name));
 		} // ctor
 
+		#endregion
+
+		#region -- Decrypt --------------------------------------------------------------
 
 		public override bool CanDecryptPrefix(object encrypted)
 			=> encrypted is string s
@@ -468,9 +547,13 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func CanDecryptPrefix
 
+		#endregion
+
+		#region -- Encrypt --------------------------------------------------------------
+
 		public override object Encrypt(SecureString password)
 			=> ConvertToBase64(base.EncryptCore(password));
-		
+
 		private static string ConvertToBase64(byte[] v)
 			=> v == null ? null : Convert.ToBase64String(v);
 
@@ -488,8 +571,473 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func TryConvertFromBase64
 
+		#endregion
+
 		public string Name => name;
 	} // class DesEncryptProtectorString
+
+	#endregion
+
+	#region -- class WindowsCryptProtector ----------------------------------------------
+
+	public sealed class WindowsCryptProtector : ICredentialProtector, ICredentialProtectorUI, IDisposable
+	{
+		private readonly string name;
+		private readonly bool emitBinary;
+
+		private readonly bool localMachine = false;
+		private readonly byte[] secureKey;
+
+		#region -- Ctor/Dtor ------------------------------------------------------------
+
+		public WindowsCryptProtector(string name, bool emitBinary = false, bool localMachine = false, byte[] secureKey = null)
+		{
+			this.name = name ?? throw new ArgumentNullException(nameof(name));
+			this.emitBinary = emitBinary;
+			this.localMachine = localMachine;
+			this.secureKey = secureKey;
+		} // ctor
+
+		~WindowsCryptProtector()
+		{
+			Dispose();
+		} // dtor
+
+		public void Dispose()
+		{
+			if (secureKey != null)
+				Array.Clear(secureKey, 0, secureKey.Length);
+		} // proc Dispose
+
+		#endregion
+
+		#region -- Decrypt --------------------------------------------------------------
+
+		public bool CanDecryptPrefix(object encrypted)
+		{
+			if (TryDecrypt(encrypted, false, out var ss))
+			{
+				ss?.Dispose();
+				return true;
+			}
+			else
+				return false;
+		} // func CanDecryptPrefix
+
+		public bool TryDecrypt(object encrypted, out SecureString password)
+			=> TryDecrypt(encrypted, true, out password);
+
+		private unsafe bool TryDecrypt(object encrypted, bool needPassword, out SecureString password)
+		{
+			byte[] GetBytes()
+			{
+				if (encrypted is byte[] b)
+					return b;
+				else if (encrypted is string s && s.TryFromHexString(out var b2))
+					return b2;
+				else
+					return null;
+			} // func GetBytes
+
+			var hEncryptedBytes = default(GCHandle);
+			var dataOut = default(DATA_BLOB);
+			var dataIV = default(DATA_BLOB);
+			var hIV = default(GCHandle);
+			try
+			{
+				// get byte array
+				var encryptedBytes = GetBytes();
+				if (encryptedBytes == null)
+				{
+					password = null;
+					return false;
+				}
+
+				// allocate structure
+				hEncryptedBytes = GCHandle.Alloc(encryptedBytes, GCHandleType.Pinned);
+				var dataIn = new DATA_BLOB()
+				{
+					DataSize = encryptedBytes.Length,
+					DataPtr = hEncryptedBytes.AddrOfPinnedObject()
+				};
+
+				// create iv
+				if (secureKey != null)
+				{
+					hIV = GCHandle.Alloc(secureKey, GCHandleType.Pinned);
+					dataIV.DataPtr = hIV.AddrOfPinnedObject();
+					dataIV.DataSize = secureKey.Length;
+				}
+
+				// crypt data
+				var flags = 1;
+				if (localMachine)
+					flags |= 4;
+				if (!CryptUnprotectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, flags, ref dataOut))
+					throw new Win32Exception();
+
+				// unpack data
+				if (dataOut.DataPtr == IntPtr.Zero)
+					throw new OutOfMemoryException();
+
+				password = needPassword ? new SecureString((char*)dataOut.DataPtr, dataOut.DataSize / 2) : null;
+				return true;
+			}
+			catch
+			{
+				password = null;
+				return false;
+			}
+			finally
+			{
+				if (hEncryptedBytes.IsAllocated)
+					hEncryptedBytes.Free();
+				if (hIV.IsAllocated)
+					hIV.Free();
+
+				if (dataOut.DataPtr != IntPtr.Zero)
+				{
+					ZeroMemory(dataOut.DataPtr, new IntPtr(dataOut.DataSize));
+					LocalFree(dataOut.DataPtr);
+				}
+			}
+		} // func TryDecrypt
+
+		#endregion
+
+		#region -- Encrypt --------------------------------------------------------------
+
+		public object Encrypt(SecureString password)
+		{
+			var passwordPtr = new InteropSecurePassword(password);
+			var dataOut = default(DATA_BLOB);
+			var dataIV = default(DATA_BLOB);
+			var hIV = default(GCHandle);
+			try
+			{
+				// pack password
+				var dataIn = new DATA_BLOB()
+				{
+					DataSize = passwordPtr.Size,
+					DataPtr = passwordPtr.Value
+				};
+
+				// create iv
+				if (secureKey != null)
+				{
+					hIV = GCHandle.Alloc(secureKey, GCHandleType.Pinned);
+					dataIV.DataPtr = hIV.AddrOfPinnedObject();
+					dataIV.DataSize = secureKey.Length;
+				}
+
+				// crypt data
+				var flags = 1;
+				if (localMachine)
+					flags |= 4;
+				if (!CryptProtectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, flags, ref dataOut))
+					throw new Win32Exception();
+
+				// unpack data
+				if (dataOut.DataPtr == IntPtr.Zero)
+					throw new OutOfMemoryException();
+
+				var data = new byte[dataOut.DataSize];
+				Marshal.Copy(dataOut.DataPtr, data, 0, dataOut.DataSize);
+
+				return emitBinary
+					? (object)data
+					: (object)data.ToHexString();
+			}
+			finally
+			{
+				passwordPtr.Dispose();
+				if (hIV.IsAllocated)
+					hIV.Free();
+
+				if (dataOut.DataPtr != IntPtr.Zero)
+				{
+					ZeroMemory(dataOut.DataPtr, new IntPtr(dataOut.DataSize));
+					LocalFree(dataOut.DataPtr);
+				}
+			}
+		} // func Encrypt
+
+		#endregion
+
+		public string Name => name;
+	} // class WindowsCryptProtector 
+
+	#endregion
+
+	#region -- class PowerShellProtector ------------------------------------------------
+
+	public sealed class PowerShellProtector : ICredentialProtector, ICredentialProtectorUI, IDisposable
+	{
+		private static string secureStringHeader = "76492d1116743f0423413b16050a5345";
+
+		private readonly string name;
+		private readonly byte[] secureKey;
+
+		#region -- Ctor/Dtor ------------------------------------------------------------
+
+		public PowerShellProtector(string name, byte[] secureKey)
+		{
+			if (secureKey != null)
+			{
+				if (secureKey.Length != 16 && secureKey.Length != 24 && secureKey.Length != 32)
+					throw new ArgumentOutOfRangeException(nameof(secureKey), "Key must 128,192,256 bits long.");
+			}
+
+
+			this.name = name ?? throw new ArgumentNullException(nameof(name));
+			this.secureKey = secureKey;
+		} // ctor
+
+		public PowerShellProtector(string name)
+			: this(name, (byte[])null)
+		{
+		} // ctor
+
+		public PowerShellProtector(string name, SecureString secureKey)
+			: this(name, GetUnicodeBytes(secureKey))
+		{
+		} // ctor
+
+		~PowerShellProtector()
+		{
+			Dispose();
+		} // dtor
+
+		public void Dispose()
+		{
+			if (secureKey != null)
+				Array.Clear(secureKey, 0, secureKey.Length);
+		} // proc Dispose
+
+		#endregion
+
+		#region -- Decrypt --------------------------------------------------------------
+
+		public bool CanDecryptPrefix(object encrypted)
+		{
+			if (TryDecrypt(encrypted, false, out var ss))
+			{
+				ss?.Dispose();
+				return true;
+			}
+			else
+				return false;
+		} // func CanDecryptPrefix
+
+		public bool TryDecrypt(object encrypted, out SecureString password)
+			=> TryDecrypt(encrypted, true, out password);
+
+		private bool TryDecrypt(object encrypted, bool needPassword, out SecureString password)
+		{
+			if (encrypted is string data)
+			{
+				if (data.StartsWith(secureStringHeader)) // AES encrypted
+					return TryDecryptAes(data, needPassword, out password);
+				else if ((data.Length & 1) == 0 && TryWindowsDecrypt(data, needPassword, out password)) // Windows Crypt protected
+					return true;
+				else
+				{
+					password = null;
+					return false;
+				}
+			}
+			else
+			{
+				password = null;
+				return false;
+			}
+		} // func TryDecrypt
+
+		private bool TryDecryptAes(string data, bool needPassword, out SecureString password)
+		{
+			try
+			{
+				// unpack parameter
+				var byteData = Convert.FromBase64String(data.Substring(secureStringHeader.Length, data.Length - secureStringHeader.Length));
+				var unpackedData = Encoding.Unicode.GetString(byteData).Split('|');
+				if (unpackedData.Length != 3 || unpackedData[0] != "2")
+					throw new FormatException();
+
+				if (!unpackedData[2].TryFromHexString(out var encryptedPassword))
+				{
+					password = null;
+					return false;
+				}
+				var iv = Convert.FromBase64String(unpackedData[1]);
+
+				// decrypt
+				var aes = Aes.Create();
+				using (var encrypt = aes.CreateDecryptor(secureKey, iv))
+				using (var srcMem = new MemoryStream(encryptedPassword, false))
+				using (var srcCrypt = new CryptoStream(srcMem, encrypt, CryptoStreamMode.Read))
+				{
+					if (needPassword)
+					{
+						using (var ss = new SecureString())
+						{
+							while (true)
+							{
+								var bLow = srcCrypt.ReadByte();
+								if (bLow == -1)
+								{
+									password = ss.Copy();
+									return true;
+								}
+								var bHigh = srcCrypt.ReadByte();
+
+								ss.AppendChar(unchecked((char)((byte)bLow | ((byte)bHigh << 8))));
+							}
+						}
+					}
+					else
+						password = null;
+					return true;
+				}
+			}
+			catch (FormatException)
+			{
+				password = null;
+				return false;
+			}
+		} // func TryDecryptAes
+
+		private unsafe bool TryWindowsDecrypt(string dataString, bool needPassword, out SecureString password)
+		{
+			var dataOut = default(DATA_BLOB);
+			var dataIV = default(DATA_BLOB);
+			var hData = default(GCHandle);
+			try
+			{
+				if (!dataString.TryFromHexString(out var data))
+				{
+					password = null;
+					return false;
+				}
+
+				hData = GCHandle.Alloc(data, GCHandleType.Pinned);
+				var dataIn = new DATA_BLOB()
+				{
+					DataSize = data.Length,
+					DataPtr = hData.AddrOfPinnedObject()
+				};
+
+				// crypt data
+				if (!CryptUnprotectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, 1, ref dataOut))
+					throw new Win32Exception();
+
+				// unpack data
+				if (dataOut.DataPtr == IntPtr.Zero)
+					throw new OutOfMemoryException();
+
+				password = needPassword ? new SecureString((char*)dataOut.DataPtr, dataOut.DataSize / 2) : null;
+				return true;
+			}
+			catch
+			{
+				password = null;
+				return false;
+			}
+			finally
+			{
+				if (hData.IsAllocated)
+					hData.Free();
+
+				if (dataOut.DataPtr != IntPtr.Zero)
+				{
+					ZeroMemory(dataOut.DataPtr, new IntPtr(dataOut.DataSize));
+					LocalFree(dataOut.DataPtr);
+				}
+			}
+		} // func TryWindowsDecrypt
+
+		#endregion
+
+		#region -- Encrypt --------------------------------------------------------------
+
+		public object Encrypt(SecureString password)
+		{
+			using (var passwordPtr = new InteropSecurePassword(password))
+			{
+				return secureKey == null
+					? ProtectCurrentUser(passwordPtr)
+					: ProtectAES(passwordPtr);
+			}
+		} // func Encrypt
+
+		private static string ProtectCurrentUser(InteropSecurePassword password)
+		{
+			var dataOut = default(DATA_BLOB);
+			var dataIV = default(DATA_BLOB);
+			try
+			{
+				var dataIn = new DATA_BLOB()
+				{
+					DataSize = password.Size,
+					DataPtr = password.Value
+				};
+
+				// crypt data
+				if (!CryptProtectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, 1, ref dataOut))
+					throw new Win32Exception();
+
+				// unpack data
+				if (dataOut.DataPtr == IntPtr.Zero)
+					throw new OutOfMemoryException();
+
+				var data = new byte[dataOut.DataSize];
+				Marshal.Copy(dataOut.DataPtr, data, 0, dataOut.DataSize);
+
+				return data.ToHexString();
+			}
+			finally
+			{
+				if (dataOut.DataPtr != IntPtr.Zero)
+				{
+					ZeroMemory(dataOut.DataPtr, new IntPtr(dataOut.DataSize));
+					LocalFree(dataOut.DataPtr);
+				}
+			}
+		} // func ProtectCurrentUser
+
+		private unsafe object ProtectAES(InteropSecurePassword password)
+		{
+			var aes = Aes.Create();
+			var iv = aes.IV;
+			using (var encrypt = aes.CreateEncryptor(secureKey, aes.IV))
+			using (var destMem = new MemoryStream())
+			using (var destCrypt = new CryptoStream(destMem, encrypt, CryptoStreamMode.Write))
+			{
+				var c = (byte*)password.Value;
+				for (var i = 0; i < password.Size; i++)
+				{
+					destCrypt.WriteByte(*c);
+					c++;
+				}
+				destCrypt.FlushFinalBlock();
+
+				return secureStringHeader + Convert.ToBase64String(Encoding.Unicode.GetBytes("2|" + Convert.ToBase64String(iv) + "|" + destMem.ToArray().ToHexString()));
+			}
+		} // func ProtectAES
+
+		#endregion
+
+		private static byte[] GetUnicodeBytes(SecureString secureKey)
+		{
+			using (var pwd = new InteropSecurePassword(secureKey))
+			{
+				var r = new byte[pwd.Size];
+				Marshal.Copy(pwd.Value, r, 0, pwd.Size);
+				return r;
+			}
+		} // func GetUnicodeByte
+
+		public string Name => name;
+	} // class PowerShellProtector 
 
 	#endregion
 
@@ -554,17 +1102,12 @@ namespace Neo.PerfectWorking.Cred.Provider
 			{
 				var maxLength = 1024;
 				var protectedCredentials = new StringBuilder(maxLength);
-				var passwordPtr = Marshal.SecureStringToGlobalAllocUnicode(password);
-				try
+				using (var passwordPtr = new InteropSecurePassword(password))
 				{
 					if (!CredProtect(false, passwordPtr, password.Length, protectedCredentials, ref maxLength, out var type))
 						throw new Win32Exception();
 
 					return prefix + protectedCredentials.ToString(0, maxLength);
-				}
-				finally
-				{
-					Marshal.ZeroFreeGlobalAllocUnicode(passwordPtr);
 				}
 			} // func Encrypt
 

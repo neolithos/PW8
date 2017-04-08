@@ -25,6 +25,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using Neo.PerfectWorking.Stuff;
 
 namespace Neo.PerfectWorking.UI
 {
@@ -151,15 +152,8 @@ namespace Neo.PerfectWorking.UI
 			{
 				if (tmp != null && tmp.Length > 0)
 				{
-					var passwordPtr = Marshal.SecureStringToGlobalAllocUnicode(tmp);
-					try
-					{
+					using (var passwordPtr = new InteropSecurePassword(tmp))
 						return Marshal.PtrToStringUni(passwordPtr, tmp.Length);
-					}
-					finally
-					{
-						Marshal.ZeroFreeGlobalAllocUnicode(passwordPtr);
-					}
 				}
 				else
 					return String.Empty;
