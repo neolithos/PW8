@@ -36,7 +36,7 @@ specific language governing permissions and limitations under the Licence.
 			</ResourceDictionary.MergedDictionaries>
 		</ResourceDictionary>
 	</ui:PwWindowPane.Resources>
-    <Grid>
+	<Grid DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type ui:PwWindowPane}}}">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition />
 			<ColumnDefinition Width="120" />
@@ -58,16 +58,44 @@ specific language governing permissions and limitations under the Licence.
 
 		<ListBox Grid.Column="1" Grid.Row="0" />
 
-		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="1">
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="1" IsReadOnly="True">
+			<ui:PwTextBoxCommand.Text>
+				<Binding Path="CurrentAns" Mode="OneWay">
+					<Binding.Converter>
+						<local:AnsConverter Base="2" />
+					</Binding.Converter>
+				</Binding>
+			</ui:PwTextBoxCommand.Text>
 			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="2">
+			<ui:PwTextBoxCommand.Text>
+				<Binding Path="CurrentAns" Mode="OneWay">
+					<Binding.Converter>
+						<local:AnsConverter Base="8" />
+					</Binding.Converter>
+				</Binding>
+			</ui:PwTextBoxCommand.Text>
 			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="3">
+			<ui:PwTextBoxCommand.Text>
+				<Binding Path="CurrentAns" Mode="OneWay">
+					<Binding.Converter>
+						<local:AnsConverter Base="16" />
+					</Binding.Converter>
+				</Binding>
+			</ui:PwTextBoxCommand.Text>
 			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="4">
+			<ui:PwTextBoxCommand.Text>
+				<Binding Path="CurrentAns" Mode="OneWay">
+					<Binding.Converter>
+						<local:AnsConverter Base="10" />
+					</Binding.Converter>
+				</Binding>
+			</ui:PwTextBoxCommand.Text>
 			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 	</Grid>

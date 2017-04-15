@@ -32,8 +32,11 @@ namespace Neo.PerfectWorking.Calc
 		{
 			this.functions = new FormularFunctions();
 
-			global.RegisterObject(this, nameof(CalcWindowPane), new CalcWindowPane(global));
+			global.RegisterObject(this, nameof(CalcWindowPane), new CalcWindowPane(this));
 		} // ctor
+
+		public FormularEnvironment CreateNewEnvironment()
+			=> new FormularEnvironment(functions);
 
 		public LuaTable Functions
 		{

@@ -29,7 +29,7 @@ namespace Neo.PerfectWorking.Cred
 		private readonly IPwCollection<ICredentialProvider> credentialProviders;
 		private readonly IPwCollection<ICredentialProtector> credentialProtectors;
 
-		private ICredentialProtector defaultProtector = NoProtector;
+		private ICredentialProtector defaultProtector = Protector.NoProtector;
 
 		#region -- Ctor -----------------------------------------------------------------
 
@@ -205,8 +205,8 @@ namespace Neo.PerfectWorking.Cred
 		} // prop DefaultProtector
 
 		/// <summary>Publish the no protector</summary>
-		public static ICredentialProtector NoProtector => Protector.NoProtector;
+		public ICredentialProtector NoProtector => Protector.NoProtector;
 		/// <summary>Publish the user protector</summary>
-		public static ICredentialProtector UserProtector => Protector.UserProtector;
+		public ICredentialProtector UserProtector => Protector.UserProtector;
 	} // class CredPackage
 }

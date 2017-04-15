@@ -360,16 +360,20 @@ namespace Neo.PerfectWorking.UI
 			catch (Exception ex)
 			{
 				ShowException(null, ex);
+				Shutdown();
 			}
 		} // proc OnStartup
 
 		protected override void OnExit(ExitEventArgs e)
 		{
 			base.OnExit(e);
-			dashBoardWindow.Close();
-			RemoveIcon();
-			DestroyNativeWindow();
-			global.Dispose();
+			dashBoardWindow?.Close();
+			if (hwnd != null)
+			{
+				RemoveIcon();
+				DestroyNativeWindow();
+			}
+			global?.Dispose();
 		} // proc OnExit
 
 		private void ApplicationClose(object sender, RoutedEventArgs e)

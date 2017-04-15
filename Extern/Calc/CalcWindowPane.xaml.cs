@@ -29,17 +29,77 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Neo.PerfectWorking.UI;
 using Neo.PerfectWorking.Data;
+using System.Globalization;
 
 namespace Neo.PerfectWorking.Calc
 {
+	#region -- class CalcWindowPane -----------------------------------------------------
+
 	/// <summary>
 	/// Interaction logic for CalcWindowPane.xaml
 	/// </summary>
 	public partial class CalcWindowPane : PwWindowPane
 	{
-		public CalcWindowPane(IPwGlobal glonal)
+		public static readonly RoutedCommand ExecuteFormularCommand = new RoutedCommand("Execute", typeof(CalcWindowPane));
+
+		public static readonly DependencyProperty CurrentFormularTextProperty = DependencyProperty.Register(nameof(CurrentFormularText), typeof(string), typeof(CalcWindowPane));
+		private static readonly DependencyPropertyKey currentAnsPropertyKey = DependencyProperty.RegisterReadOnly(nameof(CurrentAns), typeof(object), typeof(CalcWindowPane), new FrameworkPropertyMetadata());
+		public static readonly DependencyProperty CurrentAnsProperty = currentAnsPropertyKey.DependencyProperty;
+
+		private readonly CalcPackage package;
+		private readonly FormularEnvironment currentEnvironment;
+
+		public CalcWindowPane(CalcPackage package)
 		{
+			this.package = package;
+
 			InitializeComponent();
-		}
-	}
+
+			this.currentEnvironment = package.CreateNewEnvironment();
+
+			SetValue(currentAnsPropertyKey, 1023);
+		} // ctor
+
+		public string CurrentFormularText { get => (string)GetValue(CurrentFormularTextProperty); set => SetValue(CurrentFormularTextProperty, value); }
+		public object CurrentAns { get => GetValue(CurrentAnsProperty); }
+	} // class CalcWindowPane
+
+	#endregion
+
+	#region -- class AnsConverter -------------------------------------------------------
+
+	public sealed class AnsConverter : IValueConverter
+	{
+		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+		{
+			if (value == null)
+				return String.Empty;
+			else
+			{
+				if (targetType != typeof(string))
+					throw new ArgumentOutOfRangeException(nameof(targetType), targetType, "Inalid target type.");
+
+				switch(Base)
+				{
+					case 2:
+						return "0b";
+					case 8:
+						return "0o";
+					case 10:
+						return value.ToString();
+					case 16:
+						return "0x";
+					default:
+						return "<error>";
+				}
+			}
+		} // func Convert
+
+		public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+			=> throw new NotSupportedException();
+
+		public int Base { get; set; } = 10;
+	} // class AnsConverter
+
+	#endregion
 }

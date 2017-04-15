@@ -233,6 +233,7 @@ namespace Neo.PerfectWorking.Calc
 
 		private enum StackValueType
 		{
+			Null = 0,
 			Integer = 1,
 			Decimal = 2,
 			Double = 3
@@ -281,6 +282,8 @@ namespace Neo.PerfectWorking.Calc
 					case StackValueType.Integer:
 						switch (type)
 						{
+							case StackValueType.Null:
+								return new StackValue(0L);
 							case StackValueType.Integer:
 								return this;
 							case StackValueType.Decimal:
@@ -293,6 +296,8 @@ namespace Neo.PerfectWorking.Calc
 					case StackValueType.Decimal:
 						switch (type)
 						{
+							case StackValueType.Null:
+								return new StackValue(0m);
 							case StackValueType.Integer:
 								return new StackValue(Convert.ToDecimal(ValueLong));
 							case StackValueType.Decimal:
@@ -305,6 +310,8 @@ namespace Neo.PerfectWorking.Calc
 					case StackValueType.Double:
 						switch (type)
 						{
+							case StackValueType.Null:
+								return new StackValue(0.0);
 							case StackValueType.Integer:
 								return new StackValue(Convert.ToDouble(ValueLong));
 							case StackValueType.Decimal:
@@ -333,7 +340,7 @@ namespace Neo.PerfectWorking.Calc
 			public static StackValue FromObject(object value, bool useDecimal)
 			{
 				if (value == null)
-					return new StackValue(0L);
+					return new StackValue(StackValueType.Null, 0);
 				else
 				{
 					switch (System.Type.GetTypeCode(value.GetType()))
@@ -478,6 +485,9 @@ namespace Neo.PerfectWorking.Calc
 				var v = stack.Pop();
 				switch (v.Type)
 				{
+					case StackValueType.Null:
+						stack.Push(new StackValue(longOperation(0L)));
+						break;
 					case StackValueType.Decimal:
 						stack.Push(new StackValue(decimalOperation(v.ValueDecimal)));
 						break;
@@ -628,9 +638,14 @@ namespace Neo.PerfectWorking.Calc
 			{
 				var v2 = stack.Pop();
 				var v1 = stack.Pop();
-				
+
 				// lift types
-				if (v1.Type < v2.Type)
+				if (v1.Type == StackValueType.Null && v2.Type == StackValueType.Null)
+				{
+					v1 = v1.ConvertTo(StackValueType.Integer);
+					v2 = v2.ConvertTo(StackValueType.Integer);
+				}
+				else if (v1.Type < v2.Type)
 					v1 = v1.ConvertTo(v2.Type);
 				else if (v1.Type > v2.Type)
 					v2 = v2.ConvertTo(v1.Type);
