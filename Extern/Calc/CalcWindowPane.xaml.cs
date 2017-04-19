@@ -58,7 +58,35 @@ namespace Neo.PerfectWorking.Calc
 			this.currentEnvironment = package.CreateNewEnvironment();
 
 			SetValue(currentAnsPropertyKey, 1023);
+
+			CommandBindings.Add(
+				new CommandBinding(ExecuteFormularCommand,
+					(sender, e) =>
+					{
+						ProcessFormular();
+						e.Handled = true;
+					},
+					(sender, e) =>
+					{
+						e.CanExecute = true;
+						e.Handled = true;
+					}
+				)
+			);
 		} // ctor
+
+		private void ProcessFormular()
+		{
+			try
+			{
+				var formular = new Formular(currentEnvironment, CurrentFormularText);
+				SetValue(currentAnsPropertyKey, formular.GetResult());
+			}
+			catch (Exception e)
+			{
+				package.Global.UI.ShowException(e);
+			}
+		} // proc ProcessFormular
 
 		public string CurrentFormularText { get => (string)GetValue(CurrentFormularTextProperty); set => SetValue(CurrentFormularTextProperty, value); }
 		public object CurrentAns { get => GetValue(CurrentAnsProperty); }

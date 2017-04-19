@@ -50,7 +50,10 @@ specific language governing permissions and limitations under the Licence.
 		</Grid.RowDefinitions>
 
 		<ListBox Grid.Column="0" Grid.RowSpan="4" />
-		<ui:PwTextBoxCommand Grid.Column="0" Grid.Row="4">
+		<ui:PwTextBoxCommand Grid.Column="0" Grid.Row="4" Command="{x:Static local:CalcWindowPane.ExecuteFormularCommand}" Text="{Binding Path=CurrentFormularText,UpdateSourceTrigger=PropertyChanged}">
+			<ui:PwTextBoxCommand.InputBindings>
+				<KeyBinding Key="Return" Command="{x:Static local:CalcWindowPane.ExecuteFormularCommand}" />
+			</ui:PwTextBoxCommand.InputBindings>
 			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 

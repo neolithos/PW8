@@ -895,7 +895,7 @@ namespace Neo.PerfectWorking.Calc
 			private void AppendGet(string identifier)
 			{
 				instructions.Add(new PushVarInstruction(identifier));
-				SetStackSize(currentStackSize++);
+				SetStackSize(++currentStackSize);
 			} // proc AppendGet
 
 			private void AppendSet(string identifier)
