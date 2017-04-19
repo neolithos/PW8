@@ -59,7 +59,21 @@ specific language governing permissions and limitations under the Licence.
 
 		<GridSplitter Grid.RowSpan="5" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="4" />
 
-		<ListBox Grid.Column="1" Grid.Row="0" />
+		<ListBox Grid.Column="1" Grid.Row="0" ItemsSource="{Binding Variables,Mode=OneWay}" Grid.IsSharedSizeScope="True">
+			<ListBox.ItemTemplate>
+				<DataTemplate>
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" SharedSizeGroup="col1" />
+							<ColumnDefinition Width="Auto" SharedSizeGroup="col2" />
+						</Grid.ColumnDefinitions>
+
+						<TextBlock Grid.Column="0" Text="{Binding Name,Mode=OneWay}" />
+						<TextBlock Grid.Column="1" Text="{Binding Value,Mode=OneWay}" />
+					</Grid>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
 
 		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="1" IsReadOnly="True">
 			<ui:PwTextBoxCommand.Text>

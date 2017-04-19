@@ -340,7 +340,7 @@ namespace Neo.PerfectWorking.Calc
 			public static StackValue FromObject(object value, bool useDecimal)
 			{
 				if (value == null)
-					return new StackValue(StackValueType.Null, 0);
+					return new StackValue(StackValueType.Null, null);
 				else
 				{
 					switch (System.Type.GetTypeCode(value.GetType()))

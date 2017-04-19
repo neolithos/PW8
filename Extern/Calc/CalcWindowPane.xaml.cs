@@ -14,22 +14,17 @@
 //
 #endregion
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using Neo.PerfectWorking.UI;
-using Neo.PerfectWorking.Data;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Globalization;
+using System.Windows;
+using System.Windows.Data;
+using System.Windows.Input;
+using Neo.IronLua;
+using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.UI;
 
 namespace Neo.PerfectWorking.Calc
 {
@@ -40,11 +35,118 @@ namespace Neo.PerfectWorking.Calc
 	/// </summary>
 	public partial class CalcWindowPane : PwWindowPane
 	{
+		#region -- class VariableView ---------------------------------------------------
+
+		private sealed class VariableView : IComparable<VariableView>, INotifyPropertyChanged
+		{
+			public event PropertyChangedEventHandler PropertyChanged;
+
+			private readonly LuaTable table;
+			private readonly string name;
+
+			public VariableView(LuaTable table, string name)
+			{
+				this.table = table;
+				this.name = name;
+			} // ctor
+
+			public override int GetHashCode()
+				=> name.GetHashCode();
+
+			public override bool Equals(object obj)
+				=> obj is VariableView v ? CompareTo(v) == 0 : false;
+
+			public int CompareTo(VariableView other)
+				=> String.Compare(this.name, other.name, StringComparison.OrdinalIgnoreCase);
+
+			public void RefreshValue()
+				=> PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+
+			public string Name => name;
+			public object Value => table.GetMemberValue(name, rawGet: true);
+		} // class VariableView
+
+		#endregion
+
+		#region -- class VariableCollection ---------------------------------------------
+
+		private sealed class VariableCollection : IList, IEnumerable<VariableView>, INotifyCollectionChanged
+		{
+			public event NotifyCollectionChangedEventHandler CollectionChanged;
+
+			private readonly LuaTable table;
+			private readonly List<VariableView> variables = new List<VariableView>();
+
+			public VariableCollection(LuaTable table)
+			{
+				this.table = table;
+
+				table.PropertyChanged += (sender, e) => CheckProperty(e.PropertyName);
+			} // ctor
+
+			private void CheckProperty(string propertyName)
+			{
+				var v = new VariableView(table, propertyName);
+				var index = variables.BinarySearch(v);
+				if (index >= 0) // variable exists
+				{
+					v = variables[index];
+					if (table.GetMemberValue(propertyName, rawGet: true) == null) // remove because it is zero
+					{
+						variables.RemoveAt(index);
+						CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, v, index));
+
+					}
+					else
+						v.RefreshValue();
+				}
+				else // add variable and reset list
+				{
+					index = ~index;
+					variables.Insert(index, v);
+					CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, v, index));
+				}
+			} // func CheckProperty
+
+			void ICollection.CopyTo(Array array, int index)
+				=> ((IList)variables).CopyTo(array, index);
+
+			bool IList.Contains(object value)
+				=> value is VariableView v ? variables.Contains(v) : false;
+
+			int IList.IndexOf(object value)
+				=> value is VariableView v ? variables.IndexOf(v) : -1;
+
+			public IEnumerator<VariableView> GetEnumerator()
+				=> variables.GetEnumerator();
+
+			IEnumerator IEnumerable.GetEnumerator()
+				=> GetEnumerator();
+
+			int IList.Add(object value) => throw new NotSupportedException();
+			void IList.Clear() => throw new NotSupportedException();
+
+			void IList.Insert(int index, object value) => throw new NotSupportedException();
+			void IList.Remove(object value) => throw new NotSupportedException();
+			void IList.RemoveAt(int index) => throw new NotSupportedException();
+
+			bool IList.IsReadOnly => true;
+			bool IList.IsFixedSize => false;
+			object ICollection.SyncRoot => null;
+			bool ICollection.IsSynchronized => false;
+
+			public int Count => variables.Count;
+
+			public object this[int index] { get => variables[index]; set => throw new NotSupportedException(); }
+		} // class VariableCollection
+
+		#endregion
+
 		public static readonly RoutedCommand ExecuteFormularCommand = new RoutedCommand("Execute", typeof(CalcWindowPane));
 
 		public static readonly DependencyProperty CurrentFormularTextProperty = DependencyProperty.Register(nameof(CurrentFormularText), typeof(string), typeof(CalcWindowPane));
 		private static readonly DependencyPropertyKey currentAnsPropertyKey = DependencyProperty.RegisterReadOnly(nameof(CurrentAns), typeof(object), typeof(CalcWindowPane), new FrameworkPropertyMetadata());
-		public static readonly DependencyProperty CurrentAnsProperty = currentAnsPropertyKey.DependencyProperty;
+		private static readonly DependencyPropertyKey variableCollectionPropertyKey = DependencyProperty.RegisterReadOnly(nameof(Variables), typeof(VariableCollection), typeof(CalcWindowPane), new FrameworkPropertyMetadata());
 
 		private readonly CalcPackage package;
 		private readonly FormularEnvironment currentEnvironment;
@@ -56,8 +158,7 @@ namespace Neo.PerfectWorking.Calc
 			InitializeComponent();
 
 			this.currentEnvironment = package.CreateNewEnvironment();
-
-			SetValue(currentAnsPropertyKey, 1023);
+			SetValue(variableCollectionPropertyKey, new VariableCollection(currentEnvironment));
 
 			CommandBindings.Add(
 				new CommandBinding(ExecuteFormularCommand,
@@ -89,7 +190,8 @@ namespace Neo.PerfectWorking.Calc
 		} // proc ProcessFormular
 
 		public string CurrentFormularText { get => (string)GetValue(CurrentFormularTextProperty); set => SetValue(CurrentFormularTextProperty, value); }
-		public object CurrentAns { get => GetValue(CurrentAnsProperty); }
+		public object CurrentAns => GetValue(currentAnsPropertyKey.DependencyProperty);
+		public CollectionView Variables => (CollectionView)GetValue(variableCollectionPropertyKey.DependencyProperty);
 	} // class CalcWindowPane
 
 	#endregion
@@ -110,13 +212,13 @@ namespace Neo.PerfectWorking.Calc
 				switch(Base)
 				{
 					case 2:
-						return "0b";
+						return "0b" + System.Convert.ToString(System.Convert.ToInt64(value), 2);
 					case 8:
-						return "0o";
+						return "0o" + System.Convert.ToString(System.Convert.ToInt64(value), 8);
 					case 10:
 						return value.ToString();
 					case 16:
-						return "0x";
+						return "0x" + System.Convert.ToString(System.Convert.ToInt64(value), 16);
 					default:
 						return "<error>";
 				}
