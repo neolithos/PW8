@@ -912,20 +912,16 @@ namespace Neo.PerfectWorking.Calc
 			private void ParseOperator()
 			{
 				// collect prefix
-				var deleteVar = false;
 				var bitNegate = false;
 				var negate = false;
 				while (tok.Type == TokenType.Plus ||
 					   tok.Type == TokenType.Minus ||
-					   tok.Type == TokenType.BitNot ||
-					   tok.Type == TokenType.Raute)
+					   tok.Type == TokenType.BitNot)
 				{
 					if (tok.Type == TokenType.Minus)
 						negate = !negate;
 					else if (tok.Type == TokenType.BitNot)
 						bitNegate = !bitNegate;
-					else if (tok.Type == TokenType.Raute)
-						deleteVar = !deleteVar;
 					Next();
 				}
 
@@ -970,6 +966,11 @@ namespace Neo.PerfectWorking.Calc
 				else if (tok.Type == TokenType.Number)
 				{
 					Append(StackValue.FromObject(tok.Value, formular.useDecimal));
+					Next();
+				}
+				else if(tok.Type == TokenType.Raute)
+				{
+					Append(StackValue.FromObject(null, formular.useDecimal));
 					Next();
 				}
 				else
