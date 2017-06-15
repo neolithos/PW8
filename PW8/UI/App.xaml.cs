@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,6 +26,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.Win32;
 using static Neo.PerfectWorking.Win32.NativeMethods;
 
@@ -415,7 +417,15 @@ namespace Neo.PerfectWorking.UI
 		#region -- ShowException --------------------------------------------------------
 
 		private void ShowException(string text, Exception e)
-			=> MessageBox.Show(text ?? e?.ToString() ?? "Unknown error.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+		{
+			var sb = new StringBuilder();
+			if (!String.IsNullOrEmpty(text))
+				sb.AppendLine(text).AppendLine();
+
+			sb.Append(e.ToString());
+
+			MessageBox.Show(sb.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+		} // proc ShowException
 
 		public async Task ShowExceptionAsync(string text, Exception e)
 			=> await Dispatcher.InvokeAsync(() => ShowException(text, e));
@@ -592,8 +602,9 @@ namespace Neo.PerfectWorking.UI
 
 		public static string Title => "Perfect Working 8"
 #if DEBUG
-			+ " (Debug)";
+			+ " (Debug)"
 #endif
+			;
 
 		public DirectoryInfo ApplicationRemoteDirectory => applicationRemoteDirectory;
 		public DirectoryInfo ApplicationLocalDirectory => applicationLocalDirectory;
