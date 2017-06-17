@@ -14,6 +14,7 @@
 //
 #endregion
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Security;
@@ -208,5 +209,33 @@ namespace Neo.PerfectWorking.Cred
 		public ICredentialProtector NoProtector => Protector.NoProtector;
 		/// <summary>Publish the user protector</summary>
 		public ICredentialProtector UserProtector => Protector.UserProtector;
+
+		public static NetworkCredential FindCredentials(string providerName, Uri uri, IEnumerable<ICredentialInfo> items)
+		{
+			var compareValue = new CredCompareValue(uri);
+			if (!compareValue.IsSameProvider(providerName))
+				return null;
+
+			ICredentialInfo lastCred = null;
+			var lastCredScore = -1;
+			foreach (var cred in items)
+			{
+				if (compareValue.IsUserName(cred.UserName))
+				{
+					var score = compareValue.TestTargetName(cred.TargetName);
+					if (lastCredScore < score)
+					{
+						lastCred = cred;
+						lastCredScore = score;
+						if (score == Int32.MaxValue)
+							break;
+					}
+				}
+			}
+			if (lastCredScore < 0)
+				return null;
+			else
+				return PasswordHelper.CreateNetworkCredential(lastCred.UserName, lastCred.GetPassword());
+		} // func FindCredentials
 	} // class CredPackage
 }

@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
@@ -103,6 +104,37 @@ namespace Neo.PerfectWorking.Stuff
 			}
 		} // func GetPassword
 
+		public static void SplitUserName(string userName, out string domain, out string user)
+		{
+			var domainSplit = userName.IndexOf('\\');
+			if(domainSplit >= 0)
+			{
+				domain = userName.Substring(0, domainSplit);
+				user = userName.Substring(domainSplit + 1);
+			}
+			else
+			{
+				domainSplit = userName.IndexOf('@');
+				if (domainSplit >= 0)
+				{
+					domain = userName.Substring(domainSplit + 1);
+					user = userName.Substring(0, domainSplit);
+				}
+				else
+				{
+					domain = null;
+					user = userName;
+				}
+			}
+		} // SplitUserName
+
+		public static NetworkCredential CreateNetworkCredential(string userName, SecureString password)
+		{
+			SplitUserName(userName, out var domain, out var user);
+			return domain == null
+				? new NetworkCredential(user, password)
+				: new NetworkCredential(user, password, domain);
+		} // CreateNetworkCredential
 	} // class PasswordHelper
 
 	#endregion

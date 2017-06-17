@@ -13,6 +13,7 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Neo.PerfectWorking.Cred;
 using Neo.PerfectWorking.Cred.Provider;
@@ -98,6 +99,34 @@ namespace PW.Core.Tests
 				Assert.AreEqual("géh€im", ss.GetPassword());
 			else
 				Assert.Fail();
+		}
+
+		[TestMethod]
+		public void CompareTest1()
+		{
+			var c = new CredCompareValue(new Uri("pwds://user@server/sub", UriKind.RelativeOrAbsolute));
+			var c2 = new CredCompareValue(new Uri("user@server/sub", UriKind.RelativeOrAbsolute));
+			var c3 = new CredCompareValue(new Uri("server", UriKind.RelativeOrAbsolute));
+
+			Assert.IsFalse(c.IsSameProvider(null));
+			Assert.IsTrue(c.IsSameProvider("pwds"));
+			Assert.IsTrue(c3.IsSameProvider("pwds"));
+			Assert.IsTrue(c3.IsSameProvider("max"));
+			Assert.IsFalse(c3.IsSameProvider(null));
+
+			Assert.IsFalse(c.IsUserName(null));
+			Assert.IsFalse(c.IsUserName("other"));
+			Assert.IsTrue(c.IsUserName("user"));
+
+			Assert.AreEqual(1, c.TestTargetName("server"));
+			Assert.AreEqual(-1, c.TestTargetName("serve"));
+			Assert.AreEqual(-1, c.TestTargetName("serve/a"));
+			Assert.AreEqual(-1, c.TestTargetName("server/other"));
+			Assert.AreEqual(-1, c.TestTargetName("server/other"));
+			Assert.AreEqual(-1, c.TestTargetName("server/s"));
+			Assert.AreEqual(1, c.TestTargetName("server/sub/sub"));
+			Assert.AreEqual(-1, c.TestTargetName("server/aaa"));
+			Assert.AreEqual(Int32.MaxValue, c.TestTargetName("server/sub"));
 		}
 	}
 }

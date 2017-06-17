@@ -49,7 +49,17 @@ specific language governing permissions and limitations under the Licence.
 			<RowDefinition Height="23" />
 		</Grid.RowDefinitions>
 
-		<ListBox Grid.Column="0" Grid.RowSpan="4" />
+		<ListBox Grid.Column="0" Grid.RowSpan="4" ItemsSource="{Binding Formulars,Mode=OneWay}" IsSynchronizedWithCurrentItem="True">
+			<ListBox.ItemTemplate>
+				<DataTemplate>
+					<TextBlock>
+						<Run Text="{Binding Formular,Mode=OneWay}" />
+						=
+						<Run Text="{Binding Value,Mode=OneWay}" />
+					</TextBlock>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
 		<ui:PwTextBoxCommand Grid.Column="0" Grid.Row="4" Command="{x:Static local:CalcWindowPane.ExecuteFormularCommand}" Text="{Binding Path=CurrentFormularText,UpdateSourceTrigger=PropertyChanged}">
 			<ui:PwTextBoxCommand.InputBindings>
 				<KeyBinding Key="Return" Command="{x:Static local:CalcWindowPane.ExecuteFormularCommand}" />
@@ -68,8 +78,8 @@ specific language governing permissions and limitations under the Licence.
 							<ColumnDefinition Width="Auto" SharedSizeGroup="col2" />
 						</Grid.ColumnDefinitions>
 
-						<TextBlock Grid.Column="0" Text="{Binding Name,Mode=OneWay}" />
-						<TextBlock Grid.Column="1" Text="{Binding Value,Mode=OneWay}" />
+						<TextBlock Grid.Column="0" Text="{Binding Name,Mode=OneWay}" Margin="3" />
+						<TextBlock Grid.Column="1" Text="{Binding Value,Mode=OneWay}" Margin="3" />
 					</Grid>
 				</DataTemplate>
 			</ListBox.ItemTemplate>

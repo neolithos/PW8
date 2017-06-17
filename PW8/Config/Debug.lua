@@ -45,7 +45,6 @@ end; -- executeMessageNotify
 package("test",
 	function (self)
 		self.passwordStore = creds:CreateFileCredentialProvider("pwds", cryptKey.Protector);
-		self.connectTecWareHome = quickConnect:CreateConnection("TecWare Home", [[\\Garten\Stein$]], "M:", "pwd://stein");
 
 		self.testProgress = CreateAction(title = "Test Progress", label = "Zeigt die Progressbar", func = executeTestProgress);
 

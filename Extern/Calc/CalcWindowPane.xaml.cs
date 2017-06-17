@@ -16,6 +16,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
@@ -142,6 +143,32 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
+		#region -- class FormularView ---------------------------------------------------
+
+		private sealed class FormularView : INotifyPropertyChanged
+		{
+			public event PropertyChangedEventHandler PropertyChanged;
+
+			private readonly Formular formular;
+			private object value;
+
+			public FormularView(Formular formular)
+			{
+				this.formular = formular;
+			} // ctor
+
+			public void Calculate()
+			{
+				value = formular.GetResult();
+				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+			} // proc Calculate
+
+			public string Formular => formular.Value;
+			public object Value => value;
+		} // class FormularView
+
+		#endregion
+
 		public static readonly RoutedCommand ExecuteFormularCommand = new RoutedCommand("Execute", typeof(CalcWindowPane));
 
 		public static readonly DependencyProperty CurrentFormularTextProperty = DependencyProperty.Register(nameof(CurrentFormularText), typeof(string), typeof(CalcWindowPane));
@@ -150,6 +177,8 @@ namespace Neo.PerfectWorking.Calc
 
 		private readonly CalcPackage package;
 		private readonly FormularEnvironment currentEnvironment;
+		private readonly ObservableCollection<FormularView> formulars = new ObservableCollection<FormularView>();
+		private readonly ICollectionView formularsView;
 
 		public CalcWindowPane(CalcPackage package)
 		{
@@ -159,6 +188,10 @@ namespace Neo.PerfectWorking.Calc
 
 			this.currentEnvironment = package.CreateNewEnvironment();
 			SetValue(variableCollectionPropertyKey, new VariableCollection(currentEnvironment));
+
+			var source = new CollectionViewSource();
+			source.Source = formulars;
+			formularsView = source.View;
 
 			CommandBindings.Add(
 				new CommandBinding(ExecuteFormularCommand,
@@ -180,8 +213,12 @@ namespace Neo.PerfectWorking.Calc
 		{
 			try
 			{
-				var formular = new Formular(currentEnvironment, CurrentFormularText);
-				SetValue(currentAnsPropertyKey, formular.GetResult());
+				var formularView = new FormularView(new Formular(currentEnvironment, CurrentFormularText));
+				formularView.Calculate();
+				SetValue(currentAnsPropertyKey, formularView.Value);
+
+				formulars.Add(formularView);
+				formularsView.MoveCurrentToLast();
 			}
 			catch (Exception e)
 			{
@@ -191,7 +228,8 @@ namespace Neo.PerfectWorking.Calc
 
 		public string CurrentFormularText { get => (string)GetValue(CurrentFormularTextProperty); set => SetValue(CurrentFormularTextProperty, value); }
 		public object CurrentAns => GetValue(currentAnsPropertyKey.DependencyProperty);
-		public CollectionView Variables => (CollectionView)GetValue(variableCollectionPropertyKey.DependencyProperty);
+		public IList Variables => (IList)GetValue(variableCollectionPropertyKey.DependencyProperty);
+		public ICollectionView Formulars => formularsView;
 	} // class CalcWindowPane
 
 	#endregion

@@ -425,7 +425,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		public abstract bool Remove(string targetName);
 
 		public NetworkCredential GetCredential(Uri uri, string authType)
-			=> throw new NotImplementedException();
+			=> CredPackage.FindCredentials(Name, uri, credentials.Values);
 
 		public IEnumerator<ICredentialInfo> GetEnumerator()
 			=> credentials.Values.GetEnumerator();

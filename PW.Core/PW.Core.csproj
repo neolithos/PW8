@@ -9,8 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Neo.PerfectWorking</RootNamespace>
     <AssemblyName>PW.Core</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -57,6 +58,7 @@
     <Compile Include="Data\Services.cs" />
     <Compile Include="Data\SimpleCommand.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Stuff\CredCompareValue.cs" />
     <Compile Include="Stuff\SecurePassword.cs" />
     <Compile Include="Stuff\Objects.cs" />
   </ItemGroup>

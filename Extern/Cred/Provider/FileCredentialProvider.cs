@@ -25,6 +25,7 @@ using System.Windows.Media;
 using System.Xml;
 using System.Xml.Linq;
 using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.Stuff;
 
 namespace Neo.PerfectWorking.Cred.Provider
 {
@@ -32,8 +33,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 	internal sealed class FileCredentialProvider : ICredentialProvider, IPwAutoSaveFile
 	{
-		private readonly XName rootNodeName = "passwords";
-		private readonly XName entryName = "entry";
+		private static readonly XName rootNodeName = "passwords";
+		private static readonly XName entryName = "entry";
 
 		#region -- class FileCredentialInfo ---------------------------------------------
 
@@ -110,7 +111,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 						xml.WriteAttributeString(name, value);
 				} // proc WriteAttr
 
-				xml.WriteStartElement("entry");
+				xml.WriteStartElement(entryName.LocalName);
 				WriteAttr("uri", targetName);
 				WriteAttr("uname", userName);
 				WriteAttr("comment", comment);
@@ -195,6 +196,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		private DateTime lastModification;
 		private bool isModified = false;
+		private bool isLoading = false;
 
 		#region -- Ctor/Dtor ------------------------------------------------------------
 
@@ -235,30 +237,37 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (File.Exists(fileName))
 			{
 				lastModification = File.GetLastWriteTime(fileName);
-
-				using (var xml = XmlReader.Create(fileName, new XmlReaderSettings() { IgnoreComments = true, IgnoreWhitespace = true }))
+				isLoading = true;
+				try
 				{
-					xml.ReadStartElement(rootNodeName.LocalName);
-					while (xml.NodeType == XmlNodeType.Element)
+					using (var xml = XmlReader.Create(fileName, new XmlReaderSettings() { IgnoreComments = true, IgnoreWhitespace = true }))
 					{
-						var targetName = xml.GetAttribute("uri");
-						if (targetName == null)
-							xml.Skip();
-						else
+						xml.ReadStartElement(rootNodeName.LocalName);
+						while (xml.NodeType == XmlNodeType.Element)
 						{
-							var item = FindItemByUri(targetName);
-							if (item != null)
-								item.Read(xml);
+							var targetName = xml.GetAttribute("uri");
+							if (targetName == null)
+								xml.Skip();
 							else
 							{
-								var idx = items.Count;
-								item = new FileCredentialInfo(this, targetName);
-								item.Read(xml);
-								items.Add(item);
-								OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, idx));
+								var item = FindItemByUri(targetName);
+								if (item != null)
+									item.Read(xml);
+								else
+								{
+									var idx = items.Count;
+									item = new FileCredentialInfo(this, targetName);
+									item.Read(xml);
+									items.Add(item);
+									OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, idx));
+								}
 							}
 						}
 					}
+				}
+				finally
+				{
+					isLoading = false;
 				}
 			}
 
@@ -285,6 +294,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		private void SetModified()
 		{
+			if (isLoading)
+				return;
+
 			CheckReadOnly();
 			isModified = true;
 		} // proc SetModified
@@ -355,11 +367,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		#endregion
 
 		public NetworkCredential GetCredential(Uri uri, string authType)
-		{
-			throw new NotImplementedException();
-			//var item = items.Find(c => CryptHelper.CompareUriWithTarget(uri, c.TargetName));
-			//return item != null ? CryptHelper.CreateNetworkCredentials(item.UserName, item.GetPassword()) : null;
-		} // func GetCredential
+			=> CredPackage.FindCredentials(Name, uri, items);
 
 		public IEnumerator<ICredentialInfo> GetEnumerator()
 			=> items.GetEnumerator();
