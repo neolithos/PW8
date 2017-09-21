@@ -108,7 +108,16 @@ namespace PW.Core.Tests
 			Console.WriteLine("=== " + formular + " ===");
 			var f = new Formular(new FormularEnvironment(null), formular);
 			f.DebugOut(Console.Out);
-			Assert.AreEqual(expected, f.GetResult());
+			var r = f.GetResult();
+			if (expected is double
+				&& r is double)
+			{
+				var e = Math.Abs((double)expected - (double)r);
+				if (e > 0.00000001)
+					Assert.AreEqual(expected, r);
+			}
+			else
+				Assert.AreEqual(expected, r);
 			Console.WriteLine("===> ({0}){1}", expected == null ? "object" : expected.GetType().Name, expected ?? "<null>");
 			Console.WriteLine();
 		}
@@ -140,5 +149,9 @@ namespace PW.Core.Tests
 		[TestMethod]
 		public void ParseTest07()
 			=> TestCalc(2L, "# + 2");
+
+		[TestMethod]
+		public void ParseTest08()
+			=> TestCalc(14.0, "11,9/0,85");
 	}
 }

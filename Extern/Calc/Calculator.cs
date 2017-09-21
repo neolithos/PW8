@@ -1428,8 +1428,8 @@ namespace Neo.PerfectWorking.Calc
 			{
 				currentNumberAdd =
 					floatNumberAdd = useDecimal
-					? (FloatNumberAdd)new DecimalNumberAdd(currentNumberAdd)
-					: (FloatNumberAdd)new DoubleNumberAdd(currentNumberAdd);
+						? (FloatNumberAdd)new DecimalNumberAdd(currentNumberAdd)
+						: (FloatNumberAdd)new DoubleNumberAdd(currentNumberAdd);
 			} // proc ConvertLong
 
 			while (true)
@@ -1530,7 +1530,10 @@ namespace Neo.PerfectWorking.Calc
 						else if (Char.IsDigit(c) || c == '.') // scan int
 							state = 110;
 						else if (c == ',') // scan dez number
+						{
+							ConvertToFloat();
 							state = 120;
+						}
 						else // Es handelt sich um eine 0 (integer)
 							return tok.SetToken(TokenType.Number, scanStart, currentPosition, 0L);
 						break;
