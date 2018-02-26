@@ -25,7 +25,7 @@ specific language governing permissions and limitations under the Licence.
              Image="../Resources/flash_16.png"
              d:DesignHeight="300" d:DesignWidth="300">
     <Grid>
-        <ui:PwSearchListBox ItemsSource="{Binding Actions}" x:Name="filterListBox">
+        <ui:PwSearchListBox ItemsSource="{Binding Actions}" x:Name="filterListBox" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
             <ui:PwSearchListBox.Style>
                 <Style TargetType="{x:Type ui:PwSearchListBox}" BasedOn="{StaticResource {x:Type ui:PwSearchListBox}}">
                     <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>

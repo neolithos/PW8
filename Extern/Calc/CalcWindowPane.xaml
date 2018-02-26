@@ -55,7 +55,7 @@ specific language governing permissions and limitations under the Licence.
 					<TextBlock>
 						<Run Text="{Binding Formular,Mode=OneWay}" />
 						=
-						<Run Text="{Binding Value,Mode=OneWay}" />
+						<Run Text="{Binding Value,ConverterCulture=de-DE,Mode=OneWay}" />
 					</TextBlock>
 				</DataTemplate>
 			</ListBox.ItemTemplate>

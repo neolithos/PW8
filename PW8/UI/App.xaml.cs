@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -24,9 +25,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Markup;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
-using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.Win32;
 using static Neo.PerfectWorking.Win32.NativeMethods;
 
@@ -67,6 +68,7 @@ namespace Neo.PerfectWorking.UI
 				"8.0"
 #endif
 				)));
+			
 			applicationRemoteDirectory = GetDirectory(Environment.SpecialFolder.ApplicationData);
 			applicationLocalDirectory = GetDirectory(Environment.SpecialFolder.LocalApplicationData);
 			if (!applicationRemoteDirectory.Exists)
@@ -328,6 +330,10 @@ namespace Neo.PerfectWorking.UI
 				if (String.IsNullOrEmpty(configurationFile))
 					throw new ArgumentNullException("No configuration file.");
 
+				// set language
+				FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentUICulture.Name)));
+
+				// create global environment
 				global = new PwGlobal(this, configurationFile);
 
 				// create windows
