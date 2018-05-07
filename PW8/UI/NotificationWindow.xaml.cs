@@ -15,17 +15,15 @@
 #endregion
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Threading;
 
 namespace Neo.PerfectWorking.UI
 {
 	public partial class NotificationWindow : Window
 	{
-		#region -- class TextImageContent -----------------------------------------------
+		#region -- class TextImageContent ---------------------------------------------
 
 		public sealed class TextImageContent
 		{

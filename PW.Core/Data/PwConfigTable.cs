@@ -20,7 +20,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 using Neo.IronLua;
@@ -38,7 +37,7 @@ namespace Neo.PerfectWorking.Data
 		const string memberKeyName = "m";
 		const string typeAttributeName = "t";
 
-		#region -- class TableAgent -----------------------------------------------------
+		#region -- class TableAgent ---------------------------------------------------
 
 		private class TableAgent
 		{
@@ -74,9 +73,6 @@ namespace Neo.PerfectWorking.Data
 
 			public void Remove()
 			{
-				if (parent == null)
-					throw new InvalidOperationException();
-
 				// remove watcher
 				while (childAgents.Count > 0)
 					childAgents.Values.First().Remove();
@@ -85,7 +81,8 @@ namespace Neo.PerfectWorking.Data
 				table.PropertyChanged -= propertyChanged;
 
 				// remove self
-				parent.childAgents.Remove(propertyName);
+				if (parent != null)
+					parent.childAgents.Remove(propertyName);
 			} // proc Remove
 
 			private void CheckValues()
@@ -116,7 +113,7 @@ namespace Neo.PerfectWorking.Data
 					}
 					else // filter types
 					{
-						switch (TypeInfo.GetTypeCode(valueType))
+						switch (Type.GetTypeCode(valueType))
 						{
 							case TypeCode.DBNull:
 							case TypeCode.Empty:
@@ -131,16 +128,16 @@ namespace Neo.PerfectWorking.Data
 
 				if (childAgents.TryGetValue(propertyName, out var child)) // this property is watched
 				{
-					if (!Object.ReferenceEquals(value, child.table))
+					if (!ReferenceEquals(value, child.table))
 					{
 						// remove watcher
 						child.Remove();
 						// add new watcher
-						if (!Object.ReferenceEquals(value, null))
+						if (!(value is null))
 							CheckValueInternal();
 					}
 				}
-				else if (!Object.ReferenceEquals(value, null)) // this property is new
+				else if (!(value is null)) // this property is new
 					CheckValueInternal();
 			} // proc CheckValue
 		} // class TableAgent
@@ -152,6 +149,8 @@ namespace Neo.PerfectWorking.Data
 		private DateTime lastFileModification;
 		private DateTime lastDataModification;
 		private bool isLoading = false;
+
+		#region -- Ctor/Dtor ----------------------------------------------------------
 
 		public PwConfigTable(string fileName)
 		{
@@ -177,7 +176,9 @@ namespace Neo.PerfectWorking.Data
 				lastDataModification = DateTime.Now;
 		} // proc SetModified
 
-		#region -- ReadProperties -------------------------------------------------------
+		#endregion
+
+		#region -- ReadProperties -----------------------------------------------------
 
 		private static XmlReader ReadNode(XmlReader xml)
 		{
@@ -240,7 +241,7 @@ namespace Neo.PerfectWorking.Data
 								ReadNode(xml);
 							else
 							{
-								table[key] = XElement.ReadFrom(ReadNode(xml));
+								table[key] = XNode.ReadFrom(ReadNode(xml));
 								xml.ReadEndElement();
 							}
 							break;
@@ -252,7 +253,7 @@ namespace Neo.PerfectWorking.Data
 							}
 							else
 							{
-								table[key] = ReadProperties(ReadNode(xml), new LuaTable());
+								table[key] = ReadProperties(ReadNode(xml), table[key] as LuaTable ?? new LuaTable());
 								xml.ReadEndElement();
 							}
 							break;
@@ -267,7 +268,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- WriteProperties ------------------------------------------------------
+		#region -- WriteProperties ----------------------------------------------------
 
 		private static void WriteProperties(XmlWriter xml, LuaTable table)
 		{
@@ -325,7 +326,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Load/Save ------------------------------------------------------------
+		#region -- Load/Save ----------------------------------------------------------
 
 		private void Load()
 		{

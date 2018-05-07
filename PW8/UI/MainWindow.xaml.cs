@@ -14,26 +14,18 @@
 //
 #endregion
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using Neo.IronLua;
 using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.Win32;
 using static Neo.PerfectWorking.Win32.NativeMethods;
 
@@ -41,7 +33,7 @@ namespace Neo.PerfectWorking.UI
 {
 	public partial class MainWindow : Window
 	{
-		#region -- class PaneItem -------------------------------------------------------
+		#region -- class PaneItem -----------------------------------------------------
 
 		public class PaneItem : INotifyPropertyChanged
 		{
@@ -65,7 +57,6 @@ namespace Neo.PerfectWorking.UI
 				var n = (pane as INotifyPropertyChanged);
 				if (n != null)
 					n.PropertyChanged += panePropertyChanged;
-				
 			} // ctor
 
 			public void Detach()
@@ -101,7 +92,7 @@ namespace Neo.PerfectWorking.UI
 
 			public bool IsChecked
 			{
-				get { return model.Panes.CurrentItem == this; }
+				get => model.Panes.CurrentItem == this;
 				set { if (value) model.Panes.MoveCurrentTo(this); }
 			} // prop IsChecked
 
@@ -110,24 +101,25 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- class MainWindowMode -------------------------------------------------
+		#region -- class MainWindowMode -----------------------------------------------
 
-		public class MainWindowModel// : INotifyPropertyChanged
+		public class MainWindowModel //: INotifyPropertyChanged
 		{
-			//public event PropertyChangedEventHandler PropertyChanged;
-
 			private readonly MainWindow mainWindow;
 			private readonly IPwGlobal global;
 			private readonly IPwCollection<IPwWindowPane> panes;
 
 			private readonly ObservableCollection<PaneItem> shadowPanes;
 			private readonly ICollectionView paneCollection;
+			private readonly LuaTable windowSize;
 
 			public MainWindowModel(MainWindow mainWindow, IPwGlobal global)
 			{
 				this.mainWindow = mainWindow;
 				this.global = global;
 				var globalPackage = (IPwPackage)global;
+
+				windowSize = global.UserLocal.GetLuaTable("Window");
 
 				this.panes = global.RegisterCollection<IPwWindowPane>(globalPackage); // highest
 				this.panes.CollectionChanged += Panes_CollectionChanged;
@@ -185,6 +177,7 @@ namespace Neo.PerfectWorking.UI
 			} // event Panes_CollectionChanged
 
 			public ICollectionView Panes => paneCollection;
+			public LuaTable Window => windowSize;
 		} // class MainWindowModel
 
 		#endregion
@@ -214,7 +207,7 @@ namespace Neo.PerfectWorking.UI
 			hwnd.AddHook(WindowProc);
 
 			SetWindowLong(hwnd.Handle, GWL_STYLE, GetWindowLong(hwnd.Handle, GWL_STYLE) & (~(uint)(WS_MAXIMIZEBOX | WS_MINIMIZEBOX)));
-
+			
 			this.DataContext = model;
 
 			Focus();
@@ -303,5 +296,11 @@ namespace Neo.PerfectWorking.UI
 			base.OnDeactivated(e);
 			Hide();
 		} // proc OnDeactivated
+		
+		static MainWindow()
+		{
+			HeightProperty.OverrideMetadata(typeof(MainWindow), new FrameworkPropertyMetadata(350.0));
+			WidthProperty.OverrideMetadata(typeof(MainWindow), new FrameworkPropertyMetadata(512.0));
+		}
 	}
 }

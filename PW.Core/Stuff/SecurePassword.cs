@@ -14,17 +14,13 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Security;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Stuff
 {
-	#region -- class InteropSecurePassword ----------------------------------------------
+	#region -- class InteropSecurePassword --------------------------------------------
 
 	public sealed class InteropSecurePassword : IDisposable
 	{
@@ -68,7 +64,7 @@ namespace Neo.PerfectWorking.Stuff
 
 	#endregion
 
-	#region -- class PasswordHelper -----------------------------------------------------
+	#region -- class PasswordHelper ---------------------------------------------------
 
 	public static class PasswordHelper
 	{

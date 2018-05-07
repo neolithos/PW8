@@ -19,14 +19,10 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Threading;
 
 namespace Neo.PerfectWorking.Data
 {
-	#region -- interface IPwInternalCollection  -----------------------------------------
+	#region -- interface IPwInternalCollection  ---------------------------------------
 
 	internal interface IPwInternalCollection
 	{
@@ -41,7 +37,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- class PwObjectId -----------------------------------------------------
+	#region -- class PwObjectId -------------------------------------------------------
 
 	internal class PwObjectId : IPwObject
 	{
@@ -64,7 +60,7 @@ namespace Neo.PerfectWorking.Data
 			=> Equals(obj as IPwObject);
 
 		public bool Equals(IPwObject obj)
-			=> Object.ReferenceEquals(this, obj) || (this.package.Equals(obj?.Package) && this.name.Equals(obj?.Name));
+			=> ReferenceEquals(this, obj) || (package.Equals(obj?.Package) && name.Equals(obj?.Name));
 
 		protected virtual void Dispose(bool disposing) { }
 
@@ -79,7 +75,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 	
-	#region -- class PwObjectCollection -------------------------------------------------
+	#region -- class PwObjectCollection -----------------------------------------------
 
 	internal class PwObjectCollection<T> : IPwInternalCollection, IPwCollection<T>, IList, IReadOnlyList<T>, INotifyCollectionChanged, INotifyPropertyChanged
 		where T : class
@@ -97,7 +93,7 @@ namespace Neo.PerfectWorking.Data
 			this.package = package;
 		} // ctor
 
-		#region -- OnPropertyChanged, OnCollectionChanged -------------------------------
+		#region -- OnPropertyChanged, OnCollectionChanged -----------------------------
 		
 		private void OnPropertyChanged(string propertyName)
 			=> PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -107,30 +103,37 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Append, Clear, Remove ------------------------------------------------
+		#region -- Append, Clear, Remove ----------------------------------------------
 
 		void IPwInternalCollection.Append(IPwObject obj, object value)
 		{
+			int index;
 			lock (syncRoot)
 			{
-				var index = objects.IndexOf(obj);
-				if (index < 0)
-				{
-					index = objects.Count;
-					objects.Add(obj);
-					OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, value, index));
-				}
+				index = objects.IndexOf(obj);
+				if (index >= 0)
+					return;
+
+				index = objects.Count;
+				objects.Add(obj);
 			}
+			
+			OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, value, index));
 		} // proc IPwInternalCollection.Append
 
 		void IPwInternalCollection.Remove(IPwObject obj, object value)
 		{
+			int index;
 			lock (syncRoot)
 			{
-				var index = objects.IndexOf(obj);
+				index = objects.IndexOf(obj);
 				if (index >= 0)
 					RemoveAt(index, value);
+				else
+					return;
 			}
+
+			OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, value, index));
 		} // proc IPwInternalCollection.Remove
 
 		void IPwInternalCollection.RemoveAll(IPwPackage package)
@@ -143,14 +146,13 @@ namespace Neo.PerfectWorking.Data
 						RemoveAt(i, objects[i].Value);
 				}
 			}
+
+			OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 		} // proc IPwInternalCollection.RemoveAll
 
 		private void RemoveAt(int index, object value)
-		{
-			objects.RemoveAt(index);
-			OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, value, index));
-		} // proc RemoveAt
-
+			=> objects.RemoveAt(index);
+		
 		Type IPwInternalCollection.ItemType => typeof(T);
 		IPwPackage IPwInternalCollection.Package => package;
 		

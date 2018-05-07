@@ -14,27 +14,18 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Neo.PerfectWorking.Data;
 
 namespace Neo.PerfectWorking.UI
 {
 	public partial class ActionsPane : PwWindowPane
 	{
-		public static DependencyProperty ActionsProperty = DependencyProperty.Register("Actions", typeof(ICollectionView), typeof(ActionsPane));
+		private static DependencyPropertyKey actionsPropertyKey = DependencyProperty.RegisterReadOnly("Actions", typeof(ICollectionView), typeof(ActionsPane), new FrameworkPropertyMetadata(null));
+		public static readonly DependencyProperty ActionsProperty = actionsPropertyKey.DependencyProperty;
 
 		private readonly IPwGlobal global;
 		
@@ -48,13 +39,10 @@ namespace Neo.PerfectWorking.UI
 			actions.Filter = OnFilter;
 			actions.SortDescriptions.Add(new SortDescription("Title", ListSortDirection.Ascending));
 
-			SetValue(ActionsProperty, actions);
+			SetValue(actionsPropertyKey, actions);
 
 			this.DataContext = this;
 		} // ctor
-
-		protected override void OnKeyUp(KeyEventArgs e) 
-			=> base.OnKeyUp(e);
 
 		private bool OnFilter(object item)
 		{
@@ -71,5 +59,7 @@ namespace Neo.PerfectWorking.UI
 						|| (c.Label != null && c.Label.IndexOf(currentFilter, StringComparison.OrdinalIgnoreCase) >= 0);
 			}
 		} // func OnFilter
+
+		public ICollectionView Actions => (ICollectionView)GetValue(ActionsProperty);
 	} // class ActionsPane
 }

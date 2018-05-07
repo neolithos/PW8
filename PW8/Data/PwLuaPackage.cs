@@ -15,15 +15,13 @@
 #endregion
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using Neo.IronLua;
 
 namespace Neo.PerfectWorking.Data
 {
+	#region -- class PwLuaPackage -----------------------------------------------------
+
 	internal class PwLuaPackage :  LuaTable, IPwPackage
 	{
 		private readonly PwGlobal global;
@@ -51,7 +49,7 @@ namespace Neo.PerfectWorking.Data
 					objectRegistration.Remove(propertyName);
 				}
 			}
-			else if (TypeInfo.GetTypeCode(value.GetType()) == TypeCode.Object)
+			else if (Type.GetTypeCode(value.GetType()) == TypeCode.Object)
 			{
 				if (objectRegistration.TryGetValue(propertyName, out var obj))
 				{
@@ -74,4 +72,6 @@ namespace Neo.PerfectWorking.Data
 		
 		string IPwPackage.Name => name;
 	} // class PwLuaPackage 
+
+	#endregion
 }

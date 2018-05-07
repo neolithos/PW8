@@ -14,16 +14,12 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Win32
 {
-	#region -- enum NotifyIconMessage ---------------------------------------------------
+	#region -- enum NotifyIconMessage -------------------------------------------------
 
 	internal enum NotifyIconMessage : uint
 	{
@@ -36,7 +32,7 @@ namespace Neo.PerfectWorking.Win32
 
 	#endregion
 
-	#region -- enum NotifyIconFlags -----------------------------------------------------
+	#region -- enum NotifyIconFlags ---------------------------------------------------
 
 	[Flags]
 	internal enum NotifyIconFlags : uint
@@ -53,7 +49,7 @@ namespace Neo.PerfectWorking.Win32
 
 	#endregion
 
-	#region -- struct NotifyIconData ----------------------------------------------------
+	#region -- struct NotifyIconData --------------------------------------------------
 
 	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 	internal struct NotifyIconData
@@ -80,7 +76,7 @@ namespace Neo.PerfectWorking.Win32
 
 	#endregion
 
-	#region -- struct RECT --------------------------------------------------------------
+	#region -- struct RECT ------------------------------------------------------------
 
 	[StructLayout(LayoutKind.Sequential)]
 	public struct RECT

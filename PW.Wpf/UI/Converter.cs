@@ -22,9 +22,25 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using Neo.PerfectWorking.Stuff;
 
 namespace Neo.PerfectWorking.UI
 {
+	#region -- class InvariantConverter -----------------------------------------------
+
+	public class InvariantConverter : IValueConverter
+	{
+		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+			=> Procs.ChangeType(value ?? parameter, targetType);
+
+		public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+			=> Procs.ChangeType(value, targetType);
+
+		public static InvariantConverter Default { get; } = new InvariantConverter();
+	} // class InvariantConverter
+
+	#endregion
+
 	#region -- class ImageDefaultConverter ----------------------------------------------
 
 	[ValueConversion(typeof(ImageSource), typeof(ImageSource))]

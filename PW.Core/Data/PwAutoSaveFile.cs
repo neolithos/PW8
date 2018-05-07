@@ -14,14 +14,10 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Data
 {
-	#region -- interface IPwAutoSaveFile ------------------------------------------------
+	#region -- interface IPwAutoSaveFile ----------------------------------------------
 
 	public interface IPwAutoSaveFile
 	{

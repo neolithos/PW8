@@ -17,7 +17,7 @@ using System;
 
 namespace Neo.PerfectWorking.Data
 {
-	#region -- class PwWindowHook -------------------------------------------------------
+	#region -- class PwWindowHook -----------------------------------------------------
 
 	public delegate IntPtr? PwWindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
 

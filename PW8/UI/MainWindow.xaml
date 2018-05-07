@@ -18,10 +18,13 @@ specific language governing permissions and limitations under the Licence.
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="clr-namespace:Neo.PerfectWorking.UI"
+		xmlns:ui2="clr-namespace:Neo.PerfectWorking.UI;assembly=PW.Wpf"
         mc:Ignorable="d"
         x:Name="mainWindow"
         Title="{x:Static ui:App.Title}" 
-        Height="350" Width="525" WindowStyle="None" MinHeight="300" MinWidth="400" SnapsToDevicePixels="True" ShowInTaskbar="False">
+		Width="{Binding Window.Width,Delay=100,Mode=TwoWay,Converter={x:Static ui2:InvariantConverter.Default}}" 
+        Height="{Binding Window.Height,Delay=100,Mode=TwoWay,Converter={x:Static ui2:InvariantConverter.Default}}" 
+		WindowStyle="None" MinHeight="300" MinWidth="400" SnapsToDevicePixels="True" ShowInTaskbar="False">
     <Window.Resources>
         <Style x:Key="AppButton" BasedOn="{StaticResource {x:Type Button}}" TargetType="{x:Type Button}">
             <Setter Property="HorizontalAlignment" Value="Right" />
@@ -31,7 +34,8 @@ specific language governing permissions and limitations under the Licence.
         </Style>
 
         <SolidColorBrush x:Key="FrameBrush" Color="{x:Static SystemColors.HighlightColor}" />
-        <Style x:Key="MainSeperatorStyle" TargetType="Border">
+        
+		<Style x:Key="MainSeperatorStyle" TargetType="Border">
             <Setter Property="BorderBrush" Value="{StaticResource FrameBrush}" />
             <Setter Property="SnapsToDevicePixels" Value="True" />
         </Style>

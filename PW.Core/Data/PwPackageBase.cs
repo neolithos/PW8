@@ -14,18 +14,15 @@
 //
 #endregion
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+using Neo.IronLua;
 
 namespace Neo.PerfectWorking.Data
 {
-	#region -- interface IPwObject ------------------------------------------------------
+	#region -- interface IPwObject ----------------------------------------------------
 
 	/// <summary>Reference to a global registration.</summary>
 	public interface IPwObject : IEquatable<IPwObject>, IDisposable
@@ -40,7 +37,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- interface IPwPackage -----------------------------------------------------
+	#region -- interface IPwPackage ---------------------------------------------------
 
 	/// <summary>Contains a implementation for the application.</summary>
 	public interface IPwPackage
@@ -50,7 +47,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- interface IPwPackageServiceProvider --------------------------------------
+	#region -- interface IPwPackageServiceProvider ------------------------------------
 
 	public interface IPwPackageServiceProvider
 	{
@@ -59,7 +56,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- interface IPwCollection --------------------------------------------------
+	#region -- interface IPwCollection ------------------------------------------------
 
 	public interface IPwCollection<T> : IReadOnlyList<T>, INotifyCollectionChanged, INotifyPropertyChanged
 		where T : class
@@ -72,7 +69,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- interface IPwGlobal ------------------------------------------------------
+	#region -- interface IPwGlobal ----------------------------------------------------
 
 	/// <summary>Combines all implementations to one application.</summary>
 	public interface IPwGlobal : IServiceProvider
@@ -120,11 +117,16 @@ namespace Neo.PerfectWorking.Data
 
 		/// <summary>Access the shell implementation.</summary>
 		IPwShellUI UI { get; }
+
+		/// <summary></summary>
+		LuaTable UserLocal { get; }
+		/// <summary></summary>
+		LuaTable UserRemote { get; }
 	} // interface IPwGlobal
 
 	#endregion
 
-	#region -- class PwPackageAttribute -------------------------------------------------
+	#region -- class PwPackageAttribute -----------------------------------------------
 
 	/// <summary>Marks a typ as an package</summary>
 	[AttributeUsage(AttributeTargets.Assembly)]
@@ -142,7 +144,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- class PwPackageBase ------------------------------------------------------
+	#region -- class PwPackageBase ----------------------------------------------------
 
 	/// <summary>Scope implementation for a .net scope.</summary>
 	public abstract class PwPackageBase : IPwPackage
@@ -150,7 +152,7 @@ namespace Neo.PerfectWorking.Data
 		private readonly IPwGlobal global;
 		private readonly string packageName;
 
-		#region -- Ctor/Dtor ------------------------------------------------------------
+		#region -- Ctor/Dtor ----------------------------------------------------------
 
 		protected PwPackageBase(IPwGlobal global, string packageName)
 		{
@@ -171,7 +173,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- class ServiceProviderHelper ----------------------------------------------
+	#region -- class ServiceProviderHelper --------------------------------------------
 
 	public static class ServiceProviderHelper
 	{

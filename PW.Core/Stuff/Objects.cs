@@ -14,13 +14,9 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Neo.IronLua;
-using System.Net;
 using System.Globalization;
+using System.Net;
+using Neo.IronLua;
 
 namespace Neo.PerfectWorking.Stuff
 {
@@ -93,6 +89,16 @@ namespace Neo.PerfectWorking.Stuff
 			=> String.IsNullOrEmpty(cred.Domain)
 				? cred.UserName
 				: cred.Domain + "\\" + cred.UserName;
+
+		public static LuaTable GetLuaTable(this LuaTable table, string propertyName)
+		{
+			if (table[propertyName] is LuaTable t)
+				return t;
+
+			t = new LuaTable();
+			table[propertyName] = t;
+			return t;
+		} // func GetLuaTable
 
 		public static bool IsWin7
 			=> Environment.OSVersion.Version > new Version(6, 0, 0, 0);

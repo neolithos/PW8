@@ -33,9 +33,7 @@ using static Neo.PerfectWorking.Win32.NativeMethods;
 
 namespace Neo.PerfectWorking.UI
 {
-	/// <summary>
-	/// Interaction logic for App.xaml
-	/// </summary>
+	/// <summary>Shell for all tasks.</summary>
 	public partial class App : Application, IPwShellUI, IPwShellWpf
 	{
 		private HwndSource hwnd = null;
@@ -55,7 +53,7 @@ namespace Neo.PerfectWorking.UI
 		private readonly DirectoryInfo applicationRemoteDirectory;
 		private readonly DirectoryInfo applicationLocalDirectory;
 
-		#region -- Ctor -----------------------------------------------------------------
+		#region -- Ctor ---------------------------------------------------------------
 
 		public App()
 		{
@@ -79,7 +77,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- Create Native Window -------------------------------------------------
+		#region -- Create Native Window -----------------------------------------------
 
 		private uint wmTaskbarCreated = 0;
 
@@ -127,7 +125,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- Idle service ---------------------------------------------------------
+		#region -- Idle service -------------------------------------------------------
 
 		private int IndexOfIdleAction(IPwIdleAction idleAction)
 		{
@@ -192,7 +190,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- Notify Icon ----------------------------------------------------------
+		#region -- Notify Icon --------------------------------------------------------
 
 #pragma warning disable IDE1006 // Naming Styles
 		private const int WM_TASKBARNOTIFY = 0x8010;
@@ -316,7 +314,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- OnStartup, OnExit ----------------------------------------------------
+		#region -- OnStartup, OnExit --------------------------------------------------
 
 		protected override void OnStartup(StartupEventArgs e)
 		{
@@ -357,7 +355,7 @@ namespace Neo.PerfectWorking.UI
 				global.RefreshConfiguration();
 
 				// Start idle implementation
-				this.idleTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.ApplicationIdle, (sender, _e) => OnIdle(), Dispatcher);
+				idleTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.ApplicationIdle, (sender, _e) => OnIdle(), Dispatcher);
 				InputManager.Current.PreProcessInput += (sender, _e) => RestartIdleTimer(_e);
 
 				// create the event sink, for the win32 integration
@@ -394,7 +392,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- Invoke ---------------------------------------------------------------
+		#region -- Invoke -------------------------------------------------------------
 
 		public Task InvokeAsync(Action action)
 		{
@@ -420,7 +418,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- ShowException --------------------------------------------------------
+		#region -- ShowException ------------------------------------------------------
 
 		private void ShowException(string text, Exception e)
 		{
@@ -446,7 +444,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- MsgBox ---------------------------------------------------------------
+		#region -- MsgBox -------------------------------------------------------------
 
 		private static MessageBoxImage GetMsgBoxImage(object icon)
 		{
@@ -594,7 +592,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- ShowNotification -----------------------------------------------------
+		#region -- ShowNotification ---------------------------------------------------
 
 		public void ShowNotification(object message, object image = null)
 		{

@@ -20,6 +20,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Neo.IronLua;
 using Neo.PerfectWorking.Data;
 
 namespace PW.Core.Tests
@@ -62,5 +63,8 @@ namespace PW.Core.Tests
 		public string ResolveFile(string fileName, bool throwException = true) => throw new NotImplementedException();
 
 		public static GlobalMock Instance { get; } = new GlobalMock();
+
+		public LuaTable UserLocal => throw new NotImplementedException();
+		public LuaTable UserRemote => throw new NotImplementedException();
 	}
 }

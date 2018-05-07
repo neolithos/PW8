@@ -14,15 +14,12 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Data
 {
-	#region -- interface IPwIdleAction --------------------------------------------------
+	#region -- interface IPwIdleAction ------------------------------------------------
 
 	public interface IPwIdleAction
 	{
@@ -34,7 +31,7 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- interface IPwShellUI -----------------------------------------------------
+	#region -- interface IPwShellUI ---------------------------------------------------
 
 	public interface IPwShellUI
 	{
@@ -89,10 +86,8 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- interface IPwWindowPane --------------------------------------------------
+	#region -- interface IPwWindowPane ------------------------------------------------
 
-	///////////////////////////////////////////////////////////////////////////////
-	/// <summary></summary>
 	public interface IPwWindowPane
 	{
 		/// <summary>Title of the pane</summary>

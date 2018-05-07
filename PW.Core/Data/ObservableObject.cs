@@ -14,11 +14,7 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Data
 {
@@ -31,7 +27,7 @@ namespace Neo.PerfectWorking.Data
 
 		protected void SetProperty<T>(string propertyName, ref T value, T newValue)
 		{
-			if (!Object.Equals(value, newValue))
+			if (!Equals(value, newValue))
 			{
 				value = newValue;
 				OnPropertyChanged(propertyName);

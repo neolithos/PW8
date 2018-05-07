@@ -13,11 +13,8 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
-using Neo.IronLua;
-using Neo.PerfectWorking.UI;
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -25,10 +22,13 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Neo.IronLua;
+using Neo.PerfectWorking.Stuff;
+using Neo.PerfectWorking.UI;
 
 namespace Neo.PerfectWorking.Data
 {
-	#region -- class PwPackageInitializationException -----------------------------------
+	#region -- class PwPackageInitializationException ---------------------------------
 
 	public class PwPackageInitializationException : Exception
 	{
@@ -45,12 +45,12 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- class PwGlobal -----------------------------------------------------------
+	#region -- class PwGlobal ---------------------------------------------------------
 
 	/// <summary>DataContext for the main window.</summary>
 	internal class PwGlobal : LuaGlobal, IPwGlobal, IPwPackage
 	{
-		#region -- struct PwPackageVariable ---------------------------------------------
+		#region -- struct PwPackageVariable -------------------------------------------
 
 		private struct PwPackageVariable
 		{
@@ -69,7 +69,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- class PwObject -------------------------------------------------------
+		#region -- class PwObject -----------------------------------------------------
 
 		private sealed class PwObject : PwObjectId, IPwObject
 		{
@@ -142,6 +142,9 @@ namespace Neo.PerfectWorking.Data
 		private readonly App app;
 		private readonly string configurationFile;
 
+		private readonly IPwObject userRemote;
+		private readonly IPwObject userLocal;
+
 		private readonly LuaCompileOptions compileOptions;
 
 		private readonly List<IPwPackage> packages = new List<IPwPackage>(); // list of active packages
@@ -163,7 +166,7 @@ namespace Neo.PerfectWorking.Data
 
 		private readonly IPwIdleAction autoSaveFilesIdleAction;
 
-		#region -- Ctor/Dtor ------------------------------------------------------------
+		#region -- Ctor/Dtor ----------------------------------------------------------
 
 		public PwGlobal(App app, string configurationFile)
 			: base(new Lua())
@@ -182,6 +185,10 @@ namespace Neo.PerfectWorking.Data
 			AddResolvePath(Path.GetDirectoryName(typeof(PwGlobal).Assembly.Location));
 			AddResolvePath(Path.GetDirectoryName(configurationFile));
 
+			// load options
+			userLocal = RegisterObject(this, nameof(IPwGlobal.UserLocal), new PwConfigTable(Path.Combine(app.ApplicationLocalDirectory.FullName, "global.xml")));
+			userRemote = RegisterObject(this, nameof(IPwGlobal.UserRemote), new PwConfigTable(Path.Combine(app.ApplicationRemoteDirectory.FullName, "global.xml")));
+			
 			autoSaveFilesIdleAction = AddIdleAction(AutoSaveFilesIdle);
 		} // ctor
 
@@ -201,11 +208,11 @@ namespace Neo.PerfectWorking.Data
 			=> Equals(obj as IPwPackage);
 
 		public bool Equals(IPwPackage obj)
-			=> Object.ReferenceEquals(this, obj) || ScopeName.Equals(obj?.Name);
+			=> ReferenceEquals(this, obj) || ScopeName.Equals(obj?.Name);
 
 		#endregion
 
-		#region -- Object Manager -------------------------------------------------------
+		#region -- Object Manager -----------------------------------------------------
 
 		private IPwInternalCollection FindCollection(Type itemType)
 		{
@@ -320,7 +327,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Assembly Manager -----------------------------------------------------
+		#region -- Assembly Manager ---------------------------------------------------
 
 		[LuaMember("resolvePath")]
 		private void AddResolvePath(string path)
@@ -391,7 +398,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Package Manager ------------------------------------------------------
+		#region -- Package Manager ----------------------------------------------------
 
 		private int FindPackageIndex(string name)
 			=> packages.FindIndex(c => c.Name == name);
@@ -536,7 +543,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Auto Save Files Manager ----------------------------------------------
+		#region -- Auto Save Files Manager --------------------------------------------
 
 		private DateTime? GetLastWriteTimeSecure(string fullPath)
 		{
@@ -576,7 +583,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Lua ------------------------------------------------------------------
+		#region -- Lua ----------------------------------------------------------------
 
 		private LuaChunk CompileFile(string fileName)
 			=> Lua.CompileChunk(fileName, compileOptions);
@@ -586,12 +593,10 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Idle -----------------------------------------------------------------
+		#region -- Idle ---------------------------------------------------------------
 
-		#region -- class FunctionIdleActionImplementation -------------------------------
+		#region -- class FunctionIdleActionImplementation -----------------------------
 
-		///////////////////////////////////////////////////////////////////////////////
-		/// <summary></summary>
 		private sealed class FunctionIdleActionImplementation : IPwIdleAction
 		{
 			private readonly Func<int, bool> onIdle;
@@ -615,7 +620,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Configuration --------------------------------------------------------
+		#region -- Configuration ------------------------------------------------------
 
 		public void RefreshConfiguration()
 		{
@@ -676,7 +681,7 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- LuaTable -------------------------------------------------------------
+		#region -- LuaTable -----------------------------------------------------------
 
 		protected override bool OnNewIndex(object key, object value)
 		{
@@ -716,9 +721,9 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- Lua Global Extensions ------------------------------------------------
+		#region -- Lua Global Extensions ----------------------------------------------
 
-		#region -- class FunctionBinding  -----------------------------------------------
+		#region -- class FunctionBinding  ---------------------------------------------
 
 		private sealed class FunctionBinding
 		{
@@ -808,6 +813,10 @@ namespace Neo.PerfectWorking.Data
 		public IPwShellUI UI => app;
 
 		string IPwPackage.Name => ScopeName;
+
+		LuaTable IPwGlobal.UserLocal => (LuaTable)userLocal.Value;
+		LuaTable IPwGlobal.UserRemote => (LuaTable)userRemote.Value;
+
 	} // class PwGlobal
 
 	#endregion
