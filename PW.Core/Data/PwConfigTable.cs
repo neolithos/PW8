@@ -207,6 +207,17 @@ namespace Neo.PerfectWorking.Data
 			void Skip()
 				=> xml.Skip();
 
+			var isEmptyTable = false;
+			if (table == null)
+			{
+				table = new LuaTable();
+				isEmptyTable = true;
+			}
+			else
+				isEmptyTable = table.Members.Count == 0 && table.ArrayList.Count == 0;
+			
+			var deleteKeys = isEmptyTable ? null : new List<object>(table.Values.Keys); // processed keys
+
 			while (xml.NodeType == XmlNodeType.Element)
 			{
 				var key = GetKey();
@@ -214,11 +225,18 @@ namespace Neo.PerfectWorking.Data
 					Skip();
 				else
 				{
+					deleteKeys?.Remove(key); // set key as readed
+
 					switch (xml.LocalName)
 					{
 						case valueElementName:
 							if (xml.IsEmptyElement)
+							{
+								if (!isEmptyTable)
+									table[key] = null;
+
 								ReadNode(xml);
+							}
 							else
 							{
 								var t = xml.GetAttribute("t");
@@ -238,7 +256,12 @@ namespace Neo.PerfectWorking.Data
 							break;
 						case xElementName:
 							if (xml.IsEmptyElement)
+							{
+								if (!isEmptyTable)
+									table[key] = null;
+
 								ReadNode(xml);
+							}
 							else
 							{
 								table[key] = XNode.ReadFrom(ReadNode(xml));
@@ -253,7 +276,7 @@ namespace Neo.PerfectWorking.Data
 							}
 							else
 							{
-								table[key] = ReadProperties(ReadNode(xml), table[key] as LuaTable ?? new LuaTable());
+								table[key] = ReadProperties(ReadNode(xml), table[key] as LuaTable);
 								xml.ReadEndElement();
 							}
 							break;
@@ -263,6 +286,13 @@ namespace Neo.PerfectWorking.Data
 					}
 				}
 			}
+
+			if (deleteKeys != null)
+			{
+				foreach (var key in deleteKeys)
+					table[key] = null;
+			}
+
 			return table;
 		} // func ReadProperties
 

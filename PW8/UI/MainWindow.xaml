@@ -29,7 +29,8 @@ specific language governing permissions and limitations under the Licence.
         <Style x:Key="AppButton" BasedOn="{StaticResource {x:Type Button}}" TargetType="{x:Type Button}">
             <Setter Property="HorizontalAlignment" Value="Right" />
             <Setter Property="VerticalAlignment" Value="Bottom" />
-            <Setter Property="Width" Value="100" />
+			<Setter Property="Margin" Value="6,0,0,0" />
+			<Setter Property="Width" Value="32" />
             <Setter Property="Height" Value="18" />
         </Style>
 
@@ -40,102 +41,129 @@ specific language governing permissions and limitations under the Licence.
             <Setter Property="SnapsToDevicePixels" Value="True" />
         </Style>
     </Window.Resources>
-    <Grid>
-        <TabControl ItemsSource="{Binding Panes}" SnapsToDevicePixels="True" IsSynchronizedWithCurrentItem="True" TabIndex="0">
-            <TabControl.Resources>
-                <Style TargetType="{x:Type TabItem}" BasedOn="{StaticResource {x:Type TabItem}}">
-                    <Setter Property="BorderThickness" Value="0,1,0,0" />
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="Margin" Value="0,0,0,0" />
-                    <Setter Property="FocusVisualStyle">
-                        <Setter.Value>
-                            <Style>
-                                <Setter Property="Control.Template">
-                                    <Setter.Value>
-                                        <ControlTemplate>
-                                            <Rectangle  Margin="2" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" StrokeThickness="1" StrokeDashArray="1 2" />
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </Setter.Value>
-                    </Setter>
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="{x:Type TabItem}">
-                                <Border x:Name="Root" BorderThickness="{TemplateBinding BorderThickness}" Style="{StaticResource MainSeperatorStyle}" Padding="0" Background="{TemplateBinding Background}">
-                                    <ContentPresenter x:Name="ContentSite"
+	<Grid>
+		<TabControl ItemsSource="{Binding Panes}" SnapsToDevicePixels="True" IsSynchronizedWithCurrentItem="True" TabIndex="0">
+			<TabControl.Resources>
+				<Style TargetType="{x:Type TabItem}" BasedOn="{StaticResource {x:Type TabItem}}">
+					<Setter Property="BorderThickness" Value="0,1,0,0" />
+					<Setter Property="Background" Value="Transparent" />
+					<Setter Property="Margin" Value="0,0,0,0" />
+					<Setter Property="FocusVisualStyle">
+						<Setter.Value>
+							<Style>
+								<Setter Property="Control.Template">
+									<Setter.Value>
+										<ControlTemplate>
+											<Rectangle  Margin="2" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" StrokeThickness="1" StrokeDashArray="1 2" />
+										</ControlTemplate>
+									</Setter.Value>
+								</Setter>
+							</Style>
+						</Setter.Value>
+					</Setter>
+					<Setter Property="Template">
+						<Setter.Value>
+							<ControlTemplate TargetType="{x:Type TabItem}">
+								<Border x:Name="Root" BorderThickness="{TemplateBinding BorderThickness}" Style="{StaticResource MainSeperatorStyle}" Padding="0" Background="{TemplateBinding Background}">
+									<ContentPresenter x:Name="ContentSite"
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Center"
                                                     ContentSource="Header"
                                                     Margin="3,3,3,3"
                                                     ToolTip="{Binding Title,Mode=OneWay}"
                                                     RecognizesAccessKey="True" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Panel.ZIndex" Value="100" />
-                                        <Setter Property="BorderThickness" Value="1,0,1,1" />
-                                        <Setter Property="Background" Value="White" />
-                                    </Trigger>
-                                    <!--<Trigger Property="IsPressed" Value="True">
+								</Border>
+								<ControlTemplate.Triggers>
+									<Trigger Property="IsSelected" Value="True">
+										<Setter Property="Panel.ZIndex" Value="100" />
+										<Setter Property="BorderThickness" Value="1,0,1,1" />
+										<Setter Property="Background" Value="White" />
+									</Trigger>
+									<!--<Trigger Property="IsPressed" Value="True">
                                         <Setter Property="Background" Value="LightBlue" />
                                     </Trigger>-->
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </TabControl.Resources>
+								</ControlTemplate.Triggers>
+							</ControlTemplate>
+						</Setter.Value>
+					</Setter>
+				</Style>
+			</TabControl.Resources>
 
-            <TabControl.Template>
-                <ControlTemplate>
-                    <Grid KeyboardNavigation.TabNavigation="Local">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition />
-                            <ColumnDefinition Width="26" />
-                            <ColumnDefinition Width="{Binding ElementName=TabTitle, Path=ActualWidth}"  />
-                            <ColumnDefinition Width="12" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="30" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="30" />
-                        </Grid.RowDefinitions>
+			<TabControl.Template>
+				<ControlTemplate>
+					<Grid KeyboardNavigation.TabNavigation="Local">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition />
+							<ColumnDefinition Width="26" />
+							<ColumnDefinition Width="{Binding ElementName=TabTitle, Path=ActualWidth}"  />
+							<ColumnDefinition Width="12" />
+						</Grid.ColumnDefinitions>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="30" />
+							<RowDefinition Height="*" />
+							<RowDefinition Height="30" />
+						</Grid.RowDefinitions>
 
-                        <Border Grid.Row="0" Grid.Column="0" BorderThickness="0,0,0,1" Style="{StaticResource MainSeperatorStyle}">
-                            <TextBlock Text="{Binding ElementName=mainWindow,Path=Title,Mode=OneWay}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="Bold" />
-                        </Border>
-                        <Path Grid.Row="0" Grid.Column="1" Stroke="{StaticResource FrameBrush}" StrokeThickness="1" Stretch="Fill" VerticalAlignment="Bottom" Height="{Binding ElementName=TabTitleBorder, Path=ActualHeight}">
-                            <Path.Data>
-                                <LineGeometry StartPoint="-1,2" EndPoint="2,-1" />
-                            </Path.Data>
-                        </Path>
+						<Border Grid.Row="0" Grid.Column="0" BorderThickness="0,0,0,1" Style="{StaticResource MainSeperatorStyle}">
+							<TextBlock Text="{Binding ElementName=mainWindow,Path=Title,Mode=OneWay}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="Bold" />
+						</Border>
+						<Path Grid.Row="0" Grid.Column="1" Stroke="{StaticResource FrameBrush}" StrokeThickness="1" Stretch="Fill" VerticalAlignment="Bottom" Height="{Binding ElementName=TabTitleBorder, Path=ActualHeight}">
+							<Path.Data>
+								<LineGeometry StartPoint="-1,2" EndPoint="2,-1" />
+							</Path.Data>
+						</Path>
 
-                        <Border x:Name="TabTitleBorder" Grid.Row="0" Grid.Column="2" BorderThickness="0,1,1,0" Style="{StaticResource MainSeperatorStyle}" VerticalAlignment="Bottom">
-                            <TextBlock x:Name="TabTitle" Text="{Binding Panes.CurrentItem.Title}" Padding="3,0,12,1" Margin="0" Foreground="DarkGray" />
-                        </Border>
-                        <Border Grid.Row="0" Grid.Column="3" BorderThickness="0,0,0,1" Style="{StaticResource MainSeperatorStyle}" />
+						<Border x:Name="TabTitleBorder" Grid.Row="0" Grid.Column="2" BorderThickness="0,1,1,0" Style="{StaticResource MainSeperatorStyle}" VerticalAlignment="Bottom">
+							<TextBlock x:Name="TabTitle" Text="{Binding Panes.CurrentItem.Title}" Padding="3,0,12,1" Margin="0" Foreground="DarkGray" />
+						</Border>
+						<Border Grid.Row="0" Grid.Column="3" BorderThickness="0,0,0,1" Style="{StaticResource MainSeperatorStyle}" />
 
-                        <ContentPresenter Grid.Row="1" Grid.ColumnSpan="4" x:Name="PART_SelectedContentHost" Margin="6" Content="{Binding Panes.CurrentItem.Control}" />
+						<ContentPresenter Grid.Row="1" Grid.ColumnSpan="4" x:Name="PART_SelectedContentHost" Margin="6" Content="{Binding Panes.CurrentItem.Control}" />
 
-                        <Border Grid.Row="2" Grid.ColumnSpan="4" Margin="0,1,0,0" BorderThickness="0,1,0,0" Style="{StaticResource MainSeperatorStyle}" />
-                        <TabPanel Grid.Row="2" x:Name="HeaderPanel" 
+						<Border Grid.Row="2" Grid.ColumnSpan="4" Margin="0,1,0,0" BorderThickness="0,1,0,0" Style="{StaticResource MainSeperatorStyle}" />
+						<TabPanel Grid.Row="2" x:Name="HeaderPanel" 
                                       IsItemsHost="True"
                                       KeyboardNavigation.TabIndex="1"
                                       Background="Transparent"
                                       Margin="6,1,176,0"/>
-                    </Grid>
-                </ControlTemplate>
-            </TabControl.Template>
-            <TabControl.ItemTemplate>
-                <DataTemplate>
-                    <Image Width="16" Height="16" Source="{Binding Image,Mode=OneWay}" />
-                </DataTemplate>
-            </TabControl.ItemTemplate>
-        </TabControl>
-    
-        <Button Style="{StaticResource AppButton}" TabIndex="2" Margin="0,6,6,6" Content="Exit" Command="{x:Static ApplicationCommands.Close}"></Button>
-        <Button Style="{StaticResource AppButton}" TabIndex="1" Margin="0,6,112,6" Content="Config" Command="{x:Static ApplicationCommands.Properties}"></Button>
-    </Grid>
+					</Grid>
+				</ControlTemplate>
+			</TabControl.Template>
+			<TabControl.ItemTemplate>
+				<DataTemplate>
+					<Image Width="16" Height="16" Source="{Binding Image,Mode=OneWay}" />
+				</DataTemplate>
+			</TabControl.ItemTemplate>
+		</TabControl>
+
+		<StackPanel Orientation="Horizontal" Margin="0,6,6,6" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+			<Button Style="{StaticResource AppButton}" ToolTip="Konfiguration bearbeiten" Command="{x:Static ApplicationCommands.Open}">
+				<Button.Content>
+					<Viewbox>
+						<Canvas Width="24" Height="24">
+							<Path Fill="Black" Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12H20A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4V2M18.78,3C18.61,3 18.43,3.07 18.3,3.2L17.08,4.41L19.58,6.91L20.8,5.7C21.06,5.44 21.06,5 20.8,4.75L19.25,3.2C19.12,3.07 18.95,3 18.78,3M16.37,5.12L9,12.5V15H11.5L18.87,7.62L16.37,5.12Z" />
+						</Canvas>
+					</Viewbox>
+				</Button.Content>
+			</Button>
+			<Button Style="{StaticResource AppButton}" ToolTip="Konfiguration neu laden" Command="{x:Static ApplicationCommands.Properties}">
+				<Button.Content>
+					<Viewbox>
+						<Canvas Width="24" Height="24">
+							<Path Fill="Black" Data="M19,12H22.32L17.37,16.95L12.42,12H16.97C17,10.46 16.42,8.93 15.24,7.75C12.9,5.41 9.1,5.41 6.76,7.75C4.42,10.09 4.42,13.9 6.76,16.24C8.6,18.08 11.36,18.47 13.58,17.41L15.05,18.88C12,20.69 8,20.29 5.34,17.65C2.22,14.53 2.23,9.47 5.35,6.35C8.5,3.22 13.53,3.21 16.66,6.34C18.22,7.9 19,9.95 19,12Z" />
+						</Canvas>
+					</Viewbox>
+				</Button.Content>
+			</Button>
+			<Button Style="{StaticResource AppButton}" ToolTip="Beenden von Perfect Working" Command="{x:Static ApplicationCommands.Close}">
+				<Button.Content>
+					<Viewbox>
+						<Canvas Width="24" Height="24">
+							<Path Fill="Black" Data="M19,3H5C3.89,3 3,3.89 3,5V9H5V5H19V19H5V15H3V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M10.08,15.58L11.5,17L16.5,12L11.5,7L10.08,8.41L12.67,11H3V13H12.67L10.08,15.58Z" />
+						</Canvas>
+					</Viewbox>
+				</Button.Content>
+			</Button>
+		</StackPanel>
+	</Grid>
 </Window>
