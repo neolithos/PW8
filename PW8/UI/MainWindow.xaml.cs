@@ -17,12 +17,15 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
+using Microsoft.Win32;
 using Neo.IronLua;
 using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.Stuff;
@@ -106,32 +109,29 @@ namespace Neo.PerfectWorking.UI
 		public class MainWindowModel //: INotifyPropertyChanged
 		{
 			private readonly MainWindow mainWindow;
-			private readonly IPwGlobal global;
 			private readonly IPwCollection<IPwWindowPane> panes;
 
 			private readonly ObservableCollection<PaneItem> shadowPanes;
-			private readonly ICollectionView paneCollection;
-			private readonly LuaTable windowSize;
 
 			public MainWindowModel(MainWindow mainWindow, IPwGlobal global)
 			{
-				this.mainWindow = mainWindow;
-				this.global = global;
+				this.mainWindow = mainWindow ?? throw new ArgumentNullException(nameof(mainWindow));
+				this.Global = global ?? throw new ArgumentNullException(nameof(global));
 				var globalPackage = (IPwPackage)global;
 
-				windowSize = global.UserLocal.GetLuaTable("Window");
+				Window = global.UserLocal.GetLuaTable("Window");
 
 				this.panes = global.RegisterCollection<IPwWindowPane>(globalPackage); // highest
 				this.panes.CollectionChanged += Panes_CollectionChanged;
 				this.shadowPanes = new ObservableCollection<PaneItem>();
 				Panes_CollectionChanged(panes, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 
-				this.paneCollection = CollectionViewSource.GetDefaultView(shadowPanes);
+				this.Panes = CollectionViewSource.GetDefaultView(shadowPanes);
 
 				// register standard panels
 				global.RegisterObject(globalPackage, "Actions", new ActionsPane(global));
 
-				paneCollection.MoveCurrentToFirst();
+				Panes.MoveCurrentToFirst();
 			} // ctor
 
 			private void Panes_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -176,24 +176,35 @@ namespace Neo.PerfectWorking.UI
 				}
 			} // event Panes_CollectionChanged
 
-			public ICollectionView Panes => paneCollection;
-			public LuaTable Window => windowSize;
+			public ICollectionView Panes { get; }
+			public LuaTable Window { get; }
+			public IPwGlobal Global { get; }
 		} // class MainWindowModel
 
 		#endregion
 
 		private HwndSource hwnd;
 		private RECT sizingArea;
+		private readonly MainWindowModel model;
+
+		#region -- Ctor/Dtor ----------------------------------------------------------
 
 		public MainWindow(IPwGlobal global)
 		{
-			var model = new MainWindowModel(this, global);
+			model = new MainWindowModel(this, global);
 
 			InitializeComponent();
 
 			CommandBindings.AddRange(new CommandBinding[] {
+				new CommandBinding(ApplicationCommands.Open,
+					(sender, e) => OpenConfiguration(((PwGlobal)global).ConfigurationFile)
+				),
 				new CommandBinding(ApplicationCommands.Properties,
-					(sender, e) => MessageBox.Show($"todo: Reload config.")
+					(sender, e) =>
+					{
+						((PwGlobal)global).RefreshConfiguration();
+						model.Global.UI.ShowNotification("Konfiguration neu geladen!");
+					}
 				),
 				new CommandBinding(ApplicationCommands.Close,
 					(sender, e) => ((App)global.UI).ExitApplication()
@@ -218,6 +229,16 @@ namespace Neo.PerfectWorking.UI
 			base.OnClosing(e);
 			e.Cancel = true;
 		} // proc OnClosing
+
+		protected override void OnDeactivated(EventArgs e)
+		{
+			base.OnDeactivated(e);
+			Hide();
+		} // proc OnDeactivated
+
+		#endregion
+
+		#region -- WindowProc, Position -----------------------------------------------
 
 		public void RecalcPosition()
 		{
@@ -291,16 +312,88 @@ namespace Neo.PerfectWorking.UI
 		protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
 			=> RecalcPosition();
 
-		protected override void OnDeactivated(EventArgs e)
+		#endregion
+
+		#region -- OpenConfiguration --------------------------------------------------
+
+		private static string FindVsCode()
 		{
-			base.OnDeactivated(e);
-			Hide();
-		} // proc OnDeactivated
-		
+			using (var reg = Registry.ClassesRoot.OpenSubKey(@"Applications\Code.exe\shell\open\command", false))
+			{
+				var vsCode = (string)reg?.GetValue(null, null, RegistryValueOptions.None);
+				if (vsCode != null) // parse binary path
+				{
+					if (vsCode.StartsWith("\""))
+					{
+						var p = vsCode.IndexOf('"', 1);
+						if (p == -1)
+							return null;
+						return vsCode.Substring(1, p - 1);
+					}
+					else
+					{
+						var p = vsCode.IndexOf(' ');
+						if (p == -1)
+							return vsCode;
+						else
+							return vsCode.Substring(0, p);
+					}
+				}
+				else
+					return null;
+			}
+		} // func FindVsCode
+
+		private static ProcessStartInfo OpenWithVsCode(string configurationFile)
+		{
+			// find vscode
+			var vsCodeExe = FindVsCode();
+			if (vsCodeExe == null)
+				return null;
+
+			// get correct file name, because vscode works case sensitive
+			var realConfigurationFile = Directory.GetFiles(Path.GetDirectoryName(configurationFile), Path.GetFileName(configurationFile), SearchOption.TopDirectoryOnly).FirstOrDefault();
+			if (realConfigurationFile == null)
+				return null;
+
+			// build commandline
+			return new ProcessStartInfo(
+				vsCodeExe,
+				'"' + Path.GetDirectoryName(realConfigurationFile) + "\" \"" + realConfigurationFile + '"'
+			);
+		} // func OpenWithVsCode
+
+		private static ProcessStartInfo OpenWithExplorer(string configurationFile)
+		{
+			return new ProcessStartInfo(
+				Path.Combine(Environment.SystemDirectory, "explorer.exe"),
+				'"' + Path.GetDirectoryName(configurationFile) + '"'
+			);
+		} // proc OpenWithExplorer
+
+		private void OpenConfiguration(string configurationFile)
+		{
+			var psi = OpenWithVsCode(configurationFile) ?? OpenWithExplorer(configurationFile);
+			psi.UseShellExecute = false;
+
+			// run command
+			try
+			{
+				using (var p = Process.Start(psi))
+					p.WaitForInputIdle(400);
+			}
+			catch(Exception e)
+			{
+				model.Global.UI.ShowException("Konnte Konfiguration nicht öffnen.", e);
+			}
+		} // proc OpenConfiguration
+
+		#endregion
+
 		static MainWindow()
 		{
 			HeightProperty.OverrideMetadata(typeof(MainWindow), new FrameworkPropertyMetadata(350.0));
 			WidthProperty.OverrideMetadata(typeof(MainWindow), new FrameworkPropertyMetadata(512.0));
 		}
-	}
+	} // class MainWindow
 }

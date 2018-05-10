@@ -67,7 +67,7 @@ namespace Neo.PerfectWorking.Data
 		/// <param name="result"></param>
 		/// <returns>y,n,o,c</returns>
 		string MsgBox(string text, string caption = null, object icon = null, object buttons = null, object result = null);
-		/// <summary></summary>
+		/// <summary>Schow a messagebox in the main thread.</summary>
 		/// <param name="text"></param>
 		/// <param name="caption"></param>
 		/// <param name="icon"></param>
@@ -80,7 +80,9 @@ namespace Neo.PerfectWorking.Data
 		/// <param name="image"></param>
 		void ShowNotification(object message, object image = null);
 
+		/// <summary>Remote user directory.</summary>
 		DirectoryInfo ApplicationRemoteDirectory { get; }
+		/// <summary>Local user directory.</summary>
 		DirectoryInfo ApplicationLocalDirectory { get; }
 	} // interface IPwShellUI
 

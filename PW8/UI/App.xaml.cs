@@ -50,9 +50,6 @@ namespace Neo.PerfectWorking.UI
 		private DispatcherTimer idleTimer;
 		private readonly List<WeakReference<IPwIdleAction>> idleActions = new List<WeakReference<IPwIdleAction>>();
 
-		private readonly DirectoryInfo applicationRemoteDirectory;
-		private readonly DirectoryInfo applicationLocalDirectory;
-
 		#region -- Ctor ---------------------------------------------------------------
 
 		public App()
@@ -67,12 +64,12 @@ namespace Neo.PerfectWorking.UI
 #endif
 				)));
 			
-			applicationRemoteDirectory = GetDirectory(Environment.SpecialFolder.ApplicationData);
-			applicationLocalDirectory = GetDirectory(Environment.SpecialFolder.LocalApplicationData);
-			if (!applicationRemoteDirectory.Exists)
-				applicationRemoteDirectory.Create();
-			if (!applicationLocalDirectory.Exists)
-				applicationLocalDirectory.Create();
+			ApplicationRemoteDirectory = GetDirectory(Environment.SpecialFolder.ApplicationData);
+			ApplicationLocalDirectory = GetDirectory(Environment.SpecialFolder.LocalApplicationData);
+			if (!ApplicationRemoteDirectory.Exists)
+				ApplicationRemoteDirectory.Create();
+			if (!ApplicationLocalDirectory.Exists)
+				ApplicationLocalDirectory.Create();
 		} // ctor
 
 		#endregion
@@ -610,8 +607,9 @@ namespace Neo.PerfectWorking.UI
 #endif
 			;
 
-		public DirectoryInfo ApplicationRemoteDirectory => applicationRemoteDirectory;
-		public DirectoryInfo ApplicationLocalDirectory => applicationLocalDirectory;
+		public DirectoryInfo ApplicationRemoteDirectory { get; }
+
+		public DirectoryInfo ApplicationLocalDirectory { get; }
 
 		// -- Static part -----------------------------------------------------
 

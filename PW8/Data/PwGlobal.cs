@@ -54,17 +54,15 @@ namespace Neo.PerfectWorking.Data
 
 		private struct PwPackageVariable
 		{
-			private readonly IPwPackage package;
-			private readonly string variableName;
-
 			public PwPackageVariable(IPwPackage package, string variableName)
 			{
-				this.package = package;
-				this.variableName = variableName;
+				Package = package ?? throw new ArgumentNullException(nameof(package));
+				VariableName = variableName ?? throw new ArgumentNullException(nameof(variableName));
 			} // ctor
 
-			public IPwPackage Package => package;
-			public string VariableName => variableName;
+			public IPwPackage Package { get; }
+
+			public string VariableName { get; }
 		} // struct PwPackageVariable
 
 		#endregion
@@ -140,8 +138,6 @@ namespace Neo.PerfectWorking.Data
 		public const string ScopeName = "global";
 
 		private readonly App app;
-		private readonly string configurationFile;
-
 		private readonly IPwObject userRemote;
 		private readonly IPwObject userLocal;
 
@@ -157,9 +153,6 @@ namespace Neo.PerfectWorking.Data
 		private IPwPackage currentPackage = null;
 
 		private readonly List<string> resolvePaths = new List<string>();
-
-		private readonly IPwCollection<PwAction> actions;
-		private readonly IPwCollection<PwWindowHook> hooks;
 		private readonly IPwCollection<IPwPackageServiceProvider> serviceProviders;
 		private readonly IPwCollection<IPwAutoSaveFile> autoSaveFiles;
 		private readonly IPwCollection<ICredentials> credentials;
@@ -172,11 +165,11 @@ namespace Neo.PerfectWorking.Data
 			: base(new Lua())
 		{
 			this.app = app;
-			this.configurationFile = configurationFile;
+			this.ConfigurationFile = configurationFile;
 			this.compileOptions = new LuaCompileOptions() { DebugEngine = LuaStackTraceDebugger.Default };
 
-			this.actions = RegisterCollection<PwAction>(this);
-			this.hooks = RegisterCollection<PwWindowHook>(this);
+			this.Actions = RegisterCollection<PwAction>(this);
+			this.WindowHooks = RegisterCollection<PwWindowHook>(this);
 			this.serviceProviders = RegisterCollection<IPwPackageServiceProvider>(this);
 			this.autoSaveFiles = RegisterCollection<IPwAutoSaveFile>(this);
 			this.credentials = RegisterCollection<ICredentials>(this);
@@ -640,7 +633,7 @@ namespace Neo.PerfectWorking.Data
 			// run init script
 			try
 			{
-				var c = CompileFile(configurationFile);
+				var c = CompileFile(ConfigurationFile);
 				c.Run(this);
 
 				// clear out of scope variables
@@ -806,13 +799,18 @@ namespace Neo.PerfectWorking.Data
 		} // func GetCredential
 
 		[LuaMember]
-		public IPwCollection<PwAction> Actions => actions;
+		public IPwCollection<PwAction> Actions { get; }
+
 		[LuaMember]
-		public IPwCollection<PwWindowHook> WindowHooks => hooks;
+		public IPwCollection<PwWindowHook> WindowHooks { get; }
+
 		[LuaMember]
 		public IPwShellUI UI => app;
 
 		string IPwPackage.Name => ScopeName;
+
+		/// <summary>Returns the configuration file.</summary>
+		public string ConfigurationFile { get; }
 
 		LuaTable IPwGlobal.UserLocal => (LuaTable)userLocal.Value;
 		LuaTable IPwGlobal.UserRemote => (LuaTable)userRemote.Value;
