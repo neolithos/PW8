@@ -1,6 +1,39 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Target Name="res" Inputs="Resources\Resource.rc" Outputs="Resources/Resource.res">
-    <Exec Command='"c:\Program Files (x86)\Windows Kits\10\bin\x64\rc.exe" /fo Resources/Resource.res Resources\Resource.rc' />
-  </Target>
+	<Import Project="pw.targets.user" Condition="Exists('pw.targets.user')"/>
+
+	<ItemGroup>
+		<DeployItem Include="..\PW8\bin\Release\PW8.*" />
+		<DeployItem Include="..\PW8\bin\Release\Neo.Lua.*" />
+		<DeployItem Include="..\PW.Wpf\bin\Release\PW.Wpf.*" />
+		<DeployItem Include="..\PW.Core\bin\Release\PW.Core.*" />
+		<DeployItem Include="Extern\Calc\bin\Release\PW.Calc.*" Condition="'$(DeployCalc)' == 'true'">
+			<Copy></Copy>
+		</DeployItem>
+		<DeployItem Include="Extern\Cred\bin\Release\PW.Cred.*" Condition="'$(DeployCred)' == 'true'">
+			<Copy></Copy>
+		</DeployItem>
+		<DeployItem Include="Extern\GamePadRC\bin\Release\PW.GamePadRC.*" Condition="false">
+			<Copy>false</Copy>
+		</DeployItem>
+		<DeployItem Include="Extern\Guid\bin\Release\PW.Guid.*" Condition="false">
+			<Copy>false</Copy>
+		</DeployItem>
+		<DeployItem Include="Extern\Lua\bin\Release\PW.Lua.*" Condition="false">
+			<Copy>false</Copy>
+		</DeployItem>
+		<DeployItem Include="Extern\QuickConnect\bin\Release\PW.QuickConnect.*" Condition="'$(DeployQuickConnect)' == 'true'" />
+	</ItemGroup>
+
+	<Target Name="res" Inputs="Resources\Resource.rc" Outputs="Resources/Resource.res">
+		<Exec Command='"c:\Program Files (x86)\Windows Kits\10\bin\x64\rc.exe" /fo Resources/Resource.res Resources\Resource.rc' />
+	</Target>
+
+	<Target Name="Deploy" Condition="'$(Configuration)' == 'Release' and '$(DeployTarget)' != '' ">
+		<ItemGroup>
+			<CopyItem Include="@(DeployItem)" Condition="'%(Extension)' != '.xml'" />
+		</ItemGroup>
+		<Message Text="@(DeployItem)" Importance="high" />
+		<Copy SourceFiles="@(CopyItem)" DestinationFolder="$(DeployTarget)" Retries="10" SkipUnchangedFiles="true" />
+	</Target>
 </Project>

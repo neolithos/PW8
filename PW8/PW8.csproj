@@ -143,6 +143,8 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="pw.targets.user.template" />
+    <Content Include="pw.targets.user" />
     <None Include="pw.targets" />
     <None Include="Resources\AppIcon.ico" />
   </ItemGroup>
@@ -178,5 +180,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="BeforeBuild" DependsOnTargets="res">
+  </Target>
+  <Target Name="AfterBuild" DependsOnTargets="Deploy">
   </Target>
 </Project>
