@@ -15,7 +15,9 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -28,6 +30,7 @@ using System.Windows.Interop;
 using System.Windows.Markup;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.Win32;
 using static Neo.PerfectWorking.Win32.NativeMethods;
 
@@ -36,6 +39,126 @@ namespace Neo.PerfectWorking.UI
 	/// <summary>Shell for all tasks.</summary>
 	public partial class App : Application, IPwShellUI, IPwShellWpf
 	{
+		#region -- class PwRegisteredHotKey -------------------------------------------
+
+		/// <summary>HotKey registration.</summary>
+		private sealed class PwRegisteredHotKey
+		{
+			private readonly HwndSource hwnd;
+			private readonly List<IPwHotKey> hotkeyBinds = new List<IPwHotKey>();
+
+			#region -- Ctor/Dtor ------------------------------------------------------
+
+			public PwRegisteredHotKey(HwndSource hwnd, PwKey key, int hotKeyId)
+			{
+				this.hwnd = hwnd ?? throw new ArgumentNullException(nameof(mainWindow));
+				Key = key;
+				HotKeyId = hotKeyId;
+			} // ctor
+
+			public void Clear()
+				=> UnRegister();
+
+			public void Add(IPwHotKey hotKey)
+			{
+				if (hotKey.Key != Key)
+					throw new ArgumentException(nameof(hotKey));
+
+				if (hotkeyBinds.Count == 0)
+				{
+					hotkeyBinds.Add(hotKey);
+					if (!Register())
+						throw new ArgumentException("HotKey registration failed.");
+				}
+				else
+				{
+					if (hotkeyBinds[0] is IPwUIHotKey)
+					{
+						if (!(hotKey is IPwUIHotKey))
+							throw new ArgumentException("NoneUI hotkey can not registered with UI hotkeys.");
+						hotkeyBinds.Add(hotKey);
+					}
+					else
+						throw new ArgumentException("NoneUI hotkey is already registered.", nameof(hotKey));
+				}
+			} // proc Add
+
+			public bool Remove(IPwHotKey hotKey)
+			{
+				if (hotkeyBinds.Remove(hotKey))
+				{
+					if (hotkeyBinds.Count == 0)
+						UnRegister();
+					return true;
+				}
+				else
+					return false;
+			} // proc Remove
+
+			public bool Contains(IPwHotKey hotkey)
+				=> hotkeyBinds.Contains(hotkey);
+
+			private bool Register()
+			{
+				// unregister current hotkey
+				UnRegister();
+
+				if (!RegisterHotKey(hwnd.Handle, HotKeyId, (uint)Key.Modifiers, (uint)Key.VirtualKey))
+				{
+					Debug.Print($"Register HotKey '{Key}' with Id {HotKeyId}: Failed");
+					var e = new Win32Exception();
+					if (e.NativeErrorCode == 1409) // Failed to register
+						return false;
+					throw e;
+				}
+				else
+					Debug.Print($"Register HotKey '{Key}' with Id {HotKeyId}: Successful");
+
+				return true;
+			} // proc Register
+
+			private void UnRegister()
+			{
+				// unregister
+				var r = UnregisterHotKey(hwnd.Handle, HotKeyId);
+				Debug.Print($"Unregister HotKey '{Key}' with Id {HotKeyId}: {(r ? "Successful" : "Failed")}.");
+			} // proc UnRegister
+
+			#endregion
+
+			public bool Invoke()
+			{
+				if (hotkeyBinds.Count == 1)
+					ExecuteDirect(hotkeyBinds[0]); // todo: Execute Command with event?
+				return true;
+			} // proc Invoke
+
+			private void ExecuteDirect(ICommand command)
+			{
+				if (command.CanExecute(null))
+					command.Execute(null);
+			}
+
+			/// <summary>Key to register</summary>
+			public PwKey Key { get; }
+			/// <summary>Hotkey id for registration.</summary>
+			public int HotKeyId { get; }
+
+			public static int GetHotKeyId(PwKey key)
+			{
+				//if (hotKeyId < 0 || hotKeyId > 0xBFFF)
+				//	throw new ArgumentOutOfRangeException(nameof(hotKeyId), hotKeyId, "HotKeyId must be between 0 and 0xBFFF.");
+
+				// build a unique id (4 bit and 10 bit)
+				if (key.VirtualKey > 1023)
+					throw new ArgumentOutOfRangeException(nameof(key), "VirtualKey is more than 10bit.");
+
+				return (int)key.Modifiers << 10 | key.VirtualKey;
+			} // func GetHotKeyId	
+		} // class PwRegisteredHotKey
+
+		#endregion
+
 		private HwndSource hwnd = null;
 		private IntPtr notificationIcon = IntPtr.Zero;
 
@@ -49,6 +172,9 @@ namespace Neo.PerfectWorking.UI
 		private int restartTime = -1;
 		private DispatcherTimer idleTimer;
 		private readonly List<WeakReference<IPwIdleAction>> idleActions = new List<WeakReference<IPwIdleAction>>();
+
+		private IPwCollection<IPwHotKey> hotkeys;
+		private readonly Dictionary<int, PwRegisteredHotKey> registeredHotkeys = new Dictionary<int, PwRegisteredHotKey>();
 
 		#region -- Ctor ---------------------------------------------------------------
 
@@ -100,6 +226,13 @@ namespace Neo.PerfectWorking.UI
 			{
 				case WM_TASKBARNOTIFY:
 					return WmTaskbarNotify(hwnd, msg, wParam, lParam, ref handled);
+				case WM_HOTKEY:
+					if(InvokeHotKey(wParam.ToInt32()))
+					{
+						handled = true;
+						return IntPtr.Zero;
+					}
+					break;
 				default:
 					if (msg == wmTaskbarCreated)
 					{
@@ -191,6 +324,7 @@ namespace Neo.PerfectWorking.UI
 
 #pragma warning disable IDE1006 // Naming Styles
 		private const int WM_TASKBARNOTIFY = 0x8010;
+		private const int WM_HOTKEY = 0x0312;
 #pragma warning restore IDE1006 // Naming Styles
 		private static readonly Guid guidTaskbar =
 #if DEBUG
@@ -279,10 +413,7 @@ namespace Neo.PerfectWorking.UI
 
 				case NIM_SELECT:
 				case NIM_KEYSELECT:
-					dashBoardWindow.BeginHide(true);
-					SetForegroundWindow(hwnd);
-					mainWindow.Show();
-					mainWindow.Activate();
+					ShowMainWindow(hwnd);
 					goto case 0;
 
 				case WM_MOUSEMOVE:
@@ -302,6 +433,17 @@ namespace Neo.PerfectWorking.UI
 			}
 
 		} // func WmTaskbarNotify
+
+		public void ShowMainWindow()
+			=> ShowMainWindow(hwnd.Handle);
+
+		private void ShowMainWindow(IntPtr hwnd)
+		{
+			dashBoardWindow.BeginHide(true);
+			SetForegroundWindow(hwnd);
+			mainWindow.Show();
+			mainWindow.Activate();
+		}
 
 		private void RemoveIcon()
 		{
@@ -348,6 +490,9 @@ namespace Neo.PerfectWorking.UI
 					}
 				};
 
+				// create hotkey list
+				hotkeys = global.RegisterCollection<IPwHotKey>(global);
+
 				// read configuration
 				global.RefreshConfiguration();
 
@@ -359,6 +504,10 @@ namespace Neo.PerfectWorking.UI
 				CreateNativeWindow();
 				// register icon
 				UpdateNotifyIcon();
+
+				// register hotkeys
+				hotkeys.CollectionChanged += Hotkeys_CollectionChanged;
+				Hotkeys_CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 			}
 			catch (Exception ex)
 			{
@@ -386,6 +535,106 @@ namespace Neo.PerfectWorking.UI
 		{
 			Shutdown();
 		} // proc ExitApplication
+
+		#endregion
+
+		#region -- HotKey List --------------------------------------------------------
+
+		private void AddHotKey(IPwHotKey hotkey)
+		{
+			// add hot changed
+			if (hotkey is INotifyPropertyChanged npc)
+				npc.PropertyChanged += Npc_PropertyChanged;
+
+			// check for the key property
+			var key = hotkey.Key;
+			if (key == PwKey.None)
+				return;
+
+			// ensure id
+			var hotKeyId = PwRegisteredHotKey.GetHotKeyId(hotkey.Key);
+			if(!registeredHotkeys.TryGetValue(hotKeyId, out var registered))
+			{
+				registeredHotkeys[hotKeyId] =
+					registered = new PwRegisteredHotKey(hwnd, key, hotKeyId);
+				
+			}
+			// register hotkey
+			registered.Add(hotkey);
+		} // proc AddHotKey
+
+		private void RemoveHotKey(IPwHotKey hotkey)
+		{
+			// remove hotkey changed
+			if (hotkey is INotifyPropertyChanged npc)
+				npc.PropertyChanged -= Npc_PropertyChanged;
+
+			// try remove hotkey by key
+			var key = hotkey.Key;
+			if (key != PwKey.None)
+			{
+			
+				var hotKeyId = PwRegisteredHotKey.GetHotKeyId(key);
+				if (registeredHotkeys.TryGetValue(hotKeyId, out var registered)
+					&& registered.Remove(hotkey))
+					return;
+			}
+
+			// try remove on all
+			foreach (var c in registeredHotkeys.Values)
+			{
+				if (c.Remove(hotkey))
+					return;
+			}
+		} // proc RemoveHotKey
+
+		private void Hotkeys_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+		{
+			switch (e.Action)
+			{
+				case NotifyCollectionChangedAction.Reset:
+					// clear all hotkeys
+					foreach (var c in registeredHotkeys.Values)
+						c.Clear();
+					registeredHotkeys.Clear();
+
+					// readd all hotkeys
+					if (hwnd != null)
+					{
+						foreach (var c in hotkeys)
+							AddHotKey(c);
+					}
+					break;
+				case NotifyCollectionChangedAction.Add:
+					foreach (var c in e.NewItems)
+						AddHotKey((IPwHotKey)c);
+					break;
+				case NotifyCollectionChangedAction.Remove:
+					foreach (var c in e.OldItems)
+						RemoveHotKey((IPwHotKey)c);
+					break;
+				case NotifyCollectionChangedAction.Replace:
+					foreach (var c in e.OldItems)
+						RemoveHotKey((IPwHotKey)c);
+					foreach (var c in e.NewItems)
+						AddHotKey((IPwHotKey)c);
+					break;
+				default:
+					throw new NotImplementedException();
+			}
+		} // event Hotkeys_CollectionChanged
+
+		private void Npc_PropertyChanged(object sender, PropertyChangedEventArgs e)
+		{
+			if (e.PropertyName == nameof(IPwHotKey.Key))
+			{
+				RemoveHotKey((IPwHotKey)sender);
+				AddHotKey((IPwHotKey)sender);
+			}
+		} // event  Npc_PropertyChanged
+
+		private bool InvokeHotKey(int hotKeyId)
+			=> registeredHotkeys.TryGetValue(hotKeyId, out var registered) ? registered.Invoke() : false;
 
 		#endregion
 

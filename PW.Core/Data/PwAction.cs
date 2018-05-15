@@ -18,35 +18,35 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Neo.PerfectWorking.Stuff;
 
 namespace Neo.PerfectWorking.Data
 {
 	#region -- class PwAction ---------------------------------------------------------
 
-	public sealed class PwAction : INotifyPropertyChanged, ICommand
+	public sealed class PwAction : ObservableObject, IPwUIHotKey, ICommand
 	{
-		public event PropertyChangedEventHandler PropertyChanged;
 		public event EventHandler CanExecuteChanged;
 
 		private readonly IPwGlobal global;
-		private readonly string title;
 		private readonly string originalLabel;
 		private string currentLabel = null;
+		private PwKey hotKey = PwKey.None;
 		private object originalImage;
 		private object currentImage = null;
-		private int progress = -1; // Normalized to 100, <0 hidden
 		private readonly List<Func<PwAction, Task>> isRunning = new List<Func<PwAction, Task>>();
 
 		private Func<PwAction, Task> currentExecute = null;
 		private Func<PwAction, bool> canExecute = null;
 
-		public PwAction(IServiceProvider sp, string title, string label, object image)
+		public PwAction(IServiceProvider sp, string title, string label, PwKey key, object image)
 		{
-			this.global = sp.GetService<IPwGlobal>(true);
+			global = sp.GetService<IPwGlobal>(true);
 
-			this.title = title;
-			this.originalLabel = label;
-			this.originalImage = global.ConvertImage(image);
+			Title = title;
+			hotKey = key;
+			originalLabel = label;
+			originalImage = global.ConvertImage(image);
 		} // ctor
 
 		/// <summary>Refresh CanExecute state</summary>
@@ -89,7 +89,7 @@ namespace Neo.PerfectWorking.Data
 				if (ex is TaskCanceledException)
 					global.UI.ShowNotification($"{Title} wurde abgebrochen.");
 				else
-					await global.UI.ShowExceptionAsync($"Command '{title}' failed.", e);
+					await global.UI.ShowExceptionAsync($"Command '{Title}' failed.", e);
 			}
 			finally
 			{
@@ -110,17 +110,14 @@ namespace Neo.PerfectWorking.Data
 
 		private static Exception UnpackException(Exception e)
 			=> e is AggregateException a ? UnpackException(a.InnerException) : e;
-		
-		private void OnPropertyChanged(string propertyName)
-			=> global.UI.BeginInvoke(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
 
 		public void UpdateProgress(long pos, long max)
 		{
 			void SetProgress(int value)
 			{
-				if (progress != value)
+				if (ProgressValue != value)
 				{
-					progress = value;
+					ProgressValue = value;
 					OnPropertyChanged(nameof(ProgressValue));
 				}
 			} // proc SetProgress
@@ -164,27 +161,23 @@ namespace Neo.PerfectWorking.Data
 			}
 		} // prop OriginalImage
 
-		  /// <summary>Title of the button</summary>
-		public string Title => title;
+		/// <summary>Title of the button</summary>
+		public string Title { get; }
+		/// <summary>Shortcut for the command.</summary>
+		public PwKey Key { get => hotKey; set => SetProperty(nameof(Key), ref hotKey, value); }
 
 		/// <summary>Label of the button</summary>
 		public string Label
 		{
 			get => currentLabel ?? originalLabel;
-			set
-			{
-				if (currentLabel != value)
-				{
-					currentLabel = value;
-					OnPropertyChanged(nameof(Label));
-				}
-			}
+			set => SetProperty(nameof(Label), ref currentLabel, value);
 		} // prop Label
 
 		/// <summary>Is the progress bar active</summary>
-		public bool IsProgressVisible => progress < 0 && IsRunning;
-		/// <summary>The current progress value</summary>
-		public int ProgressValue => progress;
+		public bool IsProgressVisible => ProgressValue < 0 && IsRunning;
+		/// <summary>The current progress value, Normalized to 100, &lt;0 hidden</summary>
+		public int ProgressValue { get; private set; } = -1;
+
 		/// <summary>Is the current command in action.</summary>
 		public bool IsRunning { get { lock (isRunning) return isRunning.Count > 0; } }
 

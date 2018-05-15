@@ -59,6 +59,7 @@
     <Compile Include="Data\SimpleCommand.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Stuff\CredCompareValue.cs" />
+    <Compile Include="Stuff\Keys.cs" />
     <Compile Include="Stuff\SecurePassword.cs" />
     <Compile Include="Stuff\Objects.cs" />
   </ItemGroup>

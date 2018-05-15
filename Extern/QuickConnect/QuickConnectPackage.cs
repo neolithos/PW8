@@ -251,7 +251,7 @@ namespace Neo.PerfectWorking.QuickConnect
 
 		public PwAction CreateConnection(string displayName, string remotePath, string localPath = null, string credentialTarget = null)
 		{
-			var a = new PwAction(Global, displayName, remotePath, imageDisconnected);
+			var a = new PwAction(Global, displayName, remotePath, PwKey.None, imageDisconnected);
 			connections.Add(new WeakReference<Connection>(new Connection(Global, a, remotePath, localPath, credentialTarget)));
 			return a;
 		} // func CreateConnection

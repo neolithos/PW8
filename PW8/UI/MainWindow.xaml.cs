@@ -14,6 +14,7 @@
 //
 #endregion
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -104,7 +105,7 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- class MainWindowMode -----------------------------------------------
+		#region -- class MainWindowModel ----------------------------------------------
 
 		public class MainWindowModel //: INotifyPropertyChanged
 		{
@@ -121,15 +122,24 @@ namespace Neo.PerfectWorking.UI
 
 				Window = global.UserLocal.GetLuaTable("Window");
 
-				this.panes = global.RegisterCollection<IPwWindowPane>(globalPackage); // highest
-				this.panes.CollectionChanged += Panes_CollectionChanged;
-				this.shadowPanes = new ObservableCollection<PaneItem>();
+				// pane registration
+				panes = global.RegisterCollection<IPwWindowPane>(globalPackage); // highest
+				panes.CollectionChanged += Panes_CollectionChanged;
+				shadowPanes = new ObservableCollection<PaneItem>();
 				Panes_CollectionChanged(panes, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 
-				this.Panes = CollectionViewSource.GetDefaultView(shadowPanes);
+				Panes = CollectionViewSource.GetDefaultView(shadowPanes);
 
 				// register standard panels
 				global.RegisterObject(globalPackage, "Actions", new ActionsPane(global));
+				global.RegisterObject(globalPackage, "MenuHotKey", ((PwGlobal)global).CreateHotKey(
+#if DEBUG
+					"Ctrl+Alt+Win+P",
+#else
+					"Ctrl+Win+P",
+#endif
+					new Action(((App)Application.Current).ShowMainWindow)
+				));
 
 				Panes.MoveCurrentToFirst();
 			} // ctor
@@ -155,7 +165,7 @@ namespace Neo.PerfectWorking.UI
 						shadowPanes.Add(new PaneItem(this, (IPwWindowPane)e.NewItems[0]));
 						break;
 					case NotifyCollectionChangedAction.Replace:
-						item = FindItem((IPwWindowPane)e.NewItems[0]);
+						item = FindItem((IPwWindowPane)e.OldItems[0]);
 						if (item != null)
 						{
 							item.Detach();
@@ -175,7 +185,7 @@ namespace Neo.PerfectWorking.UI
 						throw new NotImplementedException();
 				}
 			} // event Panes_CollectionChanged
-
+			
 			public ICollectionView Panes { get; }
 			public LuaTable Window { get; }
 			public IPwGlobal Global { get; }
@@ -218,7 +228,7 @@ namespace Neo.PerfectWorking.UI
 			hwnd.AddHook(WindowProc);
 
 			SetWindowLong(hwnd.Handle, GWL_STYLE, GetWindowLong(hwnd.Handle, GWL_STYLE) & (~(uint)(WS_MAXIMIZEBOX | WS_MINIMIZEBOX)));
-			
+
 			this.DataContext = model;
 
 			Focus();
@@ -382,7 +392,7 @@ namespace Neo.PerfectWorking.UI
 				using (var p = Process.Start(psi))
 					p.WaitForInputIdle(400);
 			}
-			catch(Exception e)
+			catch (Exception e)
 			{
 				model.Global.UI.ShowException("Konnte Konfiguration nicht öffnen.", e);
 			}

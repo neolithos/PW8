@@ -24,20 +24,19 @@ namespace Neo.PerfectWorking.Data
 	public sealed class PwWindowHook
 	{
 		private readonly int[] messageFilter;
-		private readonly PwWindowProc wndProc;
 
 		public PwWindowHook(PwWindowProc wndProc, params int[] messageFilter) 
 		{
 			if (messageFilter == null || messageFilter.Length == 0)
 				throw new ArgumentNullException(nameof(messageFilter));
 			this.messageFilter = messageFilter;
-			this.wndProc = wndProc ?? throw new ArgumentNullException(nameof(wndProc));
+			this.WndProc = wndProc ?? throw new ArgumentNullException(nameof(wndProc));
 		} // ctor
 
 		public bool IsHookMessage(int msg)
 			=> Array.IndexOf(messageFilter, msg) >= 0;
 
-		public PwWindowProc WndProc => wndProc;
+		public PwWindowProc WndProc { get; }
 	} // class PwWindowHook
 
 	#endregion

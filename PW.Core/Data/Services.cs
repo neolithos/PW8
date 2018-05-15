@@ -16,6 +16,8 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Windows.Input;
+using Neo.PerfectWorking.Stuff;
 
 namespace Neo.PerfectWorking.Data
 {
@@ -99,6 +101,24 @@ namespace Neo.PerfectWorking.Data
 		/// <summary>Returns the image of the panel.</summary>
 		object Image { get; }
 	} // interface IPwWindowPane
+
+	#endregion
+
+	#region -- interface IPwHotKey ----------------------------------------------------
+
+	/// <summary></summary>
+	public interface IPwHotKey : ICommand
+	{
+		/// <summary></summary>
+		PwKey Key { get; }
+	} // interface IPwRegisteredHotKey
+
+	/// <summary></summary>
+	public interface IPwUIHotKey : IPwHotKey
+	{
+		string Title { get; }
+		object Image { get; }
+	} // interface IPwUIHotKey
 
 	#endregion
 

@@ -15,11 +15,13 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Neo.IronLua;
@@ -749,20 +751,79 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
+		#region -- class PwNoneUIHotKey -----------------------------------------------
+
+		private sealed class PwNoneUIHotKey : IPwHotKey
+		{
+			public event EventHandler CanExecuteChanged { add => command.CanExecuteChanged += value; remove => command.CanExecuteChanged -= value; }
+
+			private readonly ICommand command;
+
+			public PwNoneUIHotKey(PwKey key, ICommand command)
+			{
+				if (key == PwKey.None)
+					throw new ArgumentException(nameof(key));
+				Key = key;
+
+				this.command = command ?? throw new ArgumentNullException(nameof(command));
+			} // ctor
+
+			public bool CanExecute(object parameter)
+				=> command.CanExecute(parameter);
+
+			public void Execute(object parameter) 
+				=> command.Execute(parameter);
+
+			public PwKey Key { get; }
+		} // class PwNoneUIHotKey
+
+		#endregion
+
+		#region -- PwActionCommand ----------------------------------------------------
+
+		private sealed class PwActionCommand : ICommand
+		{
+			public event EventHandler CanExecuteChanged;
+
+			private readonly object func;
+			private readonly object canFunc;
+
+			public PwActionCommand(object func, object canFunc)
+			{
+				this.func = func ?? throw new ArgumentNullException(nameof(func));
+				this.canFunc = canFunc;
+			} // ctor
+
+			public void Refresh()
+				=> CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+
+			public bool CanExecute(object parameter)
+				=> canFunc != null ? Procs.ChangeType<bool>(new LuaResult(Lua.RtInvoke(canFunc, parameter))[0]) : true;
+
+			public void Execute(object parameter)
+				=> Lua.RtInvoke(func);
+		} // class PwActionCommand
+
+		#endregion
+
 		[LuaMember]
 		public PwWindowHook CreateHook(PwWindowProc hook, params int[] messageFilter)
 			=> new PwWindowHook(hook, messageFilter);
 
 		[LuaMember]
-		public PwAction CreateAction(object image, string title, string label, object func)
+		public PwAction CreateAction(object image, string title, string label, object func, PwKey key)
 		{
-			var button = new PwAction(this, title, label, image);
+			var button = new PwAction(this, title, label, PwKey.None, image);
 
 			if (func != null)
 				new FunctionBinding(button, func);
 
 			return button;
 		} // func CreateAction
+
+		[LuaMember]
+		public IPwHotKey CreateHotKey(string hotKey, object command)
+			=> new PwNoneUIHotKey(PwKey.Parse(hotKey, CultureInfo.InvariantCulture), new PwActionCommand(command, null));
 
 		#endregion
 

@@ -844,12 +844,11 @@ namespace Neo.PerfectWorking.Calc
 			private Token tok;
 
 			private List<InstructionBase> instructions = new List<InstructionBase>();
-			private int estimatedStackSize = 0;
 			private int currentStackSize = 0;
 
 			public Parser(Formular formular)
 			{
-				this.formular = formular;
+				this.formular = formular ?? throw new ArgumentNullException(nameof(formular));
 				formular.ScanToken(ref currentPosition, ref tok);
 			} // ctor
 
@@ -867,8 +866,8 @@ namespace Neo.PerfectWorking.Calc
 
 			private void SetStackSize(int newSize)
 			{
-				if (newSize > estimatedStackSize)
-					estimatedStackSize = newSize;
+				if (newSize > EstimatedStackSize)
+					EstimatedStackSize = newSize;
 			} // proc SetStackSize
 
 			private void Append(StackValue value)
@@ -1144,7 +1143,8 @@ namespace Neo.PerfectWorking.Calc
 
 			public bool IsEof => tok.Type == TokenType.Eof;
 
-			public int EstimatedStackSize => estimatedStackSize;
+			public int EstimatedStackSize { get; private set; } = 0;
+
 			public InstructionBase[] Instructions => instructions.ToArray();
 
 			public int CurrentPosition => tok.Position;
@@ -1153,7 +1153,6 @@ namespace Neo.PerfectWorking.Calc
 		#endregion
 
 		private readonly FormularEnvironment env;
-		private readonly string formular;
 		private readonly bool useDecimal;
 
 		private readonly int estimatedStackSize;
@@ -1165,7 +1164,7 @@ namespace Neo.PerfectWorking.Calc
 		public Formular(FormularEnvironment env, string formular, bool useDecimal = false)
 		{
 			this.env = env ?? throw new ArgumentNullException(nameof(env));
-			this.formular = formular ?? throw new ArgumentNullException(nameof(formular));
+			this.Value = formular ?? throw new ArgumentNullException(nameof(formular));
 			this.useDecimal = useDecimal;
 
 			(instructions, estimatedStackSize) = Parse(this);
@@ -1403,9 +1402,9 @@ namespace Neo.PerfectWorking.Calc
 			var state = 0;
 
 			char GetCurrentChar(int pos)
-				=> pos < formular.Length
-					? formular[pos]
-					: pos == formular.Length
+				=> pos < Value.Length
+					? Value[pos]
+					: pos == Value.Length
 						? '\0'
 						: throw new ArgumentOutOfRangeException();
 
@@ -1414,9 +1413,9 @@ namespace Neo.PerfectWorking.Calc
 				if (c >= '0' && c <= '9')
 					return c - '0';
 				else if (c >= 'A' && c <= 'F')
-					return c - 'A';
+					return c - ('A' - 10);
 				else if (c >= 'a' && c <= 'f')
-					return c - 'a';
+					return c - ('a' - 10);
 				else
 					return -1;
 			} // func GetHex
@@ -1666,7 +1665,7 @@ namespace Neo.PerfectWorking.Calc
 		/// <param name="tok"></param>
 		/// <returns></returns>
 		public string GetFormularPart(ref Token tok)
-			=> tok.Length > 0 ? formular.Substring(tok.Position, tok.Length) : String.Empty;
+			=> tok.Length > 0 ? Value.Substring(tok.Position, tok.Length) : String.Empty;
 
 		/// <summary>Get the scanner information.</summary>
 		/// <returns></returns>
@@ -1715,7 +1714,8 @@ namespace Neo.PerfectWorking.Calc
 		#endregion
 
 		/// <summary>Returns the orginale formular</summary>
-		public string Value => formular;
+		public string Value { get; }
+
 		/// <summary>Is this formular usable</summary>
 		public bool IsValid => instructions != null;
 	} // class Formular

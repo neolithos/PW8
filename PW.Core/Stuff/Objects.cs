@@ -20,7 +20,7 @@ using Neo.IronLua;
 
 namespace Neo.PerfectWorking.Stuff
 {
-	public static class Procs
+	public static partial class Procs
 	{
 		public static bool EqualBytes(byte[] v1, byte[] v2)
 		{

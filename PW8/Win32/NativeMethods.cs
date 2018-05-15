@@ -140,5 +140,11 @@ namespace Neo.PerfectWorking.Win32
 		public static extern IntPtr GetModuleHandle(string lpModuleName);
 		[DllImport(comctl32, SetLastError = true)]
 		public static extern int LoadIconMetric(IntPtr instanceHandle, IntPtr iconId, int desiredMetric, out IntPtr icon);
+
+		[DllImport("user32.dll", SetLastError = true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+		[DllImport("user32.dll")]
+		public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 	} // class NativeMethods
 }
