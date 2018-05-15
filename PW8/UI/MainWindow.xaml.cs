@@ -136,7 +136,7 @@ namespace Neo.PerfectWorking.UI
 #if DEBUG
 					"Ctrl+Alt+Win+P",
 #else
-					"Ctrl+Win+P",
+					"Win+Alt+P",
 #endif
 					new Action(((App)Application.Current).ShowMainWindow)
 				));
