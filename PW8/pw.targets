@@ -7,22 +7,12 @@
 		<DeployItem Include="..\PW8\bin\Release\Neo.Lua.*" />
 		<DeployItem Include="..\PW.Wpf\bin\Release\PW.Wpf.*" />
 		<DeployItem Include="..\PW.Core\bin\Release\PW.Core.*" />
-		<DeployItem Include="Extern\Calc\bin\Release\PW.Calc.*" Condition="'$(DeployCalc)' == 'true'">
-			<Copy></Copy>
-		</DeployItem>
-		<DeployItem Include="Extern\Cred\bin\Release\PW.Cred.*" Condition="'$(DeployCred)' == 'true'">
-			<Copy></Copy>
-		</DeployItem>
-		<DeployItem Include="Extern\GamePadRC\bin\Release\PW.GamePadRC.*" Condition="false">
-			<Copy>false</Copy>
-		</DeployItem>
-		<DeployItem Include="Extern\Guid\bin\Release\PW.Guid.*" Condition="false">
-			<Copy>false</Copy>
-		</DeployItem>
-		<DeployItem Include="Extern\Lua\bin\Release\PW.Lua.*" Condition="false">
-			<Copy>false</Copy>
-		</DeployItem>
-		<DeployItem Include="Extern\QuickConnect\bin\Release\PW.QuickConnect.*" Condition="'$(DeployQuickConnect)' == 'true'" />
+		<DeployItem Include="..\Extern\Calc\bin\Release\PW.Calc.*" Condition="'$(DeployCalc)' == 'true'" />
+		<DeployItem Include="..\Extern\Cred\bin\Release\PW.Cred.*" Condition="'$(DeployCred)' == 'true'" />
+		<DeployItem Include="..\Extern\GamePadRC\bin\Release\PW.GamePadRC.*" Condition="false" />
+		<DeployItem Include="..\Extern\Guid\bin\Release\PW.Guid.*" Condition="false" />
+		<DeployItem Include="..\Extern\Lua\bin\Release\PW.Lua.*" Condition="false" />
+		<DeployItem Include="..\Extern\QuickConnect\bin\Release\PW.QuickConnect.*" Condition="'$(DeployQuickConnect)' == 'true'" />
 	</ItemGroup>
 
 	<Target Name="res" Inputs="Resources\Resource.rc" Outputs="Resources/Resource.res">
