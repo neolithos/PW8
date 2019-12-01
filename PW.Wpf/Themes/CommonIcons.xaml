@@ -19,7 +19,7 @@ specific language governing permissions and limitations under the Licence.
 	<ResourceDictionary.MergedDictionaries>
 		<ResourceDictionary Source="pack://application:,,,/PW.Wpf;component/Themes/GenericTheme.xaml" />
 	</ResourceDictionary.MergedDictionaries>
-	
+
 	<ControlTemplate x:Key="CopyImage">
 		<Viewbox Stretch="Uniform" SnapsToDevicePixels="True">
 			<Canvas Width="24" Height="24">
@@ -31,6 +31,13 @@ specific language governing permissions and limitations under the Licence.
 		<Viewbox Stretch="Uniform" SnapsToDevicePixels="True">
 			<Canvas Width="24" Height="24">
 				<Path Fill="{TemplateBinding TextElement.Foreground}" Data="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
+			</Canvas>
+		</Viewbox>
+	</ControlTemplate>
+	<ControlTemplate x:Key="ExecuteImage">
+		<Viewbox Stretch="Uniform" SnapsToDevicePixels="True">
+			<Canvas Width="24" Height="24">
+				<Path Fill="{TemplateBinding TextElement.Foreground}" Data="M16,12A2,2 0 0,1 18,10A2,2 0 0,1 20,12A2,2 0 0,1 18,14A2,2 0 0,1 16,12M10,12A2,2 0 0,1 12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12M4,12A2,2 0 0,1 6,10A2,2 0 0,1 8,12A2,2 0 0,1 6,14A2,2 0 0,1 4,12Z" />
 			</Canvas>
 		</Viewbox>
 	</ControlTemplate>

@@ -29,13 +29,25 @@ specific language governing permissions and limitations under the Licence.
 			</DrawingImage.Drawing>
 		</DrawingImage>
 	</ui:PwContentPane.Image>
+	
 	<ui:PwContentPane.Resources>
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceDictionary Source="pack://application:,,,/PW.Wpf;component/Themes/CommonIcons.xaml" />
 			</ResourceDictionary.MergedDictionaries>
+
+			<Style x:Key="TextBoxCommand" TargetType="{x:Type ui:PwTextBoxCommand}" BasedOn="{StaticResource {x:Type ui:PwTextBoxCommand}}">
+				<Setter Property="Height" Value="20" />
+				<Setter Property="Padding" Value="1" />
+				<Setter Property="FontFamily" Value="Consolas" />
+			</Style>
+			<Style x:Key="ResultTextBox" TargetType="{x:Type ui:PwTextBoxCommand}" BasedOn="{StaticResource TextBoxCommand}">
+				<Setter Property="IsReadOnly" Value="True"/>
+				<Setter Property="Command" Value="{x:Static ApplicationCommands.Copy}" />
+			</Style>
 		</ResourceDictionary>
 	</ui:PwContentPane.Resources>
+	
 	<Grid DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type ui:PwContentPane}}}">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition />
@@ -49,10 +61,15 @@ specific language governing permissions and limitations under the Licence.
 			<RowDefinition Height="23" />
 		</Grid.RowDefinitions>
 
-		<ListBox Grid.Column="0" Grid.RowSpan="4" ItemsSource="{Binding Formulars,Mode=OneWay}" IsSynchronizedWithCurrentItem="True">
+		<ListBox x:Name="formularList" Grid.Column="0" Grid.RowSpan="4" ItemsSource="{Binding Formulars,Mode=OneWay}" IsSynchronizedWithCurrentItem="True" Margin="0,0,4,0">
+			<ListBox.ItemContainerStyle>
+				<Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+					<EventSetter Event="MouseDoubleClick" Handler="FormularListDoubleClick" />
+				</Style>
+			</ListBox.ItemContainerStyle>
 			<ListBox.ItemTemplate>
 				<DataTemplate>
-					<TextBlock>
+					<TextBlock FontFamily="Consolas">
 						<Run Text="{Binding Formular,Mode=OneWay}" />
 						=
 						<Run Text="{Binding Value,ConverterCulture=de-DE,Mode=OneWay}" />
@@ -60,14 +77,16 @@ specific language governing permissions and limitations under the Licence.
 				</DataTemplate>
 			</ListBox.ItemTemplate>
 		</ListBox>
-		<ui:PwTextBoxCommand Grid.Column="0" Grid.Row="4" Command="{x:Static local:CalcWindowPane.ExecuteFormularCommand}" Text="{Binding Path=CurrentFormularText,UpdateSourceTrigger=PropertyChanged}">
+		<ui:PwTextBoxCommand x:Name="formularText" Grid.Column="0" Grid.Row="4" Command="{x:Static local:CalcWindowPane.ExecuteFormularCommand}" Text="{Binding Path=CurrentFormularText,UpdateSourceTrigger=PropertyChanged}" Margin="0,0,4,0" Style="{StaticResource TextBoxCommand}">
 			<ui:PwTextBoxCommand.InputBindings>
 				<KeyBinding Key="Return" Command="{x:Static local:CalcWindowPane.ExecuteFormularCommand}" />
 			</ui:PwTextBoxCommand.InputBindings>
-			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
+			<ui:PwTextBoxCommand.CommandContent>
+				<ContentControl Template="{StaticResource ExecuteImage}" />
+			</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 
-		<GridSplitter Grid.RowSpan="5" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="4" />
+		<GridSplitter Grid.RowSpan="5" HorizontalAlignment="Right" VerticalAlignment="Stretch" Width="4" Background="White" />
 
 		<ListBox Grid.Column="1" Grid.Row="0" ItemsSource="{Binding Variables,Mode=OneWay}" Grid.IsSharedSizeScope="True">
 			<ListBox.ItemTemplate>
@@ -85,7 +104,10 @@ specific language governing permissions and limitations under the Licence.
 			</ListBox.ItemTemplate>
 		</ListBox>
 
-		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="1" IsReadOnly="True">
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="1" Style="{StaticResource ResultTextBox}">
+			<ui:PwTextBoxCommand.CommandContent>
+				<ContentControl Template="{StaticResource CopyImage}" />
+			</ui:PwTextBoxCommand.CommandContent>
 			<ui:PwTextBoxCommand.Text>
 				<Binding Path="CurrentAns" Mode="OneWay">
 					<Binding.Converter>
@@ -93,9 +115,11 @@ specific language governing permissions and limitations under the Licence.
 					</Binding.Converter>
 				</Binding>
 			</ui:PwTextBoxCommand.Text>
-			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
-		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="2">
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="2" Style="{StaticResource ResultTextBox}">
+			<ui:PwTextBoxCommand.CommandContent>
+				<ContentControl Template="{StaticResource CopyImage}" />
+			</ui:PwTextBoxCommand.CommandContent>
 			<ui:PwTextBoxCommand.Text>
 				<Binding Path="CurrentAns" Mode="OneWay">
 					<Binding.Converter>
@@ -103,9 +127,11 @@ specific language governing permissions and limitations under the Licence.
 					</Binding.Converter>
 				</Binding>
 			</ui:PwTextBoxCommand.Text>
-			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
-		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="3">
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="3" Style="{StaticResource ResultTextBox}">
+			<ui:PwTextBoxCommand.CommandContent>
+				<ContentControl Template="{StaticResource CopyImage}" />
+			</ui:PwTextBoxCommand.CommandContent>
 			<ui:PwTextBoxCommand.Text>
 				<Binding Path="CurrentAns" Mode="OneWay">
 					<Binding.Converter>
@@ -113,9 +139,11 @@ specific language governing permissions and limitations under the Licence.
 					</Binding.Converter>
 				</Binding>
 			</ui:PwTextBoxCommand.Text>
-			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
-		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="4">
+		<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="4" Style="{StaticResource ResultTextBox}">
+			<ui:PwTextBoxCommand.CommandContent>
+				<ContentControl Template="{StaticResource CopyImage}" />
+			</ui:PwTextBoxCommand.CommandContent>
 			<ui:PwTextBoxCommand.Text>
 				<Binding Path="CurrentAns" Mode="OneWay">
 					<Binding.Converter>
@@ -123,7 +151,6 @@ specific language governing permissions and limitations under the Licence.
 					</Binding.Converter>
 				</Binding>
 			</ui:PwTextBoxCommand.Text>
-			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 	</Grid>
 </ui:PwContentPane>

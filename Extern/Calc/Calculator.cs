@@ -23,11 +23,11 @@ using System.IO;
 
 namespace Neo.PerfectWorking.Calc
 {
-	#region -- class FormularFunctions --------------------------------------------------
+	#region -- class FormularFunctions ------------------------------------------------
 
 	public class FormularFunctions : LuaTable
 	{
-		#region -- Ctor/Dtor ------------------------------------------------------------
+		#region -- Ctor/Dtor ----------------------------------------------------------
 
 		public FormularFunctions()
 		{
@@ -65,7 +65,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- CreateMethodSimple/Exact ---------------------------------------------
+		#region -- CreateMethodSimple/Exact -------------------------------------------
 
 		private static ILuaMethod CreateMethodWithArguments(Type type, string methodName, Func<MethodInfo, bool> argCheck)
 		{
@@ -75,7 +75,7 @@ namespace Neo.PerfectWorking.Calc
 				select m).ToArray();
 
 			return methods.Length == 1
-					? (ILuaMethod)new LuaMethod(null, methods[0])
+					? new LuaMethod(null, methods[0])
 					: (ILuaMethod)new LuaOverloadedMethod(null, methods);
 		} // func CreateMethodWithArguments
 
@@ -131,7 +131,7 @@ namespace Neo.PerfectWorking.Calc
 
 	#endregion
 
-	#region -- class FormularEnvironment ------------------------------------------------
+	#region -- class FormularEnvironment ----------------------------------------------
 
 	public class FormularEnvironment : LuaTable
 	{
@@ -148,16 +148,13 @@ namespace Neo.PerfectWorking.Calc
 
 	#endregion
 
-	#region -- class Formular -----------------------------------------------------------
+	#region -- class Formular ---------------------------------------------------------
 
-	///////////////////////////////////////////////////////////////////////////////
 	/// <summary>Parser für Formeln.</summary>
 	public sealed class Formular
 	{
-		#region -- enum TokenType -------------------------------------------------------
+		#region -- enum TokenType -----------------------------------------------------
 
-		///////////////////////////////////////////////////////////////////////////////
-		/// <summary></summary>
 		public enum TokenType
 		{
 			Empty = -2,
@@ -194,10 +191,8 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- struct Token ---------------------------------------------------------
+		#region -- struct Token -------------------------------------------------------
 
-		///////////////////////////////////////////////////////////////////////////////
-		/// <summary></summary>
 		public struct Token
 		{
 			public bool SetToken(TokenType type, int startAt, object value)
@@ -229,7 +224,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- enum StackValueType --------------------------------------------------
+		#region -- enum StackValueType ------------------------------------------------
 
 		private enum StackValueType
 		{
@@ -241,7 +236,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- struct StackValue ----------------------------------------------------
+		#region -- struct StackValue --------------------------------------------------
 
 		private struct StackValue
 		{
@@ -395,7 +390,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class StackMachine ---------------------------------------------------
+		#region -- class StackMachine -------------------------------------------------
 
 		private sealed class StackMachine
 		{
@@ -426,7 +421,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class InstructionBase ------------------------------------------------
+		#region -- class InstructionBase ----------------------------------------------
 
 		private abstract class InstructionBase
 		{
@@ -435,7 +430,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class PushInstruction ------------------------------------------------
+		#region -- class PushInstruction ----------------------------------------------
 
 		private sealed class PushInstruction : InstructionBase
 		{
@@ -455,7 +450,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- enum UnaryInstructionType --------------------------------------------
+		#region -- enum UnaryInstructionType ------------------------------------------
 
 		private enum UnaryInstructionType
 		{
@@ -466,7 +461,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class UnaryInstruction -----------------------------------------------
+		#region -- class UnaryInstruction ---------------------------------------------
 
 		private sealed class UnaryInstruction : InstructionBase
 		{
@@ -540,7 +535,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- enum BinaryInstructionType -------------------------------------------
+		#region -- enum BinaryInstructionType -----------------------------------------
 
 		private enum BinaryInstructionType
 		{
@@ -554,7 +549,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class BinaryInstruction ----------------------------------------------
+		#region -- class BinaryInstruction --------------------------------------------
 
 		private sealed class BinaryInstruction : InstructionBase
 		{
@@ -687,7 +682,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- enum IntegerBinaryInstructionType ------------------------------------
+		#region -- enum IntegerBinaryInstructionType ----------------------------------
 
 		private enum IntegerBinaryInstructionType
 		{
@@ -702,7 +697,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class IntegerBinaryInstruction ---------------------------------------
+		#region -- class IntegerBinaryInstruction -------------------------------------
 		
 		private sealed class IntegerBinaryInstruction : InstructionBase
 		{
@@ -752,7 +747,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class PushVarInstruction ---------------------------------------------
+		#region -- class PushVarInstruction -------------------------------------------
 
 		private sealed class PushVarInstruction : InstructionBase
 		{
@@ -774,7 +769,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class StoreVarInstruction --------------------------------------------
+		#region -- class StoreVarInstruction ------------------------------------------
 
 		private sealed class StoreVarInstruction : InstructionBase
 		{
@@ -797,7 +792,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class CallInstruction ------------------------------------------------
+		#region -- class CallInstruction ----------------------------------------------
 
 		private sealed class CallInstruction : InstructionBase
 		{
@@ -806,7 +801,7 @@ namespace Neo.PerfectWorking.Calc
 
 			public CallInstruction(string funcName, int argumentCount)
 			{
-				this.funcName = funcName;
+				this.funcName = funcName ?? throw new ArgumentNullException(nameof(funcName));
 				this.argumentCount = argumentCount;
 			} // ctor
 
@@ -834,7 +829,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class Parser ---------------------------------------------------------
+		#region -- class Parser -------------------------------------------------------
 
 		private sealed class Parser
 		{
@@ -843,7 +838,7 @@ namespace Neo.PerfectWorking.Calc
 			private int currentPosition = 0;
 			private Token tok;
 
-			private List<InstructionBase> instructions = new List<InstructionBase>();
+			private readonly List<InstructionBase> instructions = new List<InstructionBase>();
 			private int currentStackSize = 0;
 
 			public Parser(Formular formular)
@@ -1158,7 +1153,7 @@ namespace Neo.PerfectWorking.Calc
 		private readonly int estimatedStackSize;
 		private readonly InstructionBase[] instructions;
 
-		#region -- Ctor/Dtor ------------------------------------------------------------
+		#region -- Ctor/Dtor ----------------------------------------------------------
 
 		/// <summary>Initialisiert den Calculator mit Standardwerten.</summary>
 		public Formular(FormularEnvironment env, string formular, bool useDecimal = false)
@@ -1173,26 +1168,18 @@ namespace Neo.PerfectWorking.Calc
 		private static (InstructionBase[] instr, int estimatedStackSize) Parse(Formular f)
 		{
 			var p = new Parser(f);
-			try
-			{
-				p.Parse();
-				if (!p.IsEof)
-					throw new FormularException(p.CurrentPosition, 0, "Operator erwartet.");
+			p.Parse();
+			if (!p.IsEof)
+				throw new FormularException(p.CurrentPosition, 0, "Operator erwartet.");
 
-				return (p.Instructions, p.EstimatedStackSize); ;
-			}
-			catch (FormularException e)
-			{
-				Debug.Print(e.ToString());
-				return (null, -1);
-			}
+			return (p.Instructions, p.EstimatedStackSize);
 		} // proc Parse
 
 		#endregion
 
-		#region -- ScanToken ------------------------------------------------------------
+		#region -- ScanToken ----------------------------------------------------------
 
-		#region -- class NumberAdd ------------------------------------------------------
+		#region -- class NumberAdd ----------------------------------------------------
 
 		private abstract class NumberAdd
 		{
@@ -1216,7 +1203,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class LongNumberAdd --------------------------------------------------
+		#region -- class LongNumberAdd ------------------------------------------------
 
 		private sealed class LongNumberAdd : NumberAdd
 		{
@@ -1261,7 +1248,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class ShortNumberAdd -------------------------------------------------
+		#region -- class ShortNumberAdd -----------------------------------------------
 
 		private sealed class ShortNumberAdd : NumberAdd
 		{
@@ -1276,12 +1263,12 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class FloatNumberAdd -------------------------------------------------
+		#region -- class FloatNumberAdd -----------------------------------------------
 
 		private abstract class FloatNumberAdd : NumberAdd
 		{
 			private bool isExpNeg = false;
-			private ShortNumberAdd exp = new ShortNumberAdd();
+			private readonly ShortNumberAdd exp = new ShortNumberAdd();
 			
 			public void SetNegExponent()
 				=> isExpNeg = true;
@@ -1324,7 +1311,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class DecimalNumberAdd -----------------------------------------------
+		#region -- class DecimalNumberAdd ---------------------------------------------
 
 		private sealed class DecimalNumberAdd : FloatNumberAdd
 		{
@@ -1358,7 +1345,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- class DoubleNumberAdd ------------------------------------------------
+		#region -- class DoubleNumberAdd ----------------------------------------------
 
 		private sealed class DoubleNumberAdd : FloatNumberAdd
 		{
@@ -1427,7 +1414,7 @@ namespace Neo.PerfectWorking.Calc
 			{
 				currentNumberAdd =
 					floatNumberAdd = useDecimal
-						? (FloatNumberAdd)new DecimalNumberAdd(currentNumberAdd)
+						? new DecimalNumberAdd(currentNumberAdd)
 						: (FloatNumberAdd)new DoubleNumberAdd(currentNumberAdd);
 			} // proc ConvertLong
 
@@ -1685,7 +1672,7 @@ namespace Neo.PerfectWorking.Calc
 
 		#endregion
 
-		#region -- DebugOut, GetResult --------------------------------------------------
+		#region -- DebugOut, GetResult ------------------------------------------------
 
 		public void DebugOut(TextWriter tw)
 		{
@@ -1724,8 +1711,6 @@ namespace Neo.PerfectWorking.Calc
 
 	#region -- class FormularParseException ---------------------------------------------
 
-	///////////////////////////////////////////////////////////////////////////////
-	/// <summary></summary>
 	public class FormularException : Exception
 	{
 		private readonly int position;

@@ -29,11 +29,8 @@ using Neo.PerfectWorking.UI;
 
 namespace Neo.PerfectWorking.Calc
 {
-	#region -- class CalcWindowPane -----------------------------------------------------
+	#region -- class CalcWindowPane ---------------------------------------------------
 
-	/// <summary>
-	/// Interaction logic for CalcWindowPane.xaml
-	/// </summary>
 	public partial class CalcWindowPane : PwContentPane
 	{
 		#region -- class VariableView ---------------------------------------------------
@@ -176,6 +173,7 @@ namespace Neo.PerfectWorking.Calc
 		private static readonly DependencyPropertyKey variableCollectionPropertyKey = DependencyProperty.RegisterReadOnly(nameof(Variables), typeof(VariableCollection), typeof(CalcWindowPane), new FrameworkPropertyMetadata());
 
 		private readonly CalcPackage package;
+		private readonly IPwShellUI ui; 
 		private readonly FormularEnvironment currentEnvironment;
 		private readonly ObservableCollection<FormularView> formulars = new ObservableCollection<FormularView>();
 		private readonly ICollectionView formularsView;
@@ -183,21 +181,21 @@ namespace Neo.PerfectWorking.Calc
 		public CalcWindowPane(CalcPackage package)
 		{
 			this.package = package;
+			ui = package.Global.UI;
 
 			InitializeComponent();
 
-			this.currentEnvironment = package.CreateNewEnvironment();
+			currentEnvironment = package.CreateNewEnvironment();
 			SetValue(variableCollectionPropertyKey, new VariableCollection(currentEnvironment));
 
-			var source = new CollectionViewSource();
-			source.Source = formulars;
+			var source = new CollectionViewSource { Source = formulars };
 			formularsView = source.View;
 
 			CommandBindings.Add(
 				new CommandBinding(ExecuteFormularCommand,
 					(sender, e) =>
 					{
-						ProcessFormular();
+						ProcessFormular(true);
 						e.Handled = true;
 					},
 					(sender, e) =>
@@ -209,20 +207,44 @@ namespace Neo.PerfectWorking.Calc
 			);
 		} // ctor
 
-		private void ProcessFormular()
+		private void FormularListDoubleClick(object sender, MouseButtonEventArgs e)
+		{
+			if (e.Source is FrameworkElement fe && fe.DataContext is FormularView fv)
+			{
+				CurrentFormularText = fv.Formular;
+				ProcessFormular(false);
+			}
+		} // event FormularListDoubleClick
+
+		private void ProcessFormular(bool add)
 		{
 			try
 			{
-				var formularView = new FormularView(new Formular(currentEnvironment, CurrentFormularText));
+				var formular = new Formular(currentEnvironment, CurrentFormularText);
+
+				// create view
+				var formularView = new FormularView(formular);
+
+				// calculate result
 				formularView.Calculate();
 				SetValue(currentAnsPropertyKey, formularView.Value);
 
-				formulars.Add(formularView);
-				formularsView.MoveCurrentToLast();
+				// add to history
+				if (add)
+				{
+					formulars.Add(formularView);
+					formularsView.MoveCurrentToLast();
+					formularList.ScrollIntoView(formularsView.CurrentItem);
+				}
+			}
+			catch (FormularException e)
+			{
+				formularText.CaretIndex = e.Position;
+				ui.ShowNotification(e.Message);
 			}
 			catch (Exception e)
 			{
-				package.Global.UI.ShowException(e);
+				ui.ShowException(e);
 			}
 		} // proc ProcessFormular
 
@@ -234,7 +256,7 @@ namespace Neo.PerfectWorking.Calc
 
 	#endregion
 
-	#region -- class AnsConverter -------------------------------------------------------
+	#region -- class AnsConverter -----------------------------------------------------
 
 	public sealed class AnsConverter : IValueConverter
 	{
@@ -247,19 +269,14 @@ namespace Neo.PerfectWorking.Calc
 				if (targetType != typeof(string))
 					throw new ArgumentOutOfRangeException(nameof(targetType), targetType, "Inalid target type.");
 
-				switch(Base)
+				return Base switch
 				{
-					case 2:
-						return "0b" + System.Convert.ToString(System.Convert.ToInt64(value), 2);
-					case 8:
-						return "0o" + System.Convert.ToString(System.Convert.ToInt64(value), 8);
-					case 10:
-						return value.ToString();
-					case 16:
-						return "0x" + System.Convert.ToString(System.Convert.ToInt64(value), 16);
-					default:
-						return "<error>";
-				}
+					2 => "0b" + System.Convert.ToString(System.Convert.ToInt64(value), 2),
+					8 => "0o" + System.Convert.ToString(System.Convert.ToInt64(value), 8),
+					10 => value.ToString(),
+					16 => "0x" + System.Convert.ToString(System.Convert.ToInt64(value), 16),
+					_ => "<error>",
+				};
 			}
 		} // func Convert
 

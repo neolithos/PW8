@@ -8,6 +8,5 @@ insert_final_newline = true
 
 # CA1822: Mark members as static
 dotnet_diagnostic.CA1822.severity = none
-
 # CA2237: Mark ISerializable types with serializable
 dotnet_diagnostic.CA2237.severity = none
