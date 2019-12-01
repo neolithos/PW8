@@ -40,7 +40,7 @@ specific language governing permissions and limitations under the Licence.
 		</ControlTemplate.Triggers>
 	</ControlTemplate>
 
-	<Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+	<Style x:Key="PwTextBox"  TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
 		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
 		<Setter Property="BorderThickness" Value="1" />
 		<Setter Property="Background" Value="{DynamicResource ContentBackgroundBrush}" />
@@ -162,6 +162,7 @@ specific language governing permissions and limitations under the Licence.
 		<Setter Property="Padding" Value="1" />
 		<Setter Property="Height" Value="20" />
 		<Setter Property="Template" Value="{StaticResource PwPasswordBoxTemplate}" />
+		<Setter Property="KeyboardNavigation.IsTabStop" Value="False" />
 	</Style>
 
 	<Style TargetType="{x:Type ui:PwProgressCircle}">
@@ -233,6 +234,7 @@ specific language governing permissions and limitations under the Licence.
                         <ContentPresenter
                               Content="{TemplateBinding Content}"
                               ContentTemplate="{TemplateBinding ContentTemplate}"
+							  ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                               Cursor="{TemplateBinding Cursor}"
                               Margin="{TemplateBinding Padding}"
                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
@@ -242,4 +244,61 @@ specific language governing permissions and limitations under the Licence.
             </Setter.Value>
         </Setter>
     </Style>
+
+	<DataTemplate x:Key="PaneProgressTemplate">
+		<Grid>
+			<Border Background="{x:Static SystemColors.WindowBrush}" Opacity="0.8" />
+			<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+				<ui:PwProgressCircle IsIndeterminate="True" Height="48" Width="48" NumberOfPoints="16" TailPoints="12" TailSpeed="00:00:00.100" />
+				<TextBlock Text="{Binding Label}" />
+			</StackPanel>
+		</Grid>
+	</DataTemplate>
+	
+	<Style TargetType="{x:Type ui:PwContentPane}">
+		<Setter Property="Padding" Value="0" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type ui:PwContentPane}">
+					<Grid>
+						<ContentPresenter Content="{TemplateBinding Content}"
+										  ContentTemplate="{TemplateBinding ContentTemplate}"
+										  ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+										  ContentStringFormat="{TemplateBinding ContentStringFormat}"
+										  IsEnabled="{TemplateBinding IsProgressActive,Converter={x:Static ui:PwConverter.NotBoolean}}" />
+						<ContentPresenter Visibility="{TemplateBinding IsProgressActive, Converter={x:Static ui:PwConverter.BooleanToVisible}}" Content="{TemplateBinding CurrentProgress}" ContentTemplate="{StaticResource PaneProgressTemplate}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type ui:PwNavigationPane}" BasedOn="{StaticResource {x:Type ui:PwContentPane}}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type ui:PwNavigationPane}">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition />
+						</Grid.ColumnDefinitions>
+						<ContentPresenter Grid.Column="0"
+										  Content="{TemplateBinding Header}" 
+										  ContentTemplate="{TemplateBinding HeaderTemplate}"
+										  ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}"
+										  ContentStringFormat="{TemplateBinding HeaderStringFormat}"
+										  IsEnabled="{TemplateBinding IsProgressActive,Converter={x:Static ui:PwConverter.NotBoolean}}"
+										  Visibility="{TemplateBinding HasHeader,Converter={x:Static ui:PwConverter.BooleanToCollapsed}}" />
+						<ContentPresenter Grid.Column="1"
+										  Content="{Binding CurrentContentControl.Content,RelativeSource={RelativeSource TemplatedParent},Mode=OneWay}"
+										  ContentTemplate="{Binding CurrentContentControl.ContentTemplate,RelativeSource={RelativeSource TemplatedParent},Mode=OneWay}"
+										  ContentTemplateSelector="{Binding CurrentContentControl.ContentTemplateSelector,RelativeSource={RelativeSource TemplatedParent},Mode=OneWay}"
+										  ContentStringFormat="{Binding CurrentContentControl.ContentStringFormat,RelativeSource={RelativeSource TemplatedParent},Mode=OneWay}"
+										  IsEnabled="{TemplateBinding IsProgressActive,Converter={x:Static ui:PwConverter.NotBoolean}}" />
+						<ContentPresenter Grid.Column="0" Grid.ColumnSpan="2" Visibility="{TemplateBinding IsProgressActive, Converter={x:Static ui:PwConverter.BooleanToVisible}}" Content="{TemplateBinding CurrentProgress}" ContentTemplate="{StaticResource PaneProgressTemplate}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
 </ResourceDictionary>

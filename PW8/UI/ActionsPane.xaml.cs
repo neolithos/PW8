@@ -22,9 +22,9 @@ using Neo.PerfectWorking.Data;
 
 namespace Neo.PerfectWorking.UI
 {
-	public partial class ActionsPane : PwWindowPane
+	public partial class ActionsPane : PwContentPane
 	{
-		private static DependencyPropertyKey actionsPropertyKey = DependencyProperty.RegisterReadOnly("Actions", typeof(ICollectionView), typeof(ActionsPane), new FrameworkPropertyMetadata(null));
+		private static readonly DependencyPropertyKey actionsPropertyKey = DependencyProperty.RegisterReadOnly(nameof(Actions), typeof(ICollectionView), typeof(ActionsPane), new FrameworkPropertyMetadata(null));
 		public static readonly DependencyProperty ActionsProperty = actionsPropertyKey.DependencyProperty;
 
 		private readonly IPwGlobal global;
@@ -44,12 +44,25 @@ namespace Neo.PerfectWorking.UI
 			this.DataContext = this;
 		} // ctor
 
+		private void ActionListDoubleClick(object sender, MouseButtonEventArgs e)
+		{
+			if (e.LeftButton == MouseButtonState.Pressed)
+			{
+				var ctx = (e.Source as FrameworkElement)?.DataContext;
+				if (ctx is ICommand cmd && cmd.CanExecute(null))
+					cmd.Execute(null);
+			}
+		} // event actionListDoubleClick
+
+		private void ActionListRightClick(object sender, MouseButtonEventArgs e)
+		{
+			if((e.Source as FrameworkElement)?.DataContext is IPwContextMenuFactory f)
+				;
+		} // event actionListRightClick
+
 		private bool OnFilter(object item)
 		{
-			var c = item as PwAction;
-			if (c == null)
-				return false;
-			else
+			if (item is PwAction c)
 			{
 				var currentFilter = filterListBox.CurrentFilter;
 				if (String.IsNullOrEmpty(currentFilter))
@@ -58,6 +71,8 @@ namespace Neo.PerfectWorking.UI
 					return c.Title.IndexOf(currentFilter, StringComparison.OrdinalIgnoreCase) >= 0
 						|| (c.Label != null && c.Label.IndexOf(currentFilter, StringComparison.OrdinalIgnoreCase) >= 0);
 			}
+			else
+				return false;
 		} // func OnFilter
 
 		public ICollectionView Actions => (ICollectionView)GetValue(ActionsProperty);

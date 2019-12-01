@@ -14,18 +14,25 @@
 //
 #endregion
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
-using Neo.PerfectWorking.Stuff;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.UI
 {
+	#region -- class PwConverter ------------------------------------------------------
+
+	public static class PwConverter
+	{
+		public static IValueConverter NotBoolean { get; } = new NotBooleanConverter();
+		public static IValueConverter BooleanToVisible { get; } = new VisibilityBooleanConverter();
+		public static IValueConverter BooleanToCollapsed { get; } = new VisibilityBooleanConverter() { Collapse = true };
+	} // class PwConverter
+
+	#endregion
+
 	#region -- class InvariantConverter -----------------------------------------------
 
 	public class InvariantConverter : IValueConverter

@@ -1,11 +1,10 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26403.3
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29519.87
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PW8", "PW8\PW8.csproj", "{39A8FCF0-E1DA-461C-8A64-FEB9EDE19502}"
 	ProjectSection(ProjectDependencies) = postProject
-		{CEC32913-E576-48D8-A7A5-E998ACD53C99} = {CEC32913-E576-48D8-A7A5-E998ACD53C99}
 		{2E08BF53-88CF-4537-AE38-E15A8F4AD610} = {2E08BF53-88CF-4537-AE38-E15A8F4AD610}
 		{BCA90365-4041-4D50-A890-2E94D9C6A617} = {BCA90365-4041-4D50-A890-2E94D9C6A617}
 		{863158AA-35BD-49CD-AF39-9C2A42DD776E} = {863158AA-35BD-49CD-AF39-9C2A42DD776E}
@@ -31,7 +30,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Calc", "Extern\Calc\Calc.cs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cred", "Extern\Cred\Cred.csproj", "{B96472D4-F3CB-4E84-9EA9-25FA88996273}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lua", "Extern\Lua\Lua.csproj", "{CEC32913-E576-48D8-A7A5-E998ACD53C99}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{22F63B60-0A4D-43B1-8535-56469E4EFE85}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -75,10 +77,6 @@ Global
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CEC32913-E576-48D8-A7A5-E998ACD53C99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CEC32913-E576-48D8-A7A5-E998ACD53C99}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CEC32913-E576-48D8-A7A5-E998ACD53C99}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CEC32913-E576-48D8-A7A5-E998ACD53C99}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -89,6 +87,8 @@ Global
 		{DC51B6E2-66EC-44E8-8F9E-D4D4D8AC5DAA} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
 		{BCA90365-4041-4D50-A890-2E94D9C6A617} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
-		{CEC32913-E576-48D8-A7A5-E998ACD53C99} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2143D050-154F-4485-AE3F-AFF8BC60440A}
 	EndGlobalSection
 EndGlobal

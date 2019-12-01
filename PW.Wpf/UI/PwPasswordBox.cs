@@ -36,6 +36,7 @@ namespace Neo.PerfectWorking.UI
 		public event EventHandler PasswordChanged;
 
 		private PwPasswordBox passwordBox = null;
+		private SecureString passwordText = null;
 		private readonly RoutedEventHandler passwordBoxChanged;
 		
 		public PwPasswordBoxController()
@@ -49,6 +50,7 @@ namespace Neo.PerfectWorking.UI
 			{
 				Detach();
 				this.passwordBox = passwordBox;
+				this.passwordBox.SetPassword(passwordText);
 				this.passwordBox.PasswordChanged += passwordBoxChanged;
 			}
 		} // proc Attach
@@ -56,18 +58,31 @@ namespace Neo.PerfectWorking.UI
 		internal void Detach()
 		{
 			if (passwordBox != null)
+			{
+				passwordText = passwordBox.GetPassword();
 				passwordBox.PasswordChanged -= passwordBoxChanged;
+			}
 			passwordBox = null;
 		} // proc Detach
 
 		public void SetPassword(SecureString password)
-			=> passwordBox.SetPassword(password);
+		{
+			if (passwordBox == null)
+				passwordText = password;
+			else
+				passwordBox.SetPassword(password);
+		} // proc SetPassword
 
 		public SecureString GetPassword()
-			=> passwordBox.GetPassword();
+				=> passwordBox == null
+					? passwordText
+					: passwordBox.GetPassword();
 
 		public void Clear()
-			=> passwordBox?.Clear();
+		{
+			passwordBox?.Clear();
+			passwordText = null;
+		} // proc Clear
 	} // class PwPasswordBoxController
 
 	#endregion
@@ -227,7 +242,7 @@ namespace Neo.PerfectWorking.UI
 
 		public void SetPassword(SecureString password)
 		{
-			this.password = password.Copy();
+			this.password = password?.Copy();
 			SetValue(hasPasswordPropertyKey, password != null && password.Length > 0);
 			passwordChanged = false;
 
@@ -243,7 +258,7 @@ namespace Neo.PerfectWorking.UI
 				passwordChanged = false;
 			}
 
-			return password.Copy();
+			return password?.Copy();
 		} // func GetPassword
 
 		private void OnControllerChanged(PwPasswordBoxController oldValue, PwPasswordBoxController newValue)

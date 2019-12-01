@@ -22,6 +22,7 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using Neo.PerfectWorking.Stuff;
+using TecWare.DE.Stuff;
 using static Neo.PerfectWorking.Cred.Provider.NativeMethods;
 
 namespace Neo.PerfectWorking.Cred.Provider
@@ -163,8 +164,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		public void Dispose()
 		{
-			GC.SuppressFinalize(this);
 			Dispose(true);
+			GC.SuppressFinalize(this);
 		} // proc Dispose
 
 		protected virtual void Dispose(bool disposing)
@@ -618,7 +619,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			{
 				if (encrypted is byte[] b)
 					return b;
-				else if (encrypted is string s && s.TryFromHexString(out var b2))
+				else if (encrypted is string s && ProcsPW.TryConvertToBytes(s, out var b2))
 					return b2;
 				else
 					return null;
@@ -658,7 +659,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var flags = 1;
 				if (localMachine)
 					flags |= 4;
-				if (!CryptUnprotectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, flags, ref dataOut))
+				if (!CryptUnprotectData(ref dataIn, null, ref dataIV, IntPtr.Zero, IntPtr.Zero, flags, ref dataOut))
 					throw new Win32Exception();
 
 				// unpack data
@@ -719,7 +720,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var flags = 1;
 				if (localMachine)
 					flags |= 4;
-				if (!CryptProtectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, flags, ref dataOut))
+				if (!CryptProtectData(ref dataIn, null, ref dataIV, IntPtr.Zero, IntPtr.Zero, flags, ref dataOut))
 					throw new Win32Exception();
 
 				// unpack data
@@ -731,7 +732,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 				return emitBinary
 					? (object)data
-					: (object)data.ToHexString();
+					: (object)Procs.ConvertToString(data);
 			}
 			finally
 			{
@@ -756,7 +757,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 	public sealed class PowerShellProtector : ICredentialProtector
 	{
-		private static string secureStringHeader = "76492d1116743f0423413b16050a5345";
+		private const string secureStringHeader = "76492d1116743f0423413b16050a5345";
 
 		private readonly byte[] secureKey;
 
@@ -842,7 +843,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				if (unpackedData.Length != 3 || unpackedData[0] != "2")
 					throw new FormatException();
 
-				if (!unpackedData[2].TryFromHexString(out var encryptedPassword))
+				if (!ProcsPW.TryConvertToBytes(unpackedData[2], out var encryptedPassword))
 				{
 					password = null;
 					return false;
@@ -850,33 +851,30 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var iv = Convert.FromBase64String(unpackedData[1]);
 
 				// decrypt
-				var aes = Aes.Create();
-				using (var encrypt = aes.CreateDecryptor(secureKey, iv))
-				using (var srcMem = new MemoryStream(encryptedPassword, false))
-				using (var srcCrypt = new CryptoStream(srcMem, encrypt, CryptoStreamMode.Read))
-				{
-					if (needPassword)
-					{
-						using (var ss = new SecureString())
-						{
-							while (true)
-							{
-								var bLow = srcCrypt.ReadByte();
-								if (bLow == -1)
-								{
-									password = ss.Copy();
-									return true;
-								}
-								var bHigh = srcCrypt.ReadByte();
+				using var aes = Aes.Create();
+				using var encrypt = aes.CreateDecryptor(secureKey, iv);
+				using var srcMem = new MemoryStream(encryptedPassword, false);
+				using var srcCrypt = new CryptoStream(srcMem, encrypt, CryptoStreamMode.Read);
 
-								ss.AppendChar(unchecked((char)((byte)bLow | ((byte)bHigh << 8))));
-							}
+				if (needPassword)
+				{
+					using var ss = new SecureString();
+					while (true)
+					{
+						var bLow = srcCrypt.ReadByte();
+						if (bLow == -1)
+						{
+							password = ss.Copy();
+							return true;
 						}
+						var bHigh = srcCrypt.ReadByte();
+
+						ss.AppendChar(unchecked((char)((byte)bLow | ((byte)bHigh << 8))));
 					}
-					else
-						password = null;
-					return true;
 				}
+				else
+					password = null;
+				return true;
 			}
 			catch (FormatException)
 			{
@@ -892,7 +890,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			var hData = default(GCHandle);
 			try
 			{
-				if (!dataString.TryFromHexString(out var data))
+				if (!ProcsPW.TryConvertToBytes(dataString, out var data))
 				{
 					password = null;
 					return false;
@@ -906,7 +904,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				};
 
 				// crypt data
-				if (!CryptUnprotectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, 1, ref dataOut))
+				if (!CryptUnprotectData(ref dataIn, null, ref dataIV, IntPtr.Zero, IntPtr.Zero, 1, ref dataOut))
 					throw new Win32Exception();
 
 				// unpack data
@@ -961,7 +959,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				};
 
 				// crypt data
-				if (!CryptProtectData(ref dataIn, String.Empty, ref dataIV, IntPtr.Zero, IntPtr.Zero, 1, ref dataOut))
+				if (!CryptProtectData(ref dataIn, null, ref dataIV, IntPtr.Zero, IntPtr.Zero, 1, ref dataOut))
 					throw new Win32Exception();
 
 				// unpack data
@@ -971,7 +969,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var data = new byte[dataOut.DataSize];
 				Marshal.Copy(dataOut.DataPtr, data, 0, dataOut.DataSize);
 
-				return data.ToHexString();
+				return Procs.ConvertToString(data);
 			}
 			finally
 			{
@@ -987,32 +985,30 @@ namespace Neo.PerfectWorking.Cred.Provider
 		{
 			var aes = Aes.Create();
 			var iv = aes.IV;
-			using (var encrypt = aes.CreateEncryptor(secureKey, aes.IV))
-			using (var destMem = new MemoryStream())
-			using (var destCrypt = new CryptoStream(destMem, encrypt, CryptoStreamMode.Write))
-			{
-				var c = (byte*)password.Value;
-				for (var i = 0; i < password.Size; i++)
-				{
-					destCrypt.WriteByte(*c);
-					c++;
-				}
-				destCrypt.FlushFinalBlock();
 
-				return secureStringHeader + Convert.ToBase64String(Encoding.Unicode.GetBytes("2|" + Convert.ToBase64String(iv) + "|" + destMem.ToArray().ToHexString()));
+			using var encrypt = aes.CreateEncryptor(secureKey, aes.IV);
+			using var destMem = new MemoryStream();
+			using var destCrypt = new CryptoStream(destMem, encrypt, CryptoStreamMode.Write);
+
+			var c = (byte*)password.Value;
+			for (var i = 0; i < password.Size; i++)
+			{
+				destCrypt.WriteByte(*c);
+				c++;
 			}
+			destCrypt.FlushFinalBlock();
+
+			return secureStringHeader + Convert.ToBase64String(Encoding.Unicode.GetBytes("2|" + Convert.ToBase64String(iv) + "|" + Procs.ConvertToString(destMem.ToArray())));
 		} // func ProtectAES
 
 		#endregion
 
 		private static byte[] GetUnicodeBytes(SecureString secureKey)
 		{
-			using (var pwd = new InteropSecurePassword(secureKey))
-			{
-				var r = new byte[pwd.Size];
-				Marshal.Copy(pwd.Value, r, 0, pwd.Size);
-				return r;
-			}
+			using var pwd = new InteropSecurePassword(secureKey);
+			var r = new byte[pwd.Size];
+			Marshal.Copy(pwd.Value, r, 0, pwd.Size);
+			return r;
 		} // func GetUnicodeByte
 	} // class PowerShellProtector 
 
@@ -1156,12 +1152,12 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		public static bool EqualValue(object v1, object v2)
 		{
-			if (Object.ReferenceEquals(v1, v2))
+			if (ReferenceEquals(v1, v2))
 				return true;
 			else if (v1 is string s1 && v2 is string s2)
 				return String.Compare(s1, s2, StringComparison.OrdinalIgnoreCase) == 0;
 			else if (v1 is byte[] b1 && v2 is byte[] b2)
-				return Procs.EqualBytes(b1, b2);
+				return Procs.CompareBytes(b1, b2);
 			else
 				return false;
 		} // func EqualValue

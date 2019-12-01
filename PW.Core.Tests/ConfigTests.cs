@@ -21,6 +21,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Neo.IronLua;
 using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.Stuff;
+using TecWare.DE.Stuff;
 
 namespace PW.Core.Tests
 {
@@ -103,7 +104,7 @@ namespace PW.Core.Tests
 			Assert.AreEqual(fileName, cfg.FileName);
 
 			var md5 = MD5.Create();
-			Assert.AreEqual("0CB38A7CEFDFC7BA596E3BF19A6DC782", md5.ComputeHash(File.ReadAllBytes(fileName)).ToHexString());
+			Assert.AreEqual("0CB38A7CEFDFC7BA596E3BF19A6DC782", Procs.ConvertToString(md5.ComputeHash(File.ReadAllBytes(fileName))));
 		}
 
 		[TestMethod]

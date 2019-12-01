@@ -37,8 +37,8 @@ namespace Neo.PerfectWorking.Cred
 		public CredPackage(IPwGlobal global) 
 			: base(global, nameof(CredPackage))
 		{
-			this.credentialProviders = global.RegisterCollection<ICredentialProvider>(this);
-			this.credentialProtectors = global.RegisterCollection<ICredentialProtector>(this);
+			credentialProviders = global.RegisterCollection<ICredentialProvider>(this);
+			credentialProtectors = global.RegisterCollection<ICredentialProtector>(this);
 
 			global.RegisterObject(this, nameof(CredPackagePane), new CredPackagePane(this));
 		} // ctor
@@ -55,7 +55,7 @@ namespace Neo.PerfectWorking.Cred
 
 		public ICredentialProtector CreateStaticDesProtector(string prefix, string keyInfo)
 		{
-			if (keyInfo.TryFromHexString(out var bytes))
+			if (ProcsPW.TryConvertToBytes(keyInfo, out var bytes))
 				return CreateStaticDesProtector(prefix, bytes);
 			else
 				throw new FormatException();
@@ -96,9 +96,7 @@ namespace Neo.PerfectWorking.Cred
 			switch (data)
 			{
 				case string plain:
-					{
-						return plain.CreateSecureString();
-					}
+					return plain.CreateSecureString();
 				case char[] chars:
 					{
 						var ss = new SecureString();
@@ -114,18 +112,15 @@ namespace Neo.PerfectWorking.Cred
 		} // func CreateSecureString
 
 		public SecureString LoadPsSecureString(string fileName, string key = null)
-		{
-			return GetPsSecureString(File.ReadAllText(fileName), key);
-		} // func LoadSecureString
+			=> GetPsSecureString(File.ReadAllText(fileName), key);
 
 		public SecureString GetPsSecureString(string data, string key)
 		{
 			using (var p = CreatePowerShellProtector(key))
 			{
-				if (p.TryDecrypt(data, out var pwd))
-					return pwd;
-				else
-					throw new IOException("Can not decrypt password.");
+				return p.TryDecrypt(data, out var pwd)
+					? pwd
+					: throw new IOException("Can not decrypt password.");
 			}
 		} // func GetPsSecureString
 
@@ -197,12 +192,7 @@ namespace Neo.PerfectWorking.Cred
 		public ICredentialProtector DefaultProtector
 		{
 			get => defaultProtector;
-			set
-			{
-				if (value == null)
-					throw new ArgumentNullException();
-				defaultProtector = value;
-			}
+			set => defaultProtector = value ?? throw new ArgumentNullException();
 		} // prop DefaultProtector
 
 		/// <summary>Publish the no protector</summary>

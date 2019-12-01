@@ -28,6 +28,8 @@ namespace Neo.PerfectWorking.UI
 {
 	public class PwTextBoxCommand : TextBox, ICommandSource
 	{
+		public static readonly object AlwaysCopyFullText = new object();
+
 		public static readonly DependencyProperty CommandProperty = ButtonBase.CommandProperty.AddOwner(typeof(PwTextBoxCommand));
 		public static readonly DependencyProperty CommandParameterProperty = ButtonBase.CommandParameterProperty.AddOwner(typeof(PwTextBoxCommand));
 		public static readonly DependencyProperty CommandTargetProperty = ButtonBase.CommandTargetProperty.AddOwner(typeof(PwTextBoxCommand));
@@ -35,6 +37,25 @@ namespace Neo.PerfectWorking.UI
 		public static readonly DependencyProperty CommandContentTemplateProperty = DependencyProperty.Register(nameof(CommandContentTemplate), typeof(DataTemplate), typeof(PwTextBoxCommand));
 		public static readonly DependencyProperty CommandContentTemplateSelectorProperty = DependencyProperty.Register(nameof(CommandContentTemplateSelector), typeof(DataTemplateSelector), typeof(PwTextBoxCommand));
 		public static readonly DependencyProperty CommandContentStringFormatProperty = DependencyProperty.Register(nameof(CommandContentStringFormat), typeof(string), typeof(PwTextBoxCommand));
+
+		public PwTextBoxCommand()
+		{
+			CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy, CopyCommandExecuted, CopyCommandCanExecute));
+		} // ctor
+
+		private void CopyCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+		{
+			if (e.Parameter == AlwaysCopyFullText || SelectionLength == 0)
+				Text.ToClipboard();
+			else
+				SelectedText.ToClipboard();
+		} // proc CopyCommandExecuted
+
+		private void CopyCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+		{
+			e.CanExecute = Text != null && Text.Length > 0;
+			e.Handled = true;
+		} // proc CopyCommandCanExecute
 
 		public ICommand Command
 		{

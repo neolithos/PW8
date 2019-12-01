@@ -126,6 +126,8 @@ namespace Neo.PerfectWorking.UI
 
 			#endregion
 
+			#region -- Execute --------------------------------------------------------
+
 			public bool Invoke()
 			{
 				if (hotkeyBinds.Count == 1)
@@ -137,9 +139,11 @@ namespace Neo.PerfectWorking.UI
 			{
 				if (command.CanExecute(null))
 					command.Execute(null);
-			}
+			} // proc ExecuteDirect
 
-			/// <summary>Key to register</summary>
+			#endregion
+
+			/// <summary>Key that is registered.</summary>
 			public PwKey Key { get; }
 			/// <summary>Hotkey id for registration.</summary>
 			public int HotKeyId { get; }
@@ -391,7 +395,7 @@ namespace Neo.PerfectWorking.UI
 		private IntPtr WmTaskbarNotify(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
 		{
 			var iconMsg = lParam.ToInt32() & 0xFFFF;
-			var iconId = lParam.ToInt32() >> 16;
+			//var iconId = lParam.ToInt32() >> 16;
 			var x = wParam.ToInt32() & 0xFFFF;
 			var y = wParam.ToInt32() >> 16;
 
@@ -443,7 +447,7 @@ namespace Neo.PerfectWorking.UI
 			SetForegroundWindow(hwnd);
 			mainWindow.Show();
 			mainWindow.Activate();
-		}
+		} // proc ShowMainWindow
 
 		private void RemoveIcon()
 		{
@@ -683,7 +687,10 @@ namespace Neo.PerfectWorking.UI
 		void IPwShellUI.ShowException(string text, Exception e)
 		{
 			if (Dispatcher.CheckAccess())
-				ShowException(text, e);
+			{
+				using (mainWindow.StayOpenBegin())
+					ShowException(text, e);
+			}
 			else
 				ShowExceptionAsync(text, e).Wait();
 		} // proc IPwShellUI.ShowException
@@ -813,6 +820,7 @@ namespace Neo.PerfectWorking.UI
 					return "c";
 				case MessageBoxResult.OK:
 					return "o";
+				case MessageBoxResult.None:
 				default:
 					return null;
 			}
@@ -831,7 +839,10 @@ namespace Neo.PerfectWorking.UI
 		string IPwShellUI.MsgBox(string text, string caption, object icon, object buttons, object result)
 		{
 			if (Dispatcher.CheckAccess())
-				return MsgBox(text, caption, icon, buttons, result);
+			{
+				using (mainWindow.StayOpenBegin())
+					return MsgBox(text, caption, icon, buttons, result);
+			}
 			else
 				return MsgBoxAsync(text, caption, icon, buttons, result).Result;
 		} // func IPwShellUI.MsgBox

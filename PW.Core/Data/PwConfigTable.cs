@@ -24,6 +24,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Neo.IronLua;
 using Neo.PerfectWorking.Stuff;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Data
 {

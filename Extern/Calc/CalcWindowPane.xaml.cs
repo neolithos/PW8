@@ -34,7 +34,7 @@ namespace Neo.PerfectWorking.Calc
 	/// <summary>
 	/// Interaction logic for CalcWindowPane.xaml
 	/// </summary>
-	public partial class CalcWindowPane : PwWindowPane
+	public partial class CalcWindowPane : PwContentPane
 	{
 		#region -- class VariableView ---------------------------------------------------
 

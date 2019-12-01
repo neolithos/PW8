@@ -55,7 +55,7 @@ namespace Neo.PerfectWorking.Cred
 		/// <param name="newItem"></param>
 		/// <returns></returns>
 		ICredentialInfo Append(ICredentialInfo newItem);
-		/// <summary></summary>
+		/// <summary>Remove a credential item.</summary>
 		/// <param name="targetName"></param>
 		/// <returns></returns>
 		bool Remove(string targetName);

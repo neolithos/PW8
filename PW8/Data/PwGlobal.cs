@@ -27,6 +27,7 @@ using System.Windows.Threading;
 using Neo.IronLua;
 using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.UI;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Data
 {

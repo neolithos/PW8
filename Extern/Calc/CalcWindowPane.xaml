@@ -12,7 +12,7 @@ CONDITIONS OF ANY KIND, either express or implied. See the Licence for the
 specific language governing permissions and limitations under the Licence.
 -->
 
-<ui:PwWindowPane x:Class="Neo.PerfectWorking.Calc.CalcWindowPane"
+<ui:PwContentPane x:Class="Neo.PerfectWorking.Calc.CalcWindowPane"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -22,21 +22,21 @@ specific language governing permissions and limitations under the Licence.
              mc:Ignorable="d" 
              Title="Rechner"
              d:DesignHeight="300" d:DesignWidth="300">
-	<ui:PwWindowPane.Image>
+	<ui:PwContentPane.Image>
 		<DrawingImage>
 			<DrawingImage.Drawing>
 				<GeometryDrawing Brush="#5DA5EF" Geometry="M7,2H17A2,2 0 0,1 19,4V20A2,2 0 0,1 17,22H7A2,2 0 0,1 5,20V4A2,2 0 0,1 7,2M7,4V8H17V4H7M7,10V12H9V10H7M11,10V12H13V10H11M15,10V12H17V10H15M7,14V16H9V14H7M11,14V16H13V14H11M15,14V16H17V14H15M7,18V20H9V18H7M11,18V20H13V18H11M15,18V20H17V18H15Z" />
 			</DrawingImage.Drawing>
 		</DrawingImage>
-	</ui:PwWindowPane.Image>
-	<ui:PwWindowPane.Resources>
+	</ui:PwContentPane.Image>
+	<ui:PwContentPane.Resources>
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceDictionary Source="pack://application:,,,/PW.Wpf;component/Themes/CommonIcons.xaml" />
 			</ResourceDictionary.MergedDictionaries>
 		</ResourceDictionary>
-	</ui:PwWindowPane.Resources>
-	<Grid DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type ui:PwWindowPane}}}">
+	</ui:PwContentPane.Resources>
+	<Grid DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type ui:PwContentPane}}}">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition />
 			<ColumnDefinition Width="120" />
@@ -126,4 +126,4 @@ specific language governing permissions and limitations under the Licence.
 			<ui:PwTextBoxCommand.CommandContent>C</ui:PwTextBoxCommand.CommandContent>
 		</ui:PwTextBoxCommand>
 	</Grid>
-</ui:PwWindowPane>
+</ui:PwContentPane>

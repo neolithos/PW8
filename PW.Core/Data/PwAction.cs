@@ -15,10 +15,10 @@
 #endregion
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Neo.PerfectWorking.Stuff;
+using TecWare.DE.Data;
 
 namespace Neo.PerfectWorking.Data
 {
@@ -164,13 +164,13 @@ namespace Neo.PerfectWorking.Data
 		/// <summary>Title of the button</summary>
 		public string Title { get; }
 		/// <summary>Shortcut for the command.</summary>
-		public PwKey Key { get => hotKey; set => SetProperty(nameof(Key), ref hotKey, value); }
+		public PwKey Key { get => hotKey; set => Set(ref hotKey, value, nameof(Key)); }
 
 		/// <summary>Label of the button</summary>
 		public string Label
 		{
 			get => currentLabel ?? originalLabel;
-			set => SetProperty(nameof(Label), ref currentLabel, value);
+			set => Set(ref currentLabel, value, nameof(Label));
 		} // prop Label
 
 		/// <summary>Is the progress bar active</summary>
@@ -202,7 +202,7 @@ namespace Neo.PerfectWorking.Data
 				Refresh();
 			}
 		} // prop Execute
-	} // class PwButton
+	} // class PwAction
 
 	#endregion
 }

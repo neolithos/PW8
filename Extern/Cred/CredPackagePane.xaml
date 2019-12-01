@@ -12,7 +12,7 @@ CONDITIONS OF ANY KIND, either express or implied. See the Licence for the
 specific language governing permissions and limitations under the Licence.
 -->
 
-<ui:PwWindowPane x:Class="Neo.PerfectWorking.Cred.CredPackagePane"
+<ui:PwNavigationPane x:Class="Neo.PerfectWorking.Cred.CredPackagePane"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -22,16 +22,16 @@ specific language governing permissions and limitations under the Licence.
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              mc:Ignorable="d" 
              x:Name="credPackagePane"
-             Title="Passwörter"
+             BaseTitle="Passwörter"
              d:DesignHeight="300" d:DesignWidth="300">
-	<ui:PwWindowPane.Image>
+	<ui:PwNavigationPane.Image>
 		<DrawingImage>
 			<DrawingImage.Drawing>
 				<GeometryDrawing Brush="#999900" Geometry="M5064 1555c875,-875 2394,-773 3394,226 1000,1000 1101,2519 226,3394 -738,738 -1935,781 -2892,176l-3218 3218c-125,125 -328,125 -453,0l-453 -453c-125,-125 -125,-328 0,-453l3218 -3218c-605,-957 -562,-2154 176,-2892zm-2263 7241l1358 -1358 1131 1131 -453 453 -453 -453 -453 453 453 453 -453 453 -1131 -1131zm3168 -6336c375,-375 1084,-274 1584,226 500,500 601,1209 226,1584 -375,375 -1084,274 -1584,-226 -500,-500 -601,-1209 -226,-1584z" />
 			</DrawingImage.Drawing>
 		</DrawingImage>
-	</ui:PwWindowPane.Image>
-    <ui:PwWindowPane.Resources>
+	</ui:PwNavigationPane.Image>
+	<ui:PwNavigationPane.Resources>
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceDictionary Source="pack://application:,,,/PW.Wpf;component/Themes/CommonIcons.xaml" />
@@ -66,22 +66,6 @@ specific language governing permissions and limitations under the Licence.
 				</Viewbox>
 			</ControlTemplate>
 
-			<Style TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
-				<Setter Property="Width" Value="200" />
-				<Setter Property="Height" Value="20" />
-				<Setter Property="Padding" Value="1" />
-			</Style>
-			<Style x:Key="CommentTextBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
-				<Setter Property="Height" Value="54" />
-				<Setter Property="AcceptsReturn" Value="True" />
-				<Setter Property="TextWrapping" Value="Wrap" />
-				<Setter Property="VerticalScrollBarVisibility" Value="Auto" />
-			</Style>
-			<Style TargetType="{x:Type ui:PwTextBoxCommand}" BasedOn="{StaticResource {x:Type ui:PwTextBoxCommand}}">
-				<Setter Property="Width" Value="200" />
-				<Setter Property="Height" Value="20" />
-				<Setter Property="Padding" Value="1" />
-			</Style>
 			<Style x:Key="CredPopup" TargetType="{x:Type Popup}">
 				<Setter Property="StaysOpen" Value="False" />
 				<Setter Property="Placement" Value="Right" />
@@ -89,75 +73,6 @@ specific language governing permissions and limitations under the Licence.
 			<Style TargetType="{x:Type Label}" BasedOn="{StaticResource {x:Type Label}}">
 				<Setter Property="Margin" Value="0,0,12,0" />
 			</Style>
-			
-			<Popup x:Key="newCredentialInfoPopup" Style="{StaticResource CredPopup}">
-				<ui:PwPopupContent>
-					<Grid>
-						<Grid.RowDefinitions>
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-						</Grid.RowDefinitions>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition />
-							<ColumnDefinition />
-						</Grid.ColumnDefinitions>
-
-						<Label Grid.Column="0" Grid.Row="0" Content="Provider:" />
-						<ComboBox Grid.Column="1" Grid.Row="0" Width="200" Height="22" ItemsSource="{Binding Providers}" SelectedValue="{Binding NewItem.Provider,UpdateSourceTrigger=PropertyChanged}">
-							<ComboBox.ItemTemplate>
-								<DataTemplate>
-									<TextBlock Text="{Binding Name}" />
-								</DataTemplate>
-							</ComboBox.ItemTemplate>
-						</ComboBox>
-						<Label Grid.Column="0" Grid.Row="1" Content="Ziel:" />
-						<TextBox Grid.Column="1" Grid.Row="1" Text="{Binding NewItem.TargetName,UpdateSourceTrigger=PropertyChanged}" />
-						<Label Grid.Column="0" Grid.Row="2" Content="Nutzer:" />
-						<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding NewItem.UserName,UpdateSourceTrigger=PropertyChanged}" />
-						<Label Grid.Column="0" Grid.Row="3" Content="Passwort:" />
-						<ui:PwPasswordBox Grid.Column="1" Grid.Row="3" Width="200" Height="20" Padding="1" Controller="{Binding NewItem.Password}" AllowCopyPassword="True" />
-						<Label Grid.Column="0" Grid.Row="4" Content="Kommentar:" />
-						<TextBox Grid.Column="1" Grid.Row="4" Text="{Binding NewItem.Comment,UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource CommentTextBox}" />
-
-						<Button Grid.Column="1" Grid.Row="5" Content="Hinzufügen" Command="{Binding NewItem.AppendCommand}" Margin="0,6,0,0" Padding="6,1" HorizontalAlignment="Right" />
-					</Grid>
-				</ui:PwPopupContent>
-			</Popup>
-			<Popup x:Key="changeCredentialInfoPopup" Style="{StaticResource CredPopup}" Placement="Bottom" Margin="10" Opened="ChangeCredentialInfoPopupOpened">
-				<ui:PwPopupContent>
-					<Grid>
-						<Grid.RowDefinitions>
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-						</Grid.RowDefinitions>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition />
-							<ColumnDefinition />
-						</Grid.ColumnDefinitions>
-
-						<Label Grid.Column="0" Grid.Row="0" Content="Provider:" />
-						<TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type Popup}},Path=DataContext.Provider.Name,Mode=OneWay}" />
-						<Label Grid.Column="0" Grid.Row="1" Content="Ziel:" />
-						<TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType={x:Type Popup}},Path=DataContext.TargetName,Mode=OneWay}" />
-						<Label Grid.Column="0" Grid.Row="2" Content="Nutzer:" />
-						<TextBox Grid.Column="1" Grid.Row="2" Text="{Binding ChangeItem.UserName,UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding ChangeItem.IsReadOnly,Mode=OneWay}" />
-						<Label Grid.Column="0" Grid.Row="3" Content="Passwort:" />
-						<ui:PwPasswordBox Grid.Column="1" Grid.Row="3" Width="200" Height="20" Padding="1" Controller="{Binding ChangeItem.Password}" AllowCopyPassword="True" IsReadOnly="{Binding ChangeItem.IsReadOnly,Mode=OneWay}" />
-						<Label Grid.Column="0" Grid.Row="4" Content="Kommentar:" />
-						<TextBox Grid.Column="1" Grid.Row="4" Text="{Binding ChangeItem.Comment,UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource CommentTextBox}" IsReadOnly="{Binding ChangeItem.IsReadOnly,Mode=OneWay}"  />
-
-						<Button Grid.Column="1" Grid.Row="5" Content="Ändern" Command="{Binding ChangeItem.ChangeCommand}" Margin="0,6,0,0" Padding="6,1" HorizontalAlignment="Right" IsEnabled="{Binding ChangeItem.IsReadOnly,Mode=OneWay,Converter={StaticResource NotBooleanConverter}}" />
-					</Grid>
-				</ui:PwPopupContent>
-			</Popup>
 			<Popup x:Key="removePopup" Style="{StaticResource CredPopup}" Placement="Bottom">
 				<ui:PwPopupContent>
 					<Grid>
@@ -172,71 +87,31 @@ specific language governing permissions and limitations under the Licence.
 					</Grid>
 				</ui:PwPopupContent>
 			</Popup>
-			<Popup x:Key="cryptPopup" Style="{StaticResource CredPopup}">
-				<ui:PwPopupContent>
-					<ui:PwPopupContent.CommandBindings>
-						<CommandBinding Command="{x:Static local:CredPackagePane.CopyGeneratedPasswordCommand}" Executed="CopyTextFromParameter" CanExecute="CanCopyTextFromParameter" />
-					</ui:PwPopupContent.CommandBindings>
-					<Grid>
-						<Grid.RowDefinitions>
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-							<RowDefinition />
-						</Grid.RowDefinitions>
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition />
-							<ColumnDefinition />
-						</Grid.ColumnDefinitions>
-
-						<Label Grid.Column="0" Grid.Row="0" Content="Klartext:" />
-						<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="0" Text="{Binding Generator.Decrypted,UpdateSourceTrigger=PropertyChanged,Delay=120}" Command="{x:Static local:CredPackagePane.CopyGeneratedPasswordCommand}" CommandParameter="{Binding Generator.Decrypted}">
-							<ui:PwTextBoxCommand.CommandContent>
-								<ContentControl Template="{StaticResource CopyImage}" />
-							</ui:PwTextBoxCommand.CommandContent>
-						</ui:PwTextBoxCommand>
-
-						<Label Grid.Column="0" Grid.Row="1" Content="Verschleiert:" />
-						<ui:PwTextBoxCommand Grid.Column="1" Grid.Row="1" Text="{Binding Generator.Encrypted,UpdateSourceTrigger=PropertyChanged,Delay=120}" Command="{x:Static local:CredPackagePane.CopyGeneratedPasswordCommand}" CommandParameter="{Binding Generator.Encrypted}">
-							<ui:PwTextBoxCommand.CommandContent>
-								<ContentControl Template="{StaticResource CopyImage}" />
-							</ui:PwTextBoxCommand.CommandContent>
-						</ui:PwTextBoxCommand>
-
-						<Label Grid.Column="0" Grid.Row="2" Content="Generieren:" />
-						<StackPanel Grid.Column="1" Grid.Row="2" Margin="0,6,0,0">
-							<CheckBox Content="Kleinbuchstaben" IsChecked="{Binding Generator.GenerateLetters}" />
-							<CheckBox Content="GroßBuchstaben" IsChecked="{Binding Generator.GenerateCaseSensitive}" />
-							<CheckBox Content="Zahlen" IsChecked="{Binding Generator.GenerateDigits}" />
-							<CheckBox Content="Sonderzeichen" IsChecked="{Binding Generator.GenerateSpecial}" />
-							<Slider Value="{Binding Generator.GenerateLength}" Minimum="4" Maximum="100" />
-							<TextBlock Text="{Binding Generator.GenerateLength}" />
-						</StackPanel>
-
-						<Button Grid.Column="1" Grid.Row="3" Content="Erzeugen" Command="{Binding Generator.GeneratePasswordCommand}" Margin="0,6,0,0" HorizontalAlignment="Right" Padding="6,1" />
-					</Grid>
-				</ui:PwPopupContent>
-			</Popup>
 		</ResourceDictionary>
-	</ui:PwWindowPane.Resources>
-    
+	</ui:PwNavigationPane.Resources>
+	<ui:PwNavigationPane.Header>
+		<StackPanel Orientation="Vertical" Grid.Column="0" Margin="0,0,16,0">
+			<Button Width="24" Click="PushNewPasswordClick">
+				<ContentControl Template="{StaticResource KeyAddImage}" Margin="2" />
+			</Button>
+			<Button Width="24" Click="PushPasswordGeneratorClick">
+				<ContentControl Template="{StaticResource KeyGenerateImage}" Margin="2" />
+			</Button>
+		</StackPanel>
+	</ui:PwNavigationPane.Header>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Orientation="Vertical" Grid.Column="0">
-            <ui:PwPopupButton Width="24" Popup="{StaticResource newCredentialInfoPopup}">
-				<ContentControl Template="{StaticResource KeyAddImage}" Margin="2" />
-			</ui:PwPopupButton>
-            <ui:PwPopupButton Width="24" Popup="{StaticResource cryptPopup}">
-				<ContentControl Template="{StaticResource KeyGenerateImage}" Margin="2" />
-			</ui:PwPopupButton>
-        </StackPanel>
-
-        <ui:PwSearchListBox x:Name="credentialListBox" Grid.Column="1" ItemsSource="{Binding Credentials}" HorizontalContentAlignment="Stretch">
-            <ui:PwSearchListBox.ItemTemplate>
+		<ui:PwSearchListBox x:Name="credentialListBox" Grid.Column="1" ItemsSource="{Binding Credentials}" HorizontalContentAlignment="Stretch">
+			<ui:PwSearchListBox.ItemContainerStyle>
+				<Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+					<EventSetter Event="MouseDoubleClick" Handler="credentialItemDoubleClick" />
+				</Style>
+			</ui:PwSearchListBox.ItemContainerStyle>
+			<ui:PwSearchListBox.ItemTemplate>
                 <DataTemplate>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -257,19 +132,11 @@ specific language governing permissions and limitations under the Licence.
                         </TextBlock>
                         <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="1" Text="{Binding Comment,Mode=OneWay}" Foreground="{DynamicResource {x:Static SystemColors.ControlDarkDarkBrushKey}}" />
 
-                        <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Orientation="Horizontal">
-                            <StackPanel.Resources>
-                                <Style TargetType="{x:Type ui:PwPopupButton}" BasedOn="{StaticResource {x:Type Button}}">
-                                    <Setter Property="Width" Value="24" />
-                                    <Setter Property="Height" Value="24" />
-                                    <Setter Property="Padding" Value="0" />
-                                    <Setter Property="Margin" Value="3,0,0,0" />
-                                </Style>
-                            </StackPanel.Resources>
-                            <ui:PwPopupButton Popup="{StaticResource changeCredentialInfoPopup}">
+						<StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Orientation="Horizontal">
+							<Button Padding="0" Margin="3,0,0,0" Width="24" Height="24" Click="PushEditPasswordClick">
 								<ContentControl Template="{StaticResource KeyEditImage}" Margin="2" />
-							</ui:PwPopupButton>
-							<ui:PwPopupButton Popup="{StaticResource removePopup}" IsEnabled="{Binding Provider.IsReadOnly,Mode=OneWay,Converter={StaticResource NotBooleanConverter}}">
+							</Button>
+							<ui:PwPopupButton Padding="0" Margin="3,0,0,0" Width="24" Height="24" Popup="{StaticResource removePopup}" IsEnabled="{Binding Provider.IsReadOnly,Mode=OneWay,Converter={StaticResource NotBooleanConverter}}">
 								<ContentControl Template="{StaticResource KeyDeleteImage}" Margin="2" />
 							</ui:PwPopupButton>
                         </StackPanel>
@@ -278,4 +145,4 @@ specific language governing permissions and limitations under the Licence.
             </ui:PwSearchListBox.ItemTemplate>
         </ui:PwSearchListBox>
     </Grid>
-</ui:PwWindowPane>
+</ui:PwNavigationPane>

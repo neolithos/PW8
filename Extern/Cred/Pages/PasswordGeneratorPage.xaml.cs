@@ -13,19 +13,39 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
-using Neo.PerfectWorking.Data;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
+using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.Stuff;
+using Neo.PerfectWorking.UI;
+using TecWare.DE.Data;
+using TecWare.DE.Stuff;
 
-namespace Neo.PerfectWorking.Cred.Data
+namespace Neo.PerfectWorking.Cred.Pages
 {
-	internal sealed class PasswordGenerator : ObservableObject
+	#region -- class PasswordGeneratorPage---------------------------------------------
+
+	public partial class PasswordGeneratorPage : PwContentPage
+	{
+		private readonly CredPackage package;
+
+		public PasswordGeneratorPage(CredPackage package)
+		{
+			this.package = package;
+
+			InitializeComponent();
+
+			DataContext = new PasswordGeneratorModel(package);
+		} // ctor
+	} // class PasswordGeneratorPage
+
+	#endregion
+
+	#region -- class PasswordGeneratorModel -------------------------------------------
+
+	internal sealed class PasswordGeneratorModel : ObservableObject
 	{
 		private readonly CredPackage package;
 		private readonly SimpleCommand generatePasswordCommand;
@@ -36,10 +56,10 @@ namespace Neo.PerfectWorking.Cred.Data
 		private string decrypted;
 		private string encrypted;
 
-		public PasswordGenerator(CredPackage package)
+		public PasswordGeneratorModel(CredPackage package)
 		{
 			this.package = package;
-			this.generatePasswordCommand = new SimpleCommand(
+			generatePasswordCommand = new SimpleCommand(
 				p => GenerateNextPassword(),
 				p => length >= 4 && flags.Any(c => c)
 			);
@@ -62,7 +82,7 @@ namespace Neo.PerfectWorking.Cred.Data
 			{
 				if (flags[i])
 				{
-					v = v - staticPool[i].Item2;
+					v -= staticPool[i].Item2;
 					if (v < 0)
 						return i;
 				}
@@ -106,17 +126,15 @@ namespace Neo.PerfectWorking.Cred.Data
 		{
 			string EncryptValue()
 			{
-				using (var ss = value.CreateSecureString())
+				using var ss = value.CreateSecureString();
+				switch (package.EncryptPassword(ss))
 				{
-					switch (package.EncryptPassword(ss))
-					{
-						case byte[] b:
-							return b.ToHexString();
-						case string s:
-							return s;
-						default:
-							return null;
-					}
+					case byte[] b:
+						return Procs.ConvertToString(b);
+					case string s:
+						return s;
+					default:
+						return null;
 				}
 			}
 
@@ -134,8 +152,8 @@ namespace Neo.PerfectWorking.Cred.Data
 				decrypted = String.Empty;
 			else
 			{
-				using (var pwd = package.DecryptPassword(value))
-					decrypted = pwd.GetPassword();
+				using var pwd = package.DecryptPassword(value);
+				decrypted = pwd.GetPassword();
 			}
 
 			OnPropertyChanged(nameof(Decrypted));
@@ -169,22 +187,22 @@ namespace Neo.PerfectWorking.Cred.Data
 			}
 		} // prop Encrypted
 
-		private void SetProperty(string propertyName, int flagIndex, bool value)
+		private void Set(string propertyName, int flagIndex, bool value)
 		{
-			SetProperty(propertyName, ref flags[flagIndex], value);
+			Set(ref flags[flagIndex], value, propertyName);
 			generatePasswordCommand.Refresh();
-		} // proc SetProperty
+		} // proc Set
 
 		/// <summary>Generate password with letters</summary>
-		public bool GenerateLetters { get => flags[generateLetters]; set => SetProperty(nameof(GenerateLetters), generateLetters, value); }
+		public bool GenerateLetters { get => flags[generateLetters]; set => Set(nameof(GenerateLetters), generateLetters, value); }
 		/// <summary>Generate password with digits</summary>
-		public bool GenerateDigits { get => flags[generateDigits]; set => SetProperty(nameof(GenerateDigits), generateDigits, value); }
+		public bool GenerateDigits { get => flags[generateDigits]; set => Set(nameof(GenerateDigits), generateDigits, value); }
 		/// <summary>Generate password with case sensitive</summary>
-		public bool GenerateCaseSensitive { get => flags[generateCaseSensitive]; set => SetProperty(nameof(GenerateCaseSensitive), generateCaseSensitive, value); }
+		public bool GenerateCaseSensitive { get => flags[generateCaseSensitive]; set => Set(nameof(GenerateCaseSensitive), generateCaseSensitive, value); }
 		/// <summary>Generate password with special chars</summary>
-		public bool GenerateSpecial { get => flags[generateSpecial]; set => SetProperty(nameof(GenerateSpecial), generateSpecial, value); }
+		public bool GenerateSpecial { get => flags[generateSpecial]; set => Set(nameof(GenerateSpecial), generateSpecial, value); }
 
-		public int GenerateLength { get => length; set { SetProperty(nameof(GenerateLength), ref length, value); generatePasswordCommand.Refresh(); } }
+		public int GenerateLength { get => length; set { Set(ref length, value, nameof(GenerateLength)); generatePasswordCommand.Refresh(); } }
 
 		public ICommand GeneratePasswordCommand => generatePasswordCommand;
 
@@ -195,17 +213,19 @@ namespace Neo.PerfectWorking.Cred.Data
 		private const int generateDigits = 2;
 		private const int generateSpecial = 3;
 
-		private static char[] poolLetters = new[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p', 'q', 'e', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
-		private static char[] poolLettersCap = new[] { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'E', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' };
-		private static char[] poolDigits = new[] { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' };
-		private static char[] poolSpecial = new[] { ',', '.', '-', '#', '+', ';', ':', '_', '\'', '*', '~', '<', '>', '|', '!', '"', '§', '$', '%', '&', '/', '(', ')', '=', '?', '{', '[', ']', '}', '\\' };
+		private static readonly char[] poolLetters = new[] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'm', 'n', 'o', 'p', 'q', 'e', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
+		private static readonly char[] poolLettersCap = new[] { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'E', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z' };
+		private static readonly char[] poolDigits = new[] { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' };
+		private static readonly char[] poolSpecial = new[] { ',', '.', '-', '#', '+', ';', ':', '_', '\'', '*', '~', '<', '>', '|', '!', '"', '§', '$', '%', '&', '/', '(', ')', '=', '?', '{', '[', ']', '}', '\\' };
 
-		private static Tuple<char[], int>[] staticPool = new[]
+		private static readonly Tuple<char[], int>[] staticPool = new[]
 		{
 			new Tuple<char[], int>(poolLetters, 18),
 			new Tuple<char[], int>(poolLettersCap, 6),
 			new Tuple<char[], int>(poolDigits, 3),
 			new Tuple<char[], int>(poolSpecial, 1)
 		};
-	} // class PasswordGenerator
+	} // class PasswordGeneratorModel
+
+	#endregion
 }

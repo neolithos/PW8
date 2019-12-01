@@ -100,25 +100,54 @@ namespace Neo.PerfectWorking.Data
 		object Control { get; }
 		/// <summary>Returns the image of the panel.</summary>
 		object Image { get; }
+		/// <summary></summary>
+		bool IsEnabled { get; }
 	} // interface IPwWindowPane
+
+	#endregion
+
+	#region -- interface IPwWindowBackButton ------------------------------------------
+
+	/// <summary>Support for the Back button</summary>
+	public interface IPwWindowBackButton
+	{
+		/// <summary></summary>
+		void GoBack();
+		bool CanBack { get; }
+	} // interface IPwWindowBackButton
 
 	#endregion
 
 	#region -- interface IPwHotKey ----------------------------------------------------
 
-	/// <summary></summary>
+	/// <summary>Hot key</summary>
 	public interface IPwHotKey : ICommand
 	{
-		/// <summary></summary>
+		/// <summary>Hotkey definition.</summary>
 		PwKey Key { get; }
 	} // interface IPwRegisteredHotKey
+
+	#endregion
+
+	#region -- interface IPwUIHotKey --------------------------------------------------
 
 	/// <summary></summary>
 	public interface IPwUIHotKey : IPwHotKey
 	{
+		/// <summary>Title of the command to execute</summary>
 		string Title { get; }
+		/// <summary>Image of the command.</summary>
 		object Image { get; }
 	} // interface IPwUIHotKey
+
+	#endregion
+
+	#region -- interface IPwContextMenuFactory ----------------------------------------
+
+	/// <summary></summary>
+	public interface IPwContextMenuFactory
+	{
+	} // interface IPwContextMenuFactory
 
 	#endregion
 

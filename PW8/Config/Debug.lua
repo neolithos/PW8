@@ -9,7 +9,6 @@ resolvePath[[..\..\..\Extern\QuickConnect\bin\Debug]];
 creds = package("PW.Cred.dll;CredPackage");
 
 package("PW.Calc.dll;CalcPackage");
-package("PW.Lua.dll;LuaPackage");
 quickConnect = package("PW.QuickConnect.dll;QuickConnectPackage");
 
 -- register my crypt protectors

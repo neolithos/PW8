@@ -225,6 +225,7 @@ namespace Neo.PerfectWorking.UI
 			UpdateProgressCircle();
 		} // proc OnRenderSizeChanged
 
+		/// <summary>Text in the middle of the circle.</summary>
 		public string ProgressText => (string)GetValue(ProgressTextProperty);
 
 		public int NumberOfPoints { get => (int)GetValue(NumberOfPointsProperty); set => SetValue(NumberOfPointsProperty, value); }

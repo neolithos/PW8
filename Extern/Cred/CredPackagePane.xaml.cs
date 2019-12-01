@@ -13,34 +13,21 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
-using Neo.PerfectWorking.Cred.Data;
-using Neo.PerfectWorking.Data;
-using Neo.PerfectWorking.UI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+using Neo.PerfectWorking.Cred.Pages;
+using Neo.PerfectWorking.UI;
 
 namespace Neo.PerfectWorking.Cred
 {
-	/// <summary>
-	/// Interaction logic for CredPackagePane.xaml
-	/// </summary>
-	public partial class CredPackagePane : PwWindowPane
+	public partial class CredPackagePane : PwNavigationPane
 	{
 		public static RoutedUICommand CopyGeneratedPasswordCommand = new RoutedUICommand();
 		public static RoutedUICommand GeneratePasswordCommand = new RoutedUICommand();
@@ -55,28 +42,16 @@ namespace Neo.PerfectWorking.Cred
 			private readonly NotifyCollectionChangedEventHandler credentialProviderChanged;
 			private readonly List<ICredentialInfo> credentials = new List<ICredentialInfo>();
 
-			private readonly CollectionViewSource credentialProviderCollectionView;
 			private readonly CollectionViewSource credentialInfoCollectionView;
-
-			private readonly PasswordGenerator generator;
-			private readonly NewCredentialInfo newCredentialInfo;
-			private readonly ChangeCredentialInfo changeCredentialInfo;
 
 			public CredPackageModel(CredPackage package)
 			{
 				this.package = package;
 				this.credentialProviderChanged = CredentialProvider_CollectionChanged;
-				this.generator = new PasswordGenerator(package);
-				this.newCredentialInfo = new NewCredentialInfo(package.Global.UI);
-				this.changeCredentialInfo = new ChangeCredentialInfo();
-
+			
 				// connect
 				package.CredentialProviders.CollectionChanged += CredentialProviders_CollectionChanged;
 				CredentialProviders_CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-
-				credentialProviderCollectionView = new CollectionViewSource() { Source = package.CredentialProviders };
-				credentialProviderCollectionView.Filter += (sender, e) => e.Accepted = e.Item is ICredentialProvider cp && !cp.IsReadOnly;
-				credentialProviderCollectionView.SortDescriptions.Add(new SortDescription(nameof(ICredentialProvider.Name), ListSortDirection.Ascending));
 
 				credentialInfoCollectionView = new CollectionViewSource() { Source = this };
 				credentialInfoCollectionView.SortDescriptions.Add(new SortDescription(nameof(ICredentialInfo.TargetName), ListSortDirection.Ascending));
@@ -265,12 +240,6 @@ namespace Neo.PerfectWorking.Cred
 			#endregion
 
 			public ICollectionView Credentials => credentialInfoCollectionView.View;
-			public ICollectionView Providers => credentialProviderCollectionView.View;
-
-			public PasswordGenerator Generator => generator;
-
-			public NewCredentialInfo NewItem => newCredentialInfo;
-			public ChangeCredentialInfo ChangeItem => changeCredentialInfo;
 		} // class CredPackageModel
 
 		#endregion
@@ -278,10 +247,17 @@ namespace Neo.PerfectWorking.Cred
 		private readonly CredPackage package;
 		private readonly CredPackageModel model;
 
+		private readonly PasswordGeneratorPage passwordGeneratorPage;
+		private readonly PasswordEditPage passwordEditPage;
+
 		public CredPackagePane(CredPackage package)
 		{
 			this.package = package;
 			this.model = new CredPackageModel(package);
+
+			passwordGeneratorPage = new PasswordGeneratorPage(package);
+
+			passwordEditPage = new PasswordEditPage(this);
 
 			InitializeComponent();
 
@@ -289,10 +265,6 @@ namespace Neo.PerfectWorking.Cred
 
 			// set filter command
 			model.Credentials.Filter = OnFilter;
-
-			// todo: nicht schön
-			var popup = (Popup)FindResource("changeCredentialInfoPopup");
-			((FrameworkElement)popup.Child).DataContext = model;
 		} // ctor
 
 		private bool OnFilter(object item)
@@ -307,36 +279,7 @@ namespace Neo.PerfectWorking.Cred
 			else
 				return false;
 		} // func OnFilter
-
-		private void CopyTextFromParameter(object sender, ExecutedRoutedEventArgs e)
-		{
-			var clipText = e.Parameter as string;
-			if (!String.IsNullOrEmpty(clipText))
-			{
-				try
-				{
-					Clipboard.SetText(clipText);
-				}
-				catch (Exception ex)
-				{
-					package.Global.UI.ShowException(ex);
-				}
-				e.Handled = true;
-			}
-		} // proc CopyTextFromParameter
-
-		private void CanCopyTextFromParameter(object sender, CanExecuteRoutedEventArgs e)
-		{
-			e.CanExecute = !String.IsNullOrEmpty(e.Parameter as string);
-			e.Handled = true;
-		} // proc CanCopyTextFromParameter
-
-		private void ChangeCredentialInfoPopupOpened(object sender, EventArgs e)
-		{
-			var popup = (Popup)sender;
-			model.ChangeItem.SetCurrent((ICredentialInfo)popup.DataContext);
-		} // event ChangeCredentialInfoPopupOpened
-
+		
 		private void RemoveCredentialInfo(object sender, RoutedEventArgs e)
 		{
 			var source = (FrameworkElement)e.Source;
@@ -345,5 +288,45 @@ namespace Neo.PerfectWorking.Cred
 			credInfo.Provider.Remove(credInfo.TargetName);
 			e.Handled = true;
 		} // event RemoveCredentialInfo
+
+		private void PushNewPasswordClick(object sender, RoutedEventArgs e)
+		{
+			if (CurrentPage == passwordEditPage)
+			{
+				if (passwordEditPage.CurrentCredential == null)
+					passwordEditPage.Pop();
+				else
+					passwordEditPage.New();
+			}
+			else
+			{
+				if (passwordEditPage.CurrentCredential != null)
+					passwordEditPage.New();
+				Push(passwordEditPage);
+			}
+		} // event PushNewPasswordClick
+
+		private void PushEditPasswordClick(object sender, RoutedEventArgs e)
+		{
+			var source = (FrameworkElement)e.Source;
+			var credInfo = (ICredentialInfo)source.DataContext;
+			if (passwordEditPage == CurrentPage)
+				return;
+
+			if (passwordEditPage.CurrentCredential != credInfo)
+				passwordEditPage.Load(credInfo);
+			Push(passwordEditPage);
+		} // event PushEditPasswordClick
+
+		private void credentialItemDoubleClick(object sender, MouseButtonEventArgs e)
+		{
+			if (e.LeftButton == MouseButtonState.Pressed)
+				PushEditPasswordClick(sender, e);
+		} // proc credentialItemDoubleClick
+
+		private void PushPasswordGeneratorClick(object sender, RoutedEventArgs e)
+			=> Toggle(passwordGeneratorPage);
+
+		public CredPackage Package => package;
 	} // class CredPackagePane
 }

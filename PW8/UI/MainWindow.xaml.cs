@@ -31,6 +31,8 @@ using Neo.IronLua;
 using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.Win32;
+using TecWare.DE.Data;
+using TecWare.DE.Stuff;
 using static Neo.PerfectWorking.Win32.NativeMethods;
 
 namespace Neo.PerfectWorking.UI
@@ -45,6 +47,8 @@ namespace Neo.PerfectWorking.UI
 
 			private readonly MainWindowModel model;
 			private readonly IPwWindowPane pane;
+			private readonly IPwWindowBackButton backButton;
+			private readonly SimpleCommand backCommand;
 
 			private readonly PropertyChangedEventHandler panePropertyChanged;
 			private readonly EventHandler collectionViewCurrentChanged;
@@ -53,6 +57,9 @@ namespace Neo.PerfectWorking.UI
 			{
 				this.model = model;
 				this.pane = pane;
+				backButton = pane as IPwWindowBackButton;
+				if (backButton != null)
+					backCommand = new SimpleCommand(p => backButton.GoBack(), p => pane.IsEnabled);
 
 				collectionViewCurrentChanged = (sender, e) => OnPropertyChanged(nameof(IsChecked));
 				panePropertyChanged = PanePropertyChanged;
@@ -84,6 +91,12 @@ namespace Neo.PerfectWorking.UI
 					case nameof(IPwWindowPane.Control):
 						OnPropertyChanged(nameof(Control));
 						break;
+					case nameof(IPwWindowPane.IsEnabled):
+						backCommand.Refresh();
+						break;
+					case nameof(IPwWindowBackButton.CanBack):
+						OnPropertyChanged(nameof(CommandVisible));
+						break;
 				}
 			} // proc PanePropertyChanged
 
@@ -93,6 +106,9 @@ namespace Neo.PerfectWorking.UI
 			public string Title => pane.Title ?? "Unknown";
 			public object Image => pane.Image;
 			public FrameworkElement Control => (FrameworkElement)pane.Control;
+
+			public Visibility CommandVisible => backButton != null && backButton.CanBack ? Visibility.Visible : Visibility.Hidden;
+			public ICommand Command => backCommand;
 
 			public bool IsChecked
 			{
@@ -107,7 +123,7 @@ namespace Neo.PerfectWorking.UI
 
 		#region -- class MainWindowModel ----------------------------------------------
 
-		public class MainWindowModel //: INotifyPropertyChanged
+		public class MainWindowModel : ObservableObject
 		{
 			private readonly MainWindow mainWindow;
 			private readonly IPwCollection<IPwWindowPane> panes;
@@ -143,6 +159,9 @@ namespace Neo.PerfectWorking.UI
 
 				Panes.MoveCurrentToFirst();
 			} // ctor
+
+			public void FireIsStayOpenChanged()
+				=> OnPropertyChanged(nameof(IsStayOpen));
 
 			private void Panes_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
 			{
@@ -189,13 +208,18 @@ namespace Neo.PerfectWorking.UI
 			public ICollectionView Panes { get; }
 			public LuaTable Window { get; }
 			public IPwGlobal Global { get; }
+
+			public bool IsStayOpen => mainWindow.stayOpenCounter > 0;
 		} // class MainWindowModel
 
 		#endregion
 
-		private HwndSource hwnd;
+		private readonly HwndSource hwnd;
 		private RECT sizingArea;
 		private readonly MainWindowModel model;
+
+		private int stayOpenCounter = 0;
+		private IDisposable userStayOpen = null;
 
 		#region -- Ctor/Dtor ----------------------------------------------------------
 
@@ -229,7 +253,7 @@ namespace Neo.PerfectWorking.UI
 
 			SetWindowLong(hwnd.Handle, GWL_STYLE, GetWindowLong(hwnd.Handle, GWL_STYLE) & (~(uint)(WS_MAXIMIZEBOX | WS_MINIMIZEBOX)));
 
-			this.DataContext = model;
+			DataContext = model;
 
 			Focus();
 		} // ctor
@@ -243,8 +267,37 @@ namespace Neo.PerfectWorking.UI
 		protected override void OnDeactivated(EventArgs e)
 		{
 			base.OnDeactivated(e);
-			Hide();
+			if (stayOpenCounter <= 0)
+				Hide();
 		} // proc OnDeactivated
+
+		public IDisposable StayOpenBegin()
+		{
+			stayOpenCounter++;
+			model.FireIsStayOpenChanged();
+			return new DisposableScope(StayOpenEnd);
+		} // func StayOpenBegin 
+
+		private void StayOpenEnd()
+		{
+			if (--stayOpenCounter <= 0)
+			{
+				if (!IsKeyboardFocusWithin)
+					Hide();
+			}
+			model.FireIsStayOpenChanged();
+		} // proc StayOpenEnd
+
+		private void StayOpenToggleClick(object sender, RoutedEventArgs e)
+		{
+			if (userStayOpen == null)
+				userStayOpen = StayOpenBegin();
+			else
+			{
+				userStayOpen.Dispose();
+				userStayOpen = null;
+			}
+		} // proc StayOpenToggleClick
 
 		#endregion
 
@@ -389,8 +442,8 @@ namespace Neo.PerfectWorking.UI
 			// run command
 			try
 			{
-				using (var p = Process.Start(psi))
-					p.WaitForInputIdle(400);
+				using var p = Process.Start(psi);
+				p.WaitForInputIdle(400);
 			}
 			catch (Exception e)
 			{
