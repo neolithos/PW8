@@ -180,7 +180,7 @@ namespace Neo.PerfectWorking.Calc
 
 		public CalcWindowPane(CalcPackage package)
 		{
-			this.package = package;
+			this.package = package ?? throw new ArgumentNullException(nameof(package));
 			ui = package.Global.UI;
 
 			InitializeComponent();

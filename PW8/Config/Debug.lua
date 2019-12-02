@@ -2,6 +2,7 @@
 const File typeof System.IO.File;
 
 resolvePath[[..\..\..\Extern\Calc\bin\Debug]];
+resolvePath[[..\..\..\Extern\Guid\bin\Debug]];
 resolvePath[[..\..\..\Extern\Lua\bin\Debug]];
 resolvePath[[..\..\..\Extern\Cred\bin\Debug]];
 resolvePath[[..\..\..\Extern\QuickConnect\bin\Debug]];
@@ -9,6 +10,7 @@ resolvePath[[..\..\..\Extern\QuickConnect\bin\Debug]];
 creds = package("PW.Cred.dll;CredPackage");
 
 package("PW.Calc.dll;CalcPackage");
+package("PW.Guid.dll;GuidPackage");
 quickConnect = package("PW.QuickConnect.dll;QuickConnectPackage");
 
 -- register my crypt protectors

@@ -13,13 +13,8 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Neo.PerfectWorking.Data;
 using Neo.IronLua;
+using Neo.PerfectWorking.Data;
 
 namespace Neo.PerfectWorking.Calc
 {

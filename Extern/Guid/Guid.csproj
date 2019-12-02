@@ -6,7 +6,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{DC51B6E2-66EC-44E8-8F9E-D4D4D8AC5DAA}</ProjectGuid>
     <OutputType>library</OutputType>
-    <RootNamespace>Neo.PerfectWorking.Guid</RootNamespace>
+    <RootNamespace>Neo.PerfectWorking</RootNamespace>
     <AssemblyName>PW.Guid</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -54,6 +54,10 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="GuidPackage.cs" />
+    <Compile Include="GuidPackagePane.xaml.cs">
+      <DependentUpon>GuidPackagePane.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -82,6 +86,22 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\PW.Core\PW.Core.csproj">
+      <Project>{a9b32763-cc24-4739-a866-760b641b55cb}</Project>
+      <Name>PW.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\PW.Wpf\PW.Wpf.csproj">
+      <Project>{dfbb4c4d-6b32-41bd-bcc5-bd4f2a4f8a5a}</Project>
+      <Name>PW.Wpf</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="GuidPackagePane.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

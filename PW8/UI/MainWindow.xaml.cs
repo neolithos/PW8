@@ -136,7 +136,7 @@ namespace Neo.PerfectWorking.UI
 				this.Global = global ?? throw new ArgumentNullException(nameof(global));
 				var globalPackage = (IPwPackage)global;
 
-				Window = global.UserLocal.GetLuaTable("Window");
+				Window = global.UserLocal.GetLuaTable(nameof(Window));
 
 				// pane registration
 				panes = global.RegisterCollection<IPwWindowPane>(globalPackage); // highest
