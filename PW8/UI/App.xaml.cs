@@ -353,7 +353,6 @@ namespace Neo.PerfectWorking.UI
 
 		private void UpdateNotifyIcon(bool force = false)
 		{
-
 			CreateNotifyIconData(out var nid);
 
 			if (!notifyIconRegistered || force)
@@ -365,7 +364,7 @@ namespace Neo.PerfectWorking.UI
 #if DEBUG
 					var iconId = new IntPtr(102);
 #else
-					var iconId = new IntPtr(Stuff.Procs.IsWin10 ? 103 : 101);
+					var iconId = new IntPtr(ProcsPW.IsWin10 ? 103 : 101);
 #endif
 					if (LoadIconMetric(GetModuleHandle(null), iconId, 0, out notificationIcon) != 0)
 						throw new Win32Exception();

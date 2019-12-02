@@ -5,6 +5,7 @@
 
 		<DeployCalc>true</DeployCalc>
 		<DeployCred>true</DeployCred>
+		<DeployGuid>true</DeployGuid>
 		<DeployQuickConnect>true</DeployQuickConnect>
 	</PropertyGroup>
 </Project>

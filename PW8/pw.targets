@@ -5,13 +5,14 @@
 	<ItemGroup>
 		<DeployItem Include="..\PW8\bin\Release\PW8.*" />
 		<DeployItem Include="..\PW8\bin\Release\Neo.Lua.*" />
+		<DeployItem Include="..\PW8\bin\Release\DES.Core.*" />
 		<DeployItem Include="..\PW.Wpf\bin\Release\PW.Wpf.*" />
 		<DeployItem Include="..\PW.Core\bin\Release\PW.Core.*" />
 		<DeployItem Include="..\Extern\Calc\bin\Release\PW.Calc.*" Condition="'$(DeployCalc)' == 'true'" />
 		<DeployItem Include="..\Extern\Cred\bin\Release\PW.Cred.*" Condition="'$(DeployCred)' == 'true'" />
+		<DeployItem Include="..\Extern\Guid\bin\Release\PW.Guid.*" Condition="'$(DeployGuid)' == 'true'" />
 		<DeployItem Include="..\Extern\GamePadRC\bin\Release\PW.GamePadRC.*" Condition="false" />
 		<DeployItem Include="..\Extern\Guid\bin\Release\PW.Guid.*" Condition="false" />
-		<DeployItem Include="..\Extern\Lua\bin\Release\PW.Lua.*" Condition="false" />
 		<DeployItem Include="..\Extern\QuickConnect\bin\Release\PW.QuickConnect.*" Condition="'$(DeployQuickConnect)' == 'true'" />
 	</ItemGroup>
 
