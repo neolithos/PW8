@@ -142,6 +142,7 @@ namespace Neo.PerfectWorking.Cred.Pages
 			public ICollectionView Providers => null;
 
 			public bool IsNew => currentInfo == null;
+			public bool IsReadOnly => provider?.IsReadOnly ?? false;
 			public bool IsModified => isModified;
 
 			public ICredentialInfo CurrentInfo => currentInfo;
@@ -197,7 +198,7 @@ namespace Neo.PerfectWorking.Cred.Pages
 
 		public void SaveCanExecute(object sender, CanExecuteRoutedEventArgs e)
 		{
-			e.CanExecute = currentContext?.IsModified ?? false;
+			e.CanExecute = currentContext != null && !currentContext.IsReadOnly && currentContext.IsModified;
 			e.Handled = true;
 		} // event SaveCanExecute
 
@@ -205,7 +206,7 @@ namespace Neo.PerfectWorking.Cred.Pages
 		{
 			Pop();
 			e.Handled = true;
-		} // event CloseExecuted
+		}
 
 		public ICollectionView Providers => credentialProviderCollectionView.View;
 		public ICredentialInfo CurrentCredential => currentContext?.CurrentInfo;

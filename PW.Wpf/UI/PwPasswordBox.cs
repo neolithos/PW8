@@ -160,19 +160,16 @@ namespace Neo.PerfectWorking.UI
 			}
 		} // proc DetachEvents
 
-
 		private string GetPasswordString()
 		{
-			using (var tmp = (passwordBox?.SecurePassword ?? password))
+			using var tmp = (passwordBox?.SecurePassword ?? password);
+			if (tmp != null && tmp.Length > 0)
 			{
-				if (tmp != null && tmp.Length > 0)
-				{
-					using (var passwordPtr = new InteropSecurePassword(tmp))
-						return Marshal.PtrToStringUni(passwordPtr, tmp.Length);
-				}
-				else
-					return String.Empty;
+				using var passwordPtr = new InteropSecurePassword(tmp);
+				return Marshal.PtrToStringUni(passwordPtr, tmp.Length);
 			}
+			else
+				return String.Empty;
 		} // proc GetPasswordString
 
 		private void OnVisibleBoxChanged(bool oldValue, bool newValue)

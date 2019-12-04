@@ -1,11 +1,11 @@
 ﻿const CryptProtectorInit = [[C:\Tools\PW8\Data\Crypt.lua]];
 const File typeof System.IO.File;
 
-resolvePath[[..\..\..\Extern\Calc\bin\Debug]];
-resolvePath[[..\..\..\Extern\Guid\bin\Debug]];
-resolvePath[[..\..\..\Extern\Lua\bin\Debug]];
-resolvePath[[..\..\..\Extern\Cred\bin\Debug]];
-resolvePath[[..\..\..\Extern\QuickConnect\bin\Debug]];
+AddResolvePath[[..\..\..\Extern\Calc\bin\Debug]];
+AddResolvePath[[..\..\..\Extern\Guid\bin\Debug]];
+AddResolvePath[[..\..\..\Extern\Lua\bin\Debug]];
+AddResolvePath[[..\..\..\Extern\Cred\bin\Debug]];
+AddResolvePath[[..\..\..\Extern\QuickConnect\bin\Debug]];
 
 creds = package("PW.Cred.dll;CredPackage");
 

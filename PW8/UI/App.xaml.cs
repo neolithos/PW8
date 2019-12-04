@@ -49,7 +49,7 @@ namespace Neo.PerfectWorking.UI
 
 			private readonly PwKey key;
 			private readonly int hotKeyId;
-			private bool registered = false;
+			private bool isRegistered = false;
 
 			#region -- Ctor/Dtor ------------------------------------------------------
 
@@ -71,8 +71,7 @@ namespace Neo.PerfectWorking.UI
 				if (hotkeyBinds.Count == 0)
 				{
 					hotkeyBinds.Add(hotKey);
-					if (!Register())
-						throw new ArgumentException("HotKey registration failed.");
+					Register();
 				}
 				else
 				{
@@ -102,7 +101,7 @@ namespace Neo.PerfectWorking.UI
 			public bool Contains(IPwHotKey hotkey)
 				=> hotkeyBinds.Contains(hotkey);
 
-			private bool Register()
+			private void Register()
 			{
 				// unregister current hotkey
 				UnRegister();
@@ -111,26 +110,23 @@ namespace Neo.PerfectWorking.UI
 				{
 					Debug.Print($"Register HotKey '{Key}' with Id {HotKeyId}: Failed");
 					var e = new Win32Exception();
-					if (e.NativeErrorCode == 1409) // Failed to register
-						return false;
-					throw e;
+					if (e.NativeErrorCode != 1409) // Failed to register
+						throw e;
 				}
 				else
 				{
-					registered = true;
+					isRegistered = true;
 					Debug.Print($"Register HotKey '{Key}' with Id {HotKeyId}: Successful");
 				}
-
-				return true;
 			} // proc Register
 
 			private void UnRegister()
 			{
 				// unregister
 				var r = UnregisterHotKey(hwnd.Handle, HotKeyId);
-				if (registered)
+				if (isRegistered)
 					Debug.Print($"Unregister HotKey '{Key}' with Id {HotKeyId}: {(r ? "Successful" : "Failed")}.");
-				registered = false;
+				isRegistered = false;
 			} // proc UnRegister
 
 			#endregion
@@ -156,6 +152,8 @@ namespace Neo.PerfectWorking.UI
 			public PwKey Key => key;
 			/// <summary>Hotkey id for registration.</summary>
 			public int HotKeyId => hotKeyId;
+			/// <summary>IUs this hot key registered.</summary>
+			public bool IsRegistered => isRegistered;
 
 			public static int GetHotKeyId(PwKey key)
 			{
@@ -552,7 +550,7 @@ namespace Neo.PerfectWorking.UI
 
 		#region -- HotKey List --------------------------------------------------------
 
-		private void AddHotKey(IPwHotKey hotkey)
+		private PwRegisteredHotKey AddHotKey(IPwHotKey hotkey)
 		{
 			// add hot changed
 			if (hotkey is INotifyPropertyChanged npc)
@@ -561,7 +559,7 @@ namespace Neo.PerfectWorking.UI
 			// check for the key property
 			var key = hotkey.Key;
 			if (key == PwKey.None)
-				return;
+				return null;
 
 			// ensure id
 			var hotKeyId = PwRegisteredHotKey.GetHotKeyId(hotkey.Key);
@@ -573,6 +571,7 @@ namespace Neo.PerfectWorking.UI
 			}
 			// register hotkey
 			registered.Add(hotkey);
+			return registered;
 		} // proc AddHotKey
 
 		private void RemoveHotKey(IPwHotKey hotkey)
@@ -602,6 +601,14 @@ namespace Neo.PerfectWorking.UI
 
 		private void Hotkeys_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
 		{
+			var failedMessage = new StringBuilder();
+
+			void CheckResult(PwRegisteredHotKey r)
+			{
+				if (r != null && !r.IsRegistered)
+					failedMessage.Append(String.Format("Failed to register: {0}", r.Key));
+			}
+
 			switch (e.Action)
 			{
 				case NotifyCollectionChangedAction.Reset:
@@ -614,12 +621,12 @@ namespace Neo.PerfectWorking.UI
 					if (hwnd != null)
 					{
 						foreach (var c in hotkeys)
-							AddHotKey(c);
+							CheckResult(AddHotKey(c));
 					}
 					break;
 				case NotifyCollectionChangedAction.Add:
 					foreach (var c in e.NewItems)
-						AddHotKey((IPwHotKey)c);
+						CheckResult(AddHotKey((IPwHotKey)c));
 					break;
 				case NotifyCollectionChangedAction.Remove:
 					foreach (var c in e.OldItems)
@@ -629,11 +636,14 @@ namespace Neo.PerfectWorking.UI
 					foreach (var c in e.OldItems)
 						RemoveHotKey((IPwHotKey)c);
 					foreach (var c in e.NewItems)
-						AddHotKey((IPwHotKey)c);
+						CheckResult(AddHotKey((IPwHotKey)c));
 					break;
 				default:
 					throw new NotImplementedException();
 			}
+
+			if (failedMessage.Length > 0)
+				MsgBox("HotKey registration failed!" + Environment.NewLine + failedMessage.ToString(), "Warning", "W");
 		} // event Hotkeys_CollectionChanged
 
 		private void Npc_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -834,7 +844,7 @@ namespace Neo.PerfectWorking.UI
 			}
 		} // func GetMsgBoxResultFromResult
 
-		private string MsgBox(string text, string caption, object icon, object buttons, object result)
+		private string MsgBox(string text, string caption, object icon, object buttons = null, object result = null)
 		{
 			var image = GetMsgBoxImage(icon);
 			var button = GetMsgBoxButtons(buttons, image);

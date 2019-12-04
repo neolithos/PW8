@@ -169,7 +169,9 @@ namespace Neo.PerfectWorking.Cred
 
 		public ICredentialProvider CreateFileCredentialProvider(string fileName, ICredentialProtector protector = null, bool readOnly = false)
 		{
-			if (!Path.IsPathRooted(fileName))
+			if (readOnly)
+				fileName = Global.ResolveFile(fileName);
+			else if (!Path.IsPathRooted(fileName))
 			{
 				if (fileName.IndexOf('\\') >= 0)
 					throw new Exception("Relative paths are not allowed.");

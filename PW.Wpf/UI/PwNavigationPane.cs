@@ -20,6 +20,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Neo.PerfectWorking.Data;
 
 namespace Neo.PerfectWorking.UI
@@ -31,6 +32,20 @@ namespace Neo.PerfectWorking.UI
 		public static readonly DependencyProperty TitleProperty = PwContentPane.TitleProperty.AddOwner(typeof(PwContentPage));
 
 		private PwNavigationPane navigation = null;
+
+		public PwContentPage()
+		{
+			//CommandBindings.Add(new CommandBinding(ApplicationCommands.Stop, (sender, e) =>
+			//{
+			//	Pop();
+			//	e.Handled = true;
+			//},
+			//(sender, e) =>
+			//{
+			//	e.CanExecute = true;
+			//	e.Handled = true;
+			//}));
+		} // ctor
 
 		public bool Pop()
 		{

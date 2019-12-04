@@ -327,7 +327,7 @@ namespace Neo.PerfectWorking.Data
 
 		#region -- Assembly Manager ---------------------------------------------------
 
-		[LuaMember("resolvePath")]
+		[LuaMember]
 		private void AddResolvePath(string path)
 		{
 			if (String.IsNullOrEmpty(path))
@@ -425,10 +425,11 @@ namespace Neo.PerfectWorking.Data
 					initPackage = packageCreation();
 				}
 				else // package type is the same, do a dirty refresh
-				{
-					initPackage = oldPackage;
-				}
+					return oldPackage;
 			}
+
+			if (initPackage == null)
+				throw new ArgumentNullException(nameof(initPackage));
 
 			currentInitializedPackages.Add(initPackage);
 			return initPackage;
@@ -587,7 +588,11 @@ namespace Neo.PerfectWorking.Data
 			=> Lua.CompileChunk(fileName, compileOptions);
 
 		private void ShowSyntaxException(LuaParseException e)
-			=> UI.ShowException("Parse Exception", e);
+			=> UI.ShowException($"Parse Exception {e.FileName}:{e.Line}", e);
+
+		[LuaMember("require")]
+		public LuaResult LuaRequire(object modname)
+			=> DoChunk(CompileFile(ResolveFile((string)modname)));
 
 		#endregion
 
@@ -860,10 +865,12 @@ namespace Neo.PerfectWorking.Data
 
 		#region -- Keyboard functions -------------------------------------------------
 
-
 		[LuaMember]
 		public void SendKeyData(string data)
 		{
+			if (String.IsNullOrEmpty(data))
+				return;
+
 			var keyList = new PwKeyList();
 			foreach (var c in data)
 				keyList.Append(c);

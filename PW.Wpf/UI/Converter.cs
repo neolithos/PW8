@@ -28,6 +28,7 @@ namespace Neo.PerfectWorking.UI
 	{
 		public static IValueConverter NotBoolean { get; } = new NotBooleanConverter();
 		public static IValueConverter BooleanToVisible { get; } = new VisibilityBooleanConverter();
+		public static IValueConverter BooleanToNotVisible { get; } = new VisibilityBooleanConverter() { Negate = true };
 		public static IValueConverter BooleanToCollapsed { get; } = new VisibilityBooleanConverter() { Collapse = true };
 	} // class PwConverter
 

@@ -39,6 +39,12 @@ namespace Neo.PerfectWorking.Cred.Pages
 
 			DataContext = new PasswordGeneratorModel(package);
 		} // ctor
+
+		private void CloseExecuted(object sender, ExecutedRoutedEventArgs e)
+		{
+			Pop();
+			e.Handled = true;
+		} // proc CloseExecuted
 	} // class PasswordGeneratorPage
 
 	#endregion
