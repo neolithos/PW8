@@ -425,7 +425,7 @@ namespace Neo.PerfectWorking.Data
 					initPackage = packageCreation();
 				}
 				else // package type is the same, do a dirty refresh
-					return oldPackage;
+					initPackage = oldPackage;
 			}
 
 			if (initPackage == null)
@@ -634,7 +634,7 @@ namespace Neo.PerfectWorking.Data
 			} // proc RemoveSemiInitializedObjects
 
 			if (currentInitializedPackages != null)
-				throw new InvalidOperationException();
+				throw new InvalidOperationException("Can not call refresh, within an refresh.");
 
 			currentInitializedPackages = new List<IPwPackage> { this };
 			currentInitializationExceptions = new List<PwPackageInitializationException>();

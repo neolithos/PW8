@@ -146,6 +146,8 @@ namespace Neo.PerfectWorking.QuickConnect
 						await ErrBoxAsync(true, "Passwort ist ungültig.");
 					else if (hr == 53) // ERROR_BAD_NETPATH
 						await ErrBoxAsync(true, "Netzwerk nicht erreichbar.");
+					else if (hr == 67) // ERROR_BAD_NET_NAME
+						await ErrBoxAsync(true, "Remote ist ungültig.");
 					else if (hr == 1203) // ERROR_NO_NET_OR_BAD_PATH
 						await ErrBoxAsync(true, "Netzwerk nicht verfügbar oder der Netzwerkpfad wurde falsch angegeben.");
 					else if (hr == 1219) // ERROR_SESSION_CREDENTIAL_CONFLICT
@@ -230,7 +232,7 @@ namespace Neo.PerfectWorking.QuickConnect
 
 		private bool isDisposed = false;
 		private int lastConnectionEnum;
-		private List<WeakReference<Connection>> connections = new List<WeakReference<Connection>>();
+		private readonly List<WeakReference<Connection>> connections = new List<WeakReference<Connection>>();
 
 		public QuickConnectPackage(IPwGlobal global) 
 			: base(global, nameof(QuickConnectPackage))
@@ -307,8 +309,8 @@ namespace Neo.PerfectWorking.QuickConnect
 			return false;
 		} // proc OnIdle
 
-		private static ImageSource imageConnected;
-		private static ImageSource imageDisconnected;
+		private static readonly ImageSource imageConnected;
+		private static readonly ImageSource imageDisconnected;
 
 		static QuickConnectPackage()
 		{
