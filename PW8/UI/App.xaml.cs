@@ -47,13 +47,17 @@ namespace Neo.PerfectWorking.UI
 			private readonly HwndSource hwnd;
 			private readonly List<IPwHotKey> hotkeyBinds = new List<IPwHotKey>();
 
+			private readonly PwKey key;
+			private readonly int hotKeyId;
+			private bool registered = false;
+
 			#region -- Ctor/Dtor ------------------------------------------------------
 
 			public PwRegisteredHotKey(HwndSource hwnd, PwKey key, int hotKeyId)
 			{
 				this.hwnd = hwnd ?? throw new ArgumentNullException(nameof(mainWindow));
-				Key = key;
-				HotKeyId = hotKeyId;
+				this.key = key;
+				this.hotKeyId = hotKeyId;
 			} // ctor
 
 			public void Clear()
@@ -112,7 +116,10 @@ namespace Neo.PerfectWorking.UI
 					throw e;
 				}
 				else
+				{
+					registered = true;
 					Debug.Print($"Register HotKey '{Key}' with Id {HotKeyId}: Successful");
+				}
 
 				return true;
 			} // proc Register
@@ -121,7 +128,9 @@ namespace Neo.PerfectWorking.UI
 			{
 				// unregister
 				var r = UnregisterHotKey(hwnd.Handle, HotKeyId);
-				Debug.Print($"Unregister HotKey '{Key}' with Id {HotKeyId}: {(r ? "Successful" : "Failed")}.");
+				if (registered)
+					Debug.Print($"Unregister HotKey '{Key}' with Id {HotKeyId}: {(r ? "Successful" : "Failed")}.");
+				registered = false;
 			} // proc UnRegister
 
 			#endregion
@@ -144,9 +153,9 @@ namespace Neo.PerfectWorking.UI
 			#endregion
 
 			/// <summary>Key that is registered.</summary>
-			public PwKey Key { get; }
+			public PwKey Key => key;
 			/// <summary>Hotkey id for registration.</summary>
-			public int HotKeyId { get; }
+			public int HotKeyId => hotKeyId;
 
 			public static int GetHotKeyId(PwKey key)
 			{

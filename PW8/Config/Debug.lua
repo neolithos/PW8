@@ -43,11 +43,16 @@ local function executeMessageNotify(button)
 
 end; -- executeMessageNotify
 
+local function sendKeyCommand()
+	SendKeyData("[Hallo]");
+end;
+
 package("test",
 	function (self)
 		self.passwordStore = creds:CreateFileCredentialProvider("pwds", cryptKey.Protector);
 
 		self.testProgress = CreateAction(title = "Test Progress", label = "Zeigt die Progressbar", func = executeTestProgress);
+		self.sendKey = CreateHotKey(title = "Send",  key = "Ctrl+Win+T", command = sendKeyCommand);
 
 		for i = 1,3,1 do
 			self.RegisterObject("btn{0}":Format(i), CreateAction(title = "Test {0}":Format(i), label = "Zeigt eine Textbox an.", func = executeMessageNotify));

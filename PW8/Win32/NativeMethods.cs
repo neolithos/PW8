@@ -130,13 +130,13 @@ namespace Neo.PerfectWorking.Win32
 		[DllImport(user32)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool SetForegroundWindow(IntPtr hWnd);
-		[DllImport(user32, SetLastError = true, CharSet = CharSet.Auto)]
+		[DllImport(user32, CharSet = CharSet.Unicode, SetLastError = true)]
 		public static extern uint RegisterWindowMessage(string lpString);
 		[DllImport(user32)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool GetCursorPos(ref Point pt);
 
-		[DllImport(kernel32, SetLastError = true)]
+		[DllImport(kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
 		public static extern IntPtr GetModuleHandle(string lpModuleName);
 		[DllImport(comctl32, SetLastError = true)]
 		public static extern int LoadIconMetric(IntPtr instanceHandle, IntPtr iconId, int desiredMetric, out IntPtr icon);

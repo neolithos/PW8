@@ -18,6 +18,8 @@ using System.ComponentModel;
 using System.ComponentModel.Design.Serialization;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
+using static Neo.PerfectWorking.NativeMethods;
 
 namespace Neo.PerfectWorking.Stuff
 {
@@ -38,6 +40,19 @@ namespace Neo.PerfectWorking.Stuff
 		/// <summary></summary>
 		Win = 8,
 	} // enum PwKeyModifiers
+
+	#endregion
+
+	#region -- enum PwKeySend ---------------------------------------------------------
+
+	[Flags]
+	public enum PwKeySend
+	{
+		None = 0,
+		Up = 1,
+		Down = 2,
+		Both = 3
+	} // enum PwKeySend
 
 	#endregion
 
@@ -116,13 +131,23 @@ namespace Neo.PerfectWorking.Stuff
 
 		#endregion
 
+		/// <summary>Send a single key to the focused application.</summary>
+		/// <param name="flag"></param>
+		public void SendKey(PwKeySend flag)
+		{
+			if (flag == PwKeySend.None)
+				return;
+
+			new PwKeyList().Append(this, flag).Send();
+		} // proc SendKey
+
 		/// <summary>Raw key value.</summary>
 		public int Value { get => rawValue; set => rawValue = ValidateKey(value); }
 
 		/// <summary>Key modifiers</summary>
 		public PwKeyModifiers Modifiers { get => (PwKeyModifiers)DecodeKeyModifiers(rawValue); set => Value = EncodeKeyModifiers((int)value) | GetKeyCode(rawValue); }
 		/// <summary>Get virtual key code</summary>
-		public int VirtualKey { get => GetKeyCode(rawValue); set => Value = MaskModifiers(rawValue) | GetKeyCode(value); }
+		public ushort VirtualKey { get => GetKeyCode(rawValue); set => Value = MaskModifiers(rawValue) | GetKeyCode(value); }
 
 		/// <summary>Is this key valid.</summary>
 		public bool IsValid => rawValue > 0;
@@ -138,12 +163,12 @@ namespace Neo.PerfectWorking.Stuff
 		private static readonly string[] keyNames =
 		{
 			null, // 0
-			null,
-			null,
+			"RButton", // 1 mouse right
+			"LButton", // 2 mouse left
 			"Cancel", // 3
-			null,
-			null,
-			null,
+			"MButton", // 4
+			"XButton1", // 5
+			"XButton2", // 6
 			null,
 			"Back", //  8
 			"Tab", //  9
@@ -399,22 +424,29 @@ namespace Neo.PerfectWorking.Stuff
 		#region -- modifierNames --
 
 		private static readonly string[] modifierNames = { "Alt", "Ctrl", "Shift", "Win" };
+		private static readonly string[] modifierNamesDE = { "Alt", "Strg", "Umschalt", "Win" };
 
 		#endregion
 
 		private static string GetModifierName(int idx, CultureInfo culture)
-			=> idx >= 0 && idx < modifierNames.Length ? modifierNames[idx] : null;
+		{
+			var mn = GetModifierNames(culture);
+			return idx >= 0 && idx < mn.Length ? mn[idx] : null;
+		} // func GetModifierName
 
 		private static int FindModifierIndex(string modifierName, CultureInfo culture, bool ignoreCase = true)
-			=> ignoreCase
+		{
+			var mn = GetModifierNames(culture);
+			return ignoreCase
 				? Array.FindIndex(modifierNames, c => String.Compare(c, modifierName, StringComparison.OrdinalIgnoreCase) == 0)
 				: Array.IndexOf(modifierNames, modifierName);
+		} // func FindModifierIndex
 
 		/// <summary></summary>
 		/// <param name="culture"></param>
 		/// <returns></returns>
 		public static string[] GetModifierNames(CultureInfo culture)
-			=> modifierNames;
+			=> culture.TwoLetterISOLanguageName == "de" ? modifierNamesDE : modifierNames;
 
 		/// <summary></summary>
 		/// <param name="keyName"></param>
@@ -448,15 +480,15 @@ namespace Neo.PerfectWorking.Stuff
 			// check key modifiers
 			var keyModifiers = DecodeKeyModifiers(newValue);
 			if ((keyModifiers & noRepeatModifier) != 0) // may be repeat setted
-				keyModifiers = keyModifiers & ~noRepeatModifier;
+				keyModifiers &= ~noRepeatModifier;
 			if (keyModifiers > 15)
 				return 0;
 
 			return newValue;
 		} // func ValidateKey
 
-		private static int GetKeyCode(int key)
-			=> key & 0xFFFF;
+		private static ushort GetKeyCode(int key)
+			=> (ushort)(key & 0xFFFF);
 
 		private static int DecodeKeyModifiers(int rawValue)
 			=> rawValue >> 16;
@@ -598,6 +630,224 @@ namespace Neo.PerfectWorking.Stuff
 				return base.ConvertTo(context, culture, value, destinationType);
 		} // func ConvertTo
 	} // class PwKeyConverter
+
+	#endregion
+
+	#region -- class PwKeyList --------------------------------------------------------
+
+	public class PwKeyList
+	{
+		private INPUT[] inputs = new INPUT[8];
+		private int count = 0;
+
+		private PwKeyModifiers state = PwKeyModifiers.None;
+		private PwKeyModifiers firstState = PwKeyModifiers.None;
+
+		public PwKeyList()
+		{
+		} // ctor
+
+		private void Next()
+		{
+			if (++count >= inputs.Length)
+			{
+				var n = new INPUT[inputs.Length * 2];
+				Array.Copy(inputs, 0, n, 0, count);
+				inputs = n;
+			}
+		} // proc Next
+
+		private void AppendKeyInput(bool keyUp, ushort virtualKey, bool isExtended = false)
+		{
+			ref var cur = ref inputs[count];
+
+			var flags = keyUp ? KEYEVENTF_KEYUP : 0;
+			if (isExtended
+				|| (virtualKey >= 33 && virtualKey <= 46) // PageUp/Next to Delete
+				|| (virtualKey >= 91 && virtualKey <= 93)) // LWin to Apps
+				flags |= KEYEVENTF_EXTENDEDKEY;
+
+			cur.type = INPUT_KEYBOARD;
+			cur.ki.wVk = virtualKey;
+			cur.ki.wScan = 0;
+			cur.ki.dwFlags = flags;
+			cur.ki.time = 0;
+			cur.ki.dwExtraInfo = GetMessageExtraInfo();
+
+			Next();
+		} // proc AppendKeyInput
+
+		private void CreateMouseInput(int x, int y, uint flags, uint data = 0)
+		{
+			ref var cur = ref inputs[count];
+
+			cur.type = INPUT_MOUSE;
+			cur.mi.dx = x;
+			cur.mi.dy = y;
+			cur.mi.mouseData = data;
+			cur.mi.dwFlags = flags;
+			cur.mi.time = 0;
+			cur.mi.dwExtraInfo = GetMessageExtraInfo();
+
+			Next();
+		} // proc CreateMouseInput
+
+		private void AppendModifiers(PwKeyModifiers newState, PwKeyModifiers currentState)
+		{
+			var diff = currentState ^ newState;
+
+			void CheckState(PwKeyModifiers test, ushort virtualKey)
+			{
+				if ((diff & test) == test)
+					AppendKeyInput((currentState & test) == test, virtualKey);
+			}
+
+			CheckState(PwKeyModifiers.Shift, 16);
+			CheckState(PwKeyModifiers.Control, 17);
+			CheckState(PwKeyModifiers.Alt, 18);
+			CheckState(PwKeyModifiers.Win, 91);
+		} // proc AppendModifiers
+
+		private void SetModifiers(PwKeyModifiers newState)
+		{
+			if (count == 0)
+				firstState = newState;
+			else
+				AppendModifiers(newState, state);
+			state = newState;
+		} // proc SetModifiers
+
+		public PwKeyList Append(char c)
+		{
+			var scan = VkKeyScan(c);
+
+			// update modifiers
+			var modifiers = PwKeyModifiers.None;
+			if ((scan & 0x100) == 0x100)
+				modifiers |= PwKeyModifiers.Shift;
+			if ((scan & 0x200) == 0x200)
+				modifiers |= PwKeyModifiers.Control;
+			if ((scan & 0x400) == 0x400)
+				modifiers |= PwKeyModifiers.Alt;
+
+			SetModifiers(modifiers);
+
+			// set key/down
+			var virtualKey = (ushort)(scan & 0xFF);
+			AppendKeyInput(false, virtualKey);
+			AppendKeyInput(true, virtualKey);
+
+			return this;
+		} // proc Append
+
+		public PwKeyList Append(PwKey key, PwKeySend flag)
+		{
+			var virtualKey = key.VirtualKey;
+
+			if ((flag & PwKeySend.Down) == PwKeySend.Down)
+			{
+				SetModifiers(key.Modifiers);
+				switch (virtualKey)
+				{
+					case 1: // left
+						CreateMouseInput(0, 0, MOUSEEVENTF_LEFTDOWN);
+						break;
+					case 2: // right
+						CreateMouseInput(0, 0, MOUSEEVENTF_RIGHTDOWN);
+						break;
+					case 4: // middle
+						CreateMouseInput(0, 0, MOUSEEVENTF_MIDDLEDOWN);
+						break;
+					case 5: // x1
+						CreateMouseInput(0, 0, MOUSEEVENTF_XDOWN, 1);
+						break;
+					case 6: // x2
+						CreateMouseInput(0, 0, MOUSEEVENTF_XDOWN, 2);
+						break;
+					default:
+						AppendKeyInput(false, virtualKey);
+						break;
+				}
+			}
+
+			if ((flag & PwKeySend.Up) == PwKeySend.Up)
+			{
+				switch (virtualKey)
+				{
+					case 1: // left
+						CreateMouseInput(0, 0, MOUSEEVENTF_LEFTUP);
+						break;
+					case 2: // right
+						CreateMouseInput(0, 0, MOUSEEVENTF_RIGHTUP);
+						break;
+					case 4: // middle
+						CreateMouseInput(0, 0, MOUSEEVENTF_MIDDLEUP);
+						break;
+					case 5: // x1
+						CreateMouseInput(0, 0, MOUSEEVENTF_XUP, 1);
+						break;
+					case 6: // x2
+						CreateMouseInput(0, 0, MOUSEEVENTF_XUP, 2);
+						break;
+					default:
+						AppendKeyInput(true, virtualKey);
+						break;
+				}
+			}
+
+			return this;
+		} // proc Append
+
+		public void Send()
+		{
+			if (count > 0)
+			{
+				var systemState = PwKeyModifiers.None;
+				var beforeList = new PwKeyList();
+
+				if ((GetKeyState(20) & 1) != 0) // caps lock state is active
+				{
+					beforeList.AppendKeyInput(false, 20, true);  // caps lock
+					beforeList.AppendKeyInput(true, 20, true);
+					AppendKeyInput(false, 20, true); // caps lock
+					AppendKeyInput(true, 20, true);
+				}
+
+				if ((GetKeyState(16) & 0x80) != 0)
+					systemState |= PwKeyModifiers.Shift;
+
+				if ((GetKeyState(17) & 0x80) != 0)
+					systemState |= PwKeyModifiers.Control;
+				if ((GetKeyState(18) & 0x80) != 0)
+					systemState |= PwKeyModifiers.Alt;
+				if ((GetKeyState(91) & 0x80) != 0)
+					systemState |= PwKeyModifiers.Win;
+
+				// toggle state to none
+				if (systemState != PwKeyModifiers.None)
+					beforeList.AppendModifiers(firstState, systemState);
+
+				// clear modifiers to system state
+				SetModifiers(systemState);
+
+				if (beforeList.count > 0)
+				{
+					var n = new INPUT[beforeList.count + count];
+					var nCount = beforeList.count + count;
+					Array.Copy(beforeList.inputs, 0, n, 0, beforeList.count);
+					Array.Copy(inputs, 0, n, beforeList.count, count);
+					inputs = n;
+					count = nCount;
+				}
+
+				var sz = Marshal.SizeOf<INPUT>();
+				if (SendInput((uint)count, inputs, sz) == 0)
+					throw new Win32Exception();
+			}
+		} // proc Send
+
+		public bool IsEmpty => count == 0;
+	} // class PwKeyList
 
 	#endregion
 }

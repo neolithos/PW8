@@ -169,53 +169,6 @@ namespace Neo.PerfectWorking.GamePadRC
 		//public IntPtr pData;
 	} // struct RAWHID
 
-	[StructLayout(LayoutKind.Sequential)]
-	internal struct MOUSEINPUT
-	{
-		public int dx;
-		public int dy;
-		public uint mouseData;
-		public uint dwFlags;
-		public uint time;
-		public IntPtr dwExtraInfo;
-	} // struct MOUSEINPUT
-
-	[StructLayout(LayoutKind.Sequential)]
-	internal struct KEYBDINPUT
-	{
-		public ushort wVk;
-		public ushort wScan;
-		public uint dwFlags;
-		public uint time;
-		public IntPtr dwExtraInfo;
-	} // struct KEYBDINPUT
-
-	[StructLayout(LayoutKind.Sequential)]
-	internal struct HARDWAREINPUT
-	{
-		public int uMsg;
-		public short wParamL;
-		public short wParamH;
-	} // struct HARDWAREINPUT
-
-	[StructLayout(LayoutKind.Explicit)]
-	internal struct MOUSEKEYBDHARDWAREINPUT
-	{
-		[FieldOffset(0)]
-		public MOUSEINPUT mi;
-		[FieldOffset(0)]
-		public KEYBDINPUT ki;
-		[FieldOffset(0)]
-		public HARDWAREINPUT hi;
-	} // struct MOUSEKEYBDHARDWAREINPUT
-
-	[StructLayout(LayoutKind.Sequential)]
-	internal struct INPUT
-	{
-		public int type;
-		public MOUSEKEYBDHARDWAREINPUT mkhi;
-	} // struct INPUT
-
 	#endregion
 
 	#region -- class NativeMethods ------------------------------------------------------
@@ -224,7 +177,7 @@ namespace Neo.PerfectWorking.GamePadRC
 	/// <summary></summary>
 	internal static class NativeMethods
 	{
-		private const string shell32 = "shell32.dll";
+		//private const string shell32 = "shell32.dll";
 		private const string user32 = "user32.dll";
 
 		public const uint RID_INPUT = 0x10000003;
@@ -247,28 +200,6 @@ namespace Neo.PerfectWorking.GamePadRC
 		public const int INPUT_KEYBOARD = 1;
 		public const int INPUT_HARDWARE = 2;
 
-		public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
-		public const uint KEYEVENTF_KEYUP = 0x0002;
-		public const uint KEYEVENTF_UNICODE = 0x0004;
-		public const uint KEYEVENTF_SCANCODE = 0x0008;
-
-		public const uint XBUTTON1 = 0x0001;
-		public const uint XBUTTON2 = 0x0002;
-
-		public const uint MOUSEEVENTF_MOVE = 0x0001;
-		public const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
-		public const uint MOUSEEVENTF_LEFTUP = 0x0004;
-		public const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
-		public const uint MOUSEEVENTF_RIGHTUP = 0x0010;
-		public const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
-		public const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
-		public const uint MOUSEEVENTF_XDOWN = 0x0080;
-		public const uint MOUSEEVENTF_XUP = 0x0100;
-		public const uint MOUSEEVENTF_WHEEL = 0x0800;
-		public const uint MOUSEEVENTF_HWHEEL = 0x1000;
-		public const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;
-		public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
-
 		[DllImport(user32, SetLastError = true)]
 		public extern static bool RegisterRawInputDevices(RAWINPUTDEVICE[] pRawInputDevice, int iNumDevices, int cbSize);
 		[DllImport(user32, SetLastError = true)]
@@ -286,12 +217,6 @@ namespace Neo.PerfectWorking.GamePadRC
 		[DllImport(user32, ExactSpelling = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool KillTimer(IntPtr hWnd, IntPtr uIDEvent);
-
-		[DllImport(user32)]
-		public static extern IntPtr GetMessageExtraInfo();
-
-		[DllImport(user32, SetLastError = true)]
-		public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
 		[DllImport(user32)]
 		public static extern bool SetForegroundWindow(IntPtr hWnd);

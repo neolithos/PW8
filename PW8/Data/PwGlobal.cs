@@ -168,14 +168,14 @@ namespace Neo.PerfectWorking.Data
 			: base(new Lua())
 		{
 			this.app = app;
-			this.ConfigurationFile = configurationFile;
-			this.compileOptions = new LuaCompileOptions() { DebugEngine = LuaStackTraceDebugger.Default };
+			ConfigurationFile = configurationFile;
+			compileOptions = new LuaCompileOptions() { DebugEngine = LuaStackTraceDebugger.Default };
 
-			this.Actions = RegisterCollection<PwAction>(this);
-			this.WindowHooks = RegisterCollection<PwWindowHook>(this);
-			this.serviceProviders = RegisterCollection<IPwPackageServiceProvider>(this);
-			this.autoSaveFiles = RegisterCollection<IPwAutoSaveFile>(this);
-			this.credentials = RegisterCollection<ICredentials>(this);
+			Actions = RegisterCollection<PwAction>(this);
+			WindowHooks = RegisterCollection<PwWindowHook>(this);
+			serviceProviders = RegisterCollection<IPwPackageServiceProvider>(this);
+			autoSaveFiles = RegisterCollection<IPwAutoSaveFile>(this);
+			credentials = RegisterCollection<ICredentials>(this);
 
 			// add resolver paths
 			AddResolvePath(Path.GetDirectoryName(typeof(PwGlobal).Assembly.Location));
@@ -192,6 +192,8 @@ namespace Neo.PerfectWorking.Data
 		{
 			while (packages.Count > 0)
 				RemovePackage(packages[packages.Count - 1]);
+
+			RemoveIdleAction(autoSaveFilesIdleAction);
 		} // proc Dispose
 
 		public override string ToString()
@@ -754,7 +756,7 @@ namespace Neo.PerfectWorking.Data
 
 		#region -- class PwNoneUIHotKey -----------------------------------------------
 
-		private sealed class PwNoneUIHotKey : IPwHotKey
+		private class PwNoneUIHotKey : IPwHotKey
 		{
 			public event EventHandler CanExecuteChanged { add => command.CanExecuteChanged += value; remove => command.CanExecuteChanged -= value; }
 
@@ -780,7 +782,24 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- PwActionCommand ----------------------------------------------------
+		#region -- class PwNoneUIHotKey -----------------------------------------------
+
+		private sealed class PwUIHotKey : PwNoneUIHotKey, IPwUIHotKey
+		{
+			public PwUIHotKey(string title, object image, PwKey key, ICommand command) 
+				: base(key, command)
+			{
+				Title = title ?? throw new ArgumentNullException(nameof(title));
+				Image = image;
+			} // ctor
+
+			public string Title { get; }
+			public object Image { get; }
+		} // class PwUIHotKey
+
+		#endregion
+
+		#region -- class PwActionCommand ----------------------------------------------
 
 		private sealed class PwActionCommand : ICommand
 		{
@@ -803,18 +822,25 @@ namespace Neo.PerfectWorking.Data
 
 			public void Execute(object parameter)
 				=> Lua.RtInvoke(func);
+
+			public static ICommand Create(object command)
+				=> command is ICommand c ? c : new PwActionCommand(command, null);
 		} // class PwActionCommand
 
 		#endregion
+
+		[LuaMember]
+		public ICommand CreateCommand(object func, object canFunc)
+			=> new PwActionCommand(func, canFunc);
 
 		[LuaMember]
 		public PwWindowHook CreateHook(PwWindowProc hook, params int[] messageFilter)
 			=> new PwWindowHook(hook, messageFilter);
 
 		[LuaMember]
-		public PwAction CreateAction(object image, string title, string label, object func, PwKey key)
+		public PwAction CreateAction(object image, string title, string label, object func, string key)
 		{
-			var button = new PwAction(this, title, label, PwKey.None, image);
+			var button = new PwAction(this, title, label, PwKey.Parse(key, CultureInfo.InvariantCulture), image);
 
 			if (func != null)
 				new FunctionBinding(button, func);
@@ -823,8 +849,39 @@ namespace Neo.PerfectWorking.Data
 		} // func CreateAction
 
 		[LuaMember]
-		public IPwHotKey CreateHotKey(string hotKey, object command)
-			=> new PwNoneUIHotKey(PwKey.Parse(hotKey, CultureInfo.InvariantCulture), new PwActionCommand(command, null));
+		public IPwHotKey CreateHotKey(string key, object command, string title = null, object image = null)
+		{
+			return String.IsNullOrEmpty(title)
+				? new PwNoneUIHotKey(PwKey.Parse(key, CultureInfo.InvariantCulture), PwActionCommand.Create(command))
+				: new PwUIHotKey(title, image, PwKey.Parse(key, CultureInfo.InvariantCulture), PwActionCommand.Create(command));
+		} // func CreateHotKey
+
+		#endregion
+
+		#region -- Keyboard functions -------------------------------------------------
+
+
+		[LuaMember]
+		public void SendKeyData(string data)
+		{
+			var keyList = new PwKeyList();
+			foreach (var c in data)
+				keyList.Append(c);
+
+			keyList.Send();
+		} // proc SendKeyData
+
+		[LuaMember]
+		public void SendKeyDown(string key)
+			=> PwKey.Parse(key).SendKey(PwKeySend.Down);
+
+		[LuaMember]
+		public void SendKeyUp(string key)
+			=> PwKey.Parse(key).SendKey(PwKeySend.Up);
+
+		[LuaMember]
+		public void SendKey(string key)
+			=> PwKey.Parse(key).SendKey(PwKeySend.Both);
 
 		#endregion
 

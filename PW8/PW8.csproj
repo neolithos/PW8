@@ -76,7 +76,6 @@
     <Compile Include="UI\ActionsPane.xaml.cs">
       <DependentUpon>ActionsPane.xaml</DependentUpon>
     </Compile>
-    <Compile Include="UI\ConsoleViewer.cs" />
     <Compile Include="UI\NotificationWindow.xaml.cs">
       <DependentUpon>NotificationWindow.xaml</DependentUpon>
     </Compile>

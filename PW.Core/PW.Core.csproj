@@ -56,6 +56,7 @@
     <Compile Include="Data\PwWindowHook.cs" />
     <Compile Include="Data\Services.cs" />
     <Compile Include="Data\SimpleCommand.cs" />
+    <Compile Include="NativeMethods.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Stuff\CredCompareValue.cs" />
     <Compile Include="Stuff\Keys.cs" />
