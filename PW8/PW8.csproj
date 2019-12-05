@@ -43,6 +43,7 @@
     <Win32Resource>C:\Projects\PW8\PW8\Resources\Resource.res</Win32Resource>
   </PropertyGroup>
   <PropertyGroup />
+  <PropertyGroup />
   <ItemGroup>
     <Reference Include="DES.Core, Version=3.4.0.0, Culture=neutral, PublicKeyToken=65aa0de0ef4a3cd4, processorArchitecture=MSIL">
       <HintPath>..\packages\TecWare.DES.Core.3.4.52\lib\net47\DES.Core.dll</HintPath>
@@ -179,7 +180,7 @@
     <None Include="Resources\PW.exe.manifest" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="BeforeBuild" DependsOnTargets="res">
+  <Target Name="BeforeBuild">
   </Target>
   <Target Name="AfterBuild" DependsOnTargets="Deploy">
   </Target>
