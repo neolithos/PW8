@@ -58,5 +58,9 @@ package("test",
 			self.RegisterObject("btn{0}":Format(i), CreateAction(title = "Test {0}":Format(i), label = "Zeigt eine Textbox an.", func = executeMessageNotify));
 		end;
 
+		foreach cur in quickConnect:GetVpnConfigurations() do
+			self.RegisterObject("vpn://" .. cur.EventName, cur);
+		end;
+
 	end
 );

@@ -429,7 +429,7 @@ namespace Neo.PerfectWorking.UI
 		private static ProcessStartInfo OpenWithExplorer(string configurationFile)
 		{
 			return new ProcessStartInfo(
-				Path.Combine(Environment.SystemDirectory, "explorer.exe"),
+				Path.GetFullPath(Path.Combine(Environment.SystemDirectory, "..", "explorer.exe")),
 				'"' + Path.GetDirectoryName(configurationFile) + '"'
 			);
 		} // proc OpenWithExplorer
@@ -447,7 +447,7 @@ namespace Neo.PerfectWorking.UI
 			}
 			catch (Exception e)
 			{
-				model.Global.UI.ShowException("Konnte Konfiguration nicht öffnen.", e);
+				model.Global.UI.ShowException("Konnte Konfiguration nicht öffnen.\n" + psi.FileName + " " + psi.Arguments, e);
 			}
 		} // proc OpenConfiguration
 

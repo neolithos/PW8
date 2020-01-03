@@ -33,15 +33,15 @@ namespace Neo.PerfectWorking.UI
 		{
 			InitializeComponent();
 
-			this.global = global;
-			var actions = CollectionViewSource.GetDefaultView(global.GetCollection<PwAction>());
+			this.global = global ?? throw new ArgumentNullException(nameof(global));
+			var actions = CollectionViewSource.GetDefaultView(global.GetCollection<IPwAction>());
 
 			actions.Filter = OnFilter;
 			actions.SortDescriptions.Add(new SortDescription("Title", ListSortDirection.Ascending));
 
 			SetValue(actionsPropertyKey, actions);
 
-			this.DataContext = this;
+			DataContext = this;
 		} // ctor
 
 		private void ActionListDoubleClick(object sender, MouseButtonEventArgs e)
@@ -62,7 +62,7 @@ namespace Neo.PerfectWorking.UI
 
 		private bool OnFilter(object item)
 		{
-			if (item is PwAction c)
+			if (item is IPwAction c)
 			{
 				var currentFilter = filterListBox.CurrentFilter;
 				if (String.IsNullOrEmpty(currentFilter))

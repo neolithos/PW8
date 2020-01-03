@@ -22,9 +22,20 @@ using TecWare.DE.Data;
 
 namespace Neo.PerfectWorking.Data
 {
+	#region -- interface IPwAction ----------------------------------------------------
+
+	public interface IPwAction : ICommand
+	{
+		string Title { get; }
+		string Label { get; }
+		object Image { get; }
+	} // interface IPwAction
+
+	#endregion
+
 	#region -- class PwAction ---------------------------------------------------------
 
-	public sealed class PwAction : ObservableObject, IPwUIHotKey, ICommand
+	public sealed class PwAction : ObservableObject, IPwAction, IPwUIHotKey
 	{
 		public event EventHandler CanExecuteChanged;
 

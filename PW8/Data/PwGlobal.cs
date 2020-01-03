@@ -171,7 +171,7 @@ namespace Neo.PerfectWorking.Data
 			ConfigurationFile = configurationFile;
 			compileOptions = new LuaCompileOptions() { DebugEngine = LuaStackTraceDebugger.Default };
 
-			Actions = RegisterCollection<PwAction>(this);
+			Actions = RegisterCollection<IPwAction>(this);
 			WindowHooks = RegisterCollection<PwWindowHook>(this);
 			serviceProviders = RegisterCollection<IPwPackageServiceProvider>(this);
 			autoSaveFiles = RegisterCollection<IPwAutoSaveFile>(this);
@@ -925,7 +925,7 @@ namespace Neo.PerfectWorking.Data
 		} // func GetCredential
 
 		[LuaMember]
-		public IPwCollection<PwAction> Actions { get; }
+		public IPwCollection<IPwAction> Actions { get; }
 
 		[LuaMember]
 		public IPwCollection<PwWindowHook> WindowHooks { get; }
