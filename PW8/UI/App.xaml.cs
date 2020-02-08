@@ -302,7 +302,7 @@ namespace Neo.PerfectWorking.UI
 			for (var i = idleActions.Count - 1; i >= 0; i--)
 			{
 				if (idleActions[i].TryGetTarget(out var t))
-					stopIdle = stopIdle && !t.OnIdle(timeSinceRestart);
+					stopIdle = stopIdle && t.OnIdle(timeSinceRestart);
 				else
 					idleActions.RemoveAt(i);
 			}

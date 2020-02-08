@@ -14,19 +14,24 @@
 //
 #endregion
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.MemoryMappedFiles;
 using System.IO.Pipes;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.OpenVpn
 {
@@ -34,8 +39,11 @@ namespace Neo.PerfectWorking.OpenVpn
 
 	/// <summary>Represents a running vpn.</summary>
 	/// <remarks>HKLM\Software\WOW6432Node\Perfect Working\RunningVPN right to QueryValues, SetValue for all users</remarks>
-	public sealed class OpenVpnInfo : IDisposable
+	public sealed class OpenVpnInfo : INotifyPropertyChanged, IDisposable
 	{
+		public event PropertyChangedEventHandler PropertyChanged;
+		public event EventHandler<OpenVpnNeedPasswordArgs> NeedPassword;
+
 		private readonly string configFile;
 		private readonly string exitEventName;
 
@@ -51,8 +59,31 @@ namespace Neo.PerfectWorking.OpenVpn
 
 		public void Dispose()
 		{
+			memoryMap?.Dispose();
+			connection?.Dispose();
 			exitEvent?.Dispose();
 		} // proc Dispose
+
+		private void OnPropertyChanged(string propertyName)
+			=> PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+		private void Set<T>(ref T value, T newValue, string propertyName)
+		{
+			if (!Equals(value, newValue))
+			{
+				value = newValue;
+				OnPropertyChanged(propertyName);
+			}
+		} // proc Set
+
+		private void SetLong(ref long value, long newValue, string propertyName)
+		{
+			if (value != newValue)
+			{
+				value = newValue;
+				OnPropertyChanged(propertyName);
+			}
+		} // proc SetLong
 
 		#endregion
 
@@ -208,6 +239,10 @@ namespace Neo.PerfectWorking.OpenVpn
 			var managementEndPoint = GetFreeManagementEndPoint();
 			CreateExitEvent();
 			var cmdLine = BuildCommandLine(configFile, holdLog, GetGlobalEventName(), managementEndPoint);
+
+			using (var r = OpenRunningVpnKey(true))
+				r.SetValue(exitEventName + "_Port", managementEndPoint.Port, RegistryValueKind.DWord);
+
 			try
 			{
 				var exePath = GetServiceConfiguration("exe_path");
@@ -223,14 +258,17 @@ namespace Neo.PerfectWorking.OpenVpn
 			}
 		} // proc StartCoreAsync
 		
-		public Task StartAsync(bool withService , bool holdLog = false)
+		public async Task StartAsync(bool withService)
 		{
 			if (WaitForActive(0))
-				return Task.CompletedTask;
+				return;
 
-			return withService
-				? StartWithServiceCoreAsync(holdLog)
-				: StartCoreAsync(holdLog);
+			if (withService)
+				await StartWithServiceCoreAsync(true);
+			else
+				await StartCoreAsync(true);
+
+			await StartConnectAsync(0, 5, true);
 		} // proc StartAsync
 
 		public Task CloseAsync()
@@ -243,7 +281,263 @@ namespace Neo.PerfectWorking.OpenVpn
 
 		#endregion
 
+		#region -- Shared State -------------------------------------------------------
+
+		private const int maxLogLines = 1024;
+		private const int sharedStateSize = 32 + 1024 * maxLogLines;
+		private MemoryMappedFile memoryMap = null;
+
+		private OpenVpnState currentState = OpenVpnState.Disconnected;
+		private long inBytes = 0L;
+		private long outBytes = 0L;
+
+		#region -- struct SharedStateHeander ------------------------------------------
+
+		[StructLayout(LayoutKind.Sequential, Pack = 1)]
+		private struct SharedStateHeander
+		{
+			// size = 32 byte
+			public byte Sign;
+			public byte Version;
+			public short State;
+			public long FileTimeUtc;
+			public long InBytes;
+			public long OutBytes;
+			public short LastLogIndex;
+			public short Reserverd1;
+		} // struct SharedStateHeander
+
+		#endregion
+
+		#region -- struct SharedLogLine -----------------------------------------------
+
+		[StructLayout(LayoutKind.Sequential, Pack = 1)]
+		private struct SharedLogLine
+		{
+			// size = 1024
+			public long FileTimeUtc;
+			public short Flag;
+			[MarshalAs(UnmanagedType.LPWStr, SizeConst = 507)]
+			public string Text;
+		} // struct SharedLogLine
+
+		#endregion
+
+		#region -- class LogLineEnumerable --------------------------------------------
+
+		private sealed class LogLineEnumerable : IEnumerable<OpenVpnLogLine>
+		{
+			private readonly OpenVpnInfo vpnInfo;
+
+			public LogLineEnumerable(OpenVpnInfo vpnInfo)
+			{
+				this.vpnInfo = vpnInfo ?? throw new ArgumentNullException(nameof(vpnInfo));
+			} // ctor
+
+			private static bool ReadLogLine(MemoryMappedViewAccessor mem, int top, ref int cur, out SharedLogLine sharedLogLine)
+			{
+				mem.Read(32 + cur * 1024, out sharedLogLine);
+
+				cur++;
+				if (cur >= maxLogLines)
+					cur = 0;
+
+				return top == cur;
+			} // func NextLogLine
+
+			private static void WriteLogLine(MemoryMappedViewAccessor mem, DateTime time, OpenVpnLineTyp type, string text)
+			{
+				var top = mem.ReadInt16(28);
+
+				var textBytes = Encoding.Unicode.GetBytes(text);
+				
+				var textOfs = 0;
+				int ofs;
+				while (textOfs < textBytes.Length)
+				{
+					// write parts
+					ofs = top * 1024 + 32;
+					if (textOfs == 0)
+					{
+						mem.Write(ofs, time.ToFileTimeUtc());
+						mem.Write(ofs + 8, (ushort)type);
+					}
+					else
+					{
+						mem.Write(ofs, 0L);
+						mem.Write(ofs + 8, (ushort)type);
+					}
+					var l = Math.Max(507, textBytes.Length - textOfs);
+					mem.WriteArray(ofs + 10, textBytes, 0, l);
+					textOfs += l;
+					if (++top >= maxLogLines)
+						top = 0;
+				}
+
+				// empty broken lines
+				ofs = top * 1024 + 32;
+				if (mem.ReadInt64(ofs) == 0 && mem.ReadInt16(ofs + 8) != 0)
+					mem.Write(ofs + 8, (short)0);
+
+				// commit line
+				mem.Write(28, top);
+			} // proc WriteLogLine
+
+			public IEnumerator<OpenVpnLogLine> GetEnumerator()
+			{
+				using var mem = vpnInfo.EnsureSharedState().CreateViewAccessor(0, sharedStateSize, MemoryMappedFileAccess.Read);
+				
+				var top = (int)mem.ReadInt16(28); // log index
+				var cur = top;
+
+				// loop until we read the whole memory block
+				while (ReadLogLine(mem, top, ref cur, out var sharedLogLine))
+				{
+					if (sharedLogLine.FileTimeUtc != 0)
+					{
+						nextLine:
+						var sb = new StringBuilder();
+						var time = DateTime.FromFileTimeUtc(sharedLogLine.FileTimeUtc);
+						var type = (OpenVpnLineTyp)(sharedLogLine.Flag & 0xFF);
+
+						sb.Append(sharedLogLine.Text);
+
+						while (ReadLogLine(mem, top, ref cur, out sharedLogLine))
+						{
+							if (sharedLogLine.FileTimeUtc == 0) // no time, if flag is not 0, line is extented
+							{
+								if (sharedLogLine.Flag != 0)
+									sb.Append(sharedLogLine.Text);
+								else
+								{
+									yield return new OpenVpnLogLine(time, type, sb.ToString());
+									goto nextLine;
+								}
+							}
+							else
+							{
+								yield return new OpenVpnLogLine(time, type, sb.ToString());
+								goto nextLine;
+							}
+						}
+					}
+				}
+			} // func GetEnumerator
+
+			IEnumerator IEnumerable.GetEnumerator()
+				=> GetEnumerator();
+		} // class LogLineEnumerable
+
+		#endregion
+
+		private MemoryMappedFile EnsureSharedState()
+		{
+			if (memoryMap == null)
+			{
+				memoryMap = MemoryMappedFile.CreateOrOpen(exitEventName, sharedStateSize, MemoryMappedFileAccess.ReadWrite, MemoryMappedFileOptions.None, HandleInheritability.Inheritable);
+
+				// add access to all users
+				var security = memoryMap.GetAccessControl();
+				var users = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+				security.AddAccessRule(new AccessRule<MemoryMappedFileRights>(
+					users,
+					MemoryMappedFileRights.FullControl,
+					AccessControlType.Allow
+				));
+				memoryMap.SetAccessControl(security);
+
+				using var m = memoryMap.CreateViewAccessor(0, 4, MemoryMappedFileAccess.ReadWrite);
+				if (m.ReadByte(0) == 0) // signature is empty
+				{
+					m.Write(0, (byte)0xA5);
+					m.Write(1, (byte)1);
+				}
+				return memoryMap;
+			}
+			else
+				return memoryMap;
+		} // func EnsureSharedState
+
+		private static void GetHeader(MemoryMappedViewAccessor memory, out SharedStateHeander stateHeader)
+			=> memory.Read(0, out stateHeader);
+
+		private void GetHeader(out SharedStateHeander stateHeader)
+		{
+			using var m = EnsureSharedState().CreateViewAccessor(0, 32, MemoryMappedFileAccess.Read);
+			GetHeader(m, out stateHeader);
+		} // func GetHeader
+
+		private bool IsLastWriteUpToDate(long lastWrite)
+			=> lastWrite > 0 && (lastWrite - DateTime.Now.ToFileTimeUtc()) / 10000 < 5000;
+
+		private void RefreshState()
+		{
+			if (isConnecting) // currently, connection, there will be no new state.
+				return;
+
+			GetHeader(out var state); // check for state
+			if (connection != null || IsLastWriteUpToDate(state.FileTimeUtc)) // state exists and is up to date
+				UpdateState(state.State, state.InBytes, state.OutBytes); // update state
+			else // state is out dated -> try connect
+			{
+				StartConnectAsync(new Random().Next(100, 2000), 0, false).Silent(
+					ex => Debug.Print(ex.ToString())
+				);
+			}
+		} // proc RefreshState
+
+		private async Task StartConnectAsync(int sleep, int retry, bool releaseHold)
+		{
+			isConnecting = true;
+			try
+			{
+				await Task.Delay(sleep);
+
+				// recheck header
+				GetHeader(out var state);
+				if (releaseHold || !IsLastWriteUpToDate(state.FileTimeUtc))
+				{
+					// start connection
+					connection = await OpenVpnConnection.ConnectAsync(GetManagementPort(), GetPasswordFromEventName(), retry);
+					connection.ByteCountChanged += Connection_ByteCountChanged;
+					connection.StateChanged += Connection_StateChanged;
+					connection.NeedPassword += Connection_NeedPassword;					
+					connection.Closed += Connection_Closed;
+					if (releaseHold)
+						await connection.ReleaseHoldAsync();
+
+					RefreshState();
+				}
+			}
+			finally
+			{
+				isConnecting = false;
+			}
+		} // func StartConnect
+
+		private static OpenVpnState TranslateState(short state)
+		{
+			return state > 0 && state <= 9
+				? (OpenVpnState)state
+				: OpenVpnState.Active;
+		} // func TranslateState
+
+		private void UpdateState(short state, long inBytes, long outBytes)
+		{
+			Set(ref currentState, TranslateState(state), nameof(State));
+			SetLong(ref this.inBytes, inBytes, nameof(InBytes));
+			SetLong(ref this.outBytes, outBytes, nameof(OutBytes));
+		} // proc UpdateState
+
+		public IEnumerable<OpenVpnLogLine> LogLines
+			=> new LogLineEnumerable(this);
+
+		#endregion
+
 		#region -- Connect ------------------------------------------------------------
+
+		private bool isConnecting = false;
+		private OpenVpnConnection connection = null;
 
 		private static int GetFreePort()
 		{
@@ -258,39 +552,36 @@ namespace Neo.PerfectWorking.OpenVpn
 		private string GetPasswordFromEventName()
 			=> $"pwd{exitEventName.GetHashCode():x}";
 
-		//private readonly IPEndPoint managementEndPoint;
-		//private readonly string managementPassword;
+		private int GetManagementPort()
+		{
+			using var r = OpenRunningVpnKey(false);
+			return Convert.ToInt32(r.GetValue(exitEventName + "_Port"));
+		} // func GetManagementPort
 
-		//this.managementEndPoint = managementEndPoint ?? throw new ArgumentNullException(nameof(managementEndPoint));
-		//managementPassword = GetPasswordFromEventName(eventName);
+		private void Connection_Closed(object sender, EventArgs e)
+			=> connection = null;
 
-		//public async Task<OpenVpnConnection> ConnectAsync()
-		//{
-		//	// connect to socket
-		//	var managementSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-		//	try
-		//	{
-		//		await managementSocket.ConnectAsync(managementEndPoint);
-		//	}
-		//	catch
-		//	{
-		//		managementSocket.Dispose();
-		//		throw;
-		//	}
+		private void Connection_StateChanged(DateTime stamp, OpenVpnState state)
+		{
+			using var mem = EnsureSharedState().CreateViewAccessor(0, 32, MemoryMappedFileAccess.ReadWrite);
+			GetHeader(mem, out var h);
+			h.State = (short)state;
+			h.FileTimeUtc = DateTime.Now.ToFileTimeUtc();
+			mem.Write(0, ref h);
+		} // event Connection_StateChanged
 
-		//	// init streams
-		//	var managementStream = new NetworkStream(managementSocket, true);
-		//	var connection = new OpenVpnConnection(managementStream);
-		//	try
-		//	{
-		//		return await connection.InitAsync(managementPassword);
-		//	}
-		//	catch
-		//	{
-		//		connection.Dispose();
-		//		throw;
-		//	}
-		//} // func ConnectAsync
+		private void Connection_ByteCountChanged(int cid, long inBytes, long outBytes)
+		{
+			using var mem = EnsureSharedState().CreateViewAccessor(0, 32, MemoryMappedFileAccess.ReadWrite);
+			GetHeader(mem, out var h);
+			h.InBytes = inBytes;
+			h.OutBytes = outBytes;
+			h.FileTimeUtc = DateTime.Now.ToFileTimeUtc();
+			mem.Write(0, ref h);
+		} // event Connection_ByteCountChanged
+
+		private void Connection_NeedPassword(object sender, OpenVpnNeedPasswordArgs e)
+			=> NeedPassword?.Invoke(this, e);
 
 		#endregion
 
@@ -375,7 +666,13 @@ namespace Neo.PerfectWorking.OpenVpn
 		public bool Refresh()
 		{
 			var lastWasActive = exitEvent != null;
-			return lastWasActive != WaitForActive(0); // connection is active
+			if (WaitForActive(0)) // connection is active
+			{
+				RefreshState();
+				return lastWasActive != true;
+			}
+			else
+				return lastWasActive != false;
 		} // proc Refresh
 
 		#endregion
@@ -387,7 +684,14 @@ namespace Neo.PerfectWorking.OpenVpn
 		/// <summary>Configuration file of the von</summary>
 		public string ConfigFile => configFile;
 
-		/// <summary>Is the vpn running</summary>
+		/// <summary>Current state of the connection</summary>
+		public OpenVpnState State => currentState;
+		/// <summary>Incoming bytes of this connection</summary>
+		public long InBytes => inBytes;
+		/// <summary>Outgoing bytes of this connection.</summary>
+		public long OutBytes => outBytes;
+
+		/// <summary>Is the vpn running (checks the exit event)</summary>
 		public bool IsActive => WaitForActive(0);
 
 		#region -- Configuration ------------------------------------------------------
@@ -492,7 +796,8 @@ namespace Neo.PerfectWorking.OpenVpn
 			{ 
 				foreach (var eventName in r.GetValueNames())
 				{
-					if (TryGetConfigFileFromRegistry(r, eventName, out var openVpnConfigFile)
+					if (!eventName.EndsWith("_Port") 
+						&& TryGetConfigFileFromRegistry(r, eventName, out var openVpnConfigFile)
 						&& !IsReturned(openVpnConfigFile))
 						yield return new OpenVpnInfo(eventName, openVpnConfigFile);
 				}
@@ -539,6 +844,11 @@ namespace Neo.PerfectWorking.OpenVpn
 		} // func GetActive
 
 		#endregion
+
+		public static string EscaseString(string value)
+		{
+			return value.Replace("\\", "\\\\").Replace("\"","\\\"");
+		} // proc EscaseString
 	} // class OpenVpnInfo
 
 	#endregion

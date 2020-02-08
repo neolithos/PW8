@@ -112,7 +112,7 @@ namespace Neo.PerfectWorking.QuickConnect
 			action.Label = "Verbinden...";
 
 			// get user name and password
-			var networkCredential = global.GetCredential(credentialTarget ?? remotePath, GetCaption(true));
+			var networkCredential = global.GetCredential(credentialTarget ?? remotePath);
 			using (var password = new InteropSecurePassword(networkCredential?.SecurePassword))
 			{
 				var userName = networkCredential?.GetUserName();

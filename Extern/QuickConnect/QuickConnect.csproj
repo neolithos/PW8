@@ -49,6 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="NativeMethods.cs" />
+    <Compile Include="OpenVpn\OpenVpnConnection.cs" />
+    <Compile Include="OpenVpn\OpenVpnDef.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QuickConnectPackage.cs" />
     <Compile Include="SmbConnection.cs" />
@@ -77,6 +79,10 @@
   <ItemGroup>
     <Resource Include="Resources\VpnDisconnected.png" />
     <Resource Include="Resources\VpnConnected.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Resources\VpnConnecting.png" />
+    <Resource Include="Resources\VpnDisconnecting.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -910,7 +910,7 @@ namespace Neo.PerfectWorking.Data
 		} // func ConvertImage
 
 		[LuaMember]
-		public NetworkCredential GetCredential(string targetName, string serviceName)
+		public NetworkCredential GetCredential(string targetName)
 		{
 			lock (credentials.SyncRoot)
 			{

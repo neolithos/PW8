@@ -15,6 +15,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.OpenVpn;
@@ -67,8 +68,11 @@ namespace Neo.PerfectWorking.QuickConnect
 			{
 				try
 				{
+					var sw = Stopwatch.StartNew();
 					SmbConnection.RefreshConnectionState();
+					Debug.Print("Refresh (Smb): {0}ms", sw.ElapsedMilliseconds);
 					VpnConnection.RefreshConnectionState();
+					Debug.Print("Refresh (Vpn): {0}ms", sw.ElapsedMilliseconds);
 				}
 				finally
 				{

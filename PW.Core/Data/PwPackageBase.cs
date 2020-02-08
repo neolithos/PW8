@@ -113,7 +113,7 @@ namespace Neo.PerfectWorking.Data
 		/// <summary></summary>
 		/// <param name="targetName"></param>
 		/// <returns></returns>
-		NetworkCredential GetCredential(string targetName, string serviceName);
+		NetworkCredential GetCredential(string targetName);
 
 		/// <summary>Access the shell implementation.</summary>
 		IPwShellUI UI { get; }

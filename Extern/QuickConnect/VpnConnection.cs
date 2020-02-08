@@ -15,6 +15,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -42,8 +43,25 @@ namespace Neo.PerfectWorking.QuickConnect
 			this.vpnInfo = vpnInfo ?? throw new ArgumentNullException(nameof(vpnInfo));
 			this.name = name ?? Path.GetFileNameWithoutExtension(vpnInfo.ConfigFile);
 
+			vpnInfo.NeedPassword += VpnInfo_NeedPassword;
+			vpnInfo.PropertyChanged += VpnInfo_PropertyChanged;
 			connections.Add(new WeakReference<VpnConnection>(this));
 		} // ctor
+
+		private void VpnInfo_PropertyChanged(object sender, PropertyChangedEventArgs e)
+		{
+			switch (e.PropertyName)
+			{
+				case nameof(OpenVpnInfo.InBytes):
+				case nameof(OpenVpnInfo.OutBytes):
+					OnPropertyChanged(nameof(Label));
+					break;
+				case nameof(OpenVpnInfo.State):
+					OnPropertyChanged(nameof(Label));
+					OnPropertyChanged(nameof(Image));
+					break;
+			}
+		} // event VpnInfo_PropertyChanged
 
 		private void RefreshCore(bool enforceNotify)
 		{
@@ -61,12 +79,69 @@ namespace Neo.PerfectWorking.QuickConnect
 
 		private string GetLabelText()
 		{
-			return vpnInfo.IsActive ? $"Läuft ({vpnInfo.Owner})" : String.Empty;
+			if (vpnInfo.IsActive)
+			{
+				switch (vpnInfo.State)
+				{
+					case OpenVpnState.Active:
+					case OpenVpnState.Connected:
+						return $"Läuft ({new FileSize(vpnInfo.InBytes + vpnInfo.OutBytes).ToString("XiB")}, {vpnInfo.Owner})";
+					case OpenVpnState.Connecting:
+						return "Verbinden...";
+
+					case OpenVpnState.Disconnected:
+					case OpenVpnState.Exiting:
+						return "Schließen...";
+					case OpenVpnState.AddingRoutes:
+						return "Routen setzen...";
+					case OpenVpnState.AssignIP:
+						return "IP abholen...";
+					case OpenVpnState.Authentifaction:
+						return "Authentifizierung...";
+					case OpenVpnState.GetConfiguration:
+						return "Konfigurieren...";
+					case OpenVpnState.Reconnecting:
+						return "Neu verbinden...";
+					case OpenVpnState.Wait:
+						return "Warten...";
+					case OpenVpnState.Unknown:
+					default:
+						return "Unbekannt...";
+				}
+			}
+			else
+				return String.Empty;
 		} // func GetLabelText
 
 		private object GetImage()
 		{
-			return vpnInfo.IsActive ? imageConnected : imageDisconnected;
+			if (vpnInfo.IsActive)
+			{
+				switch (vpnInfo.State)
+				{
+					case OpenVpnState.Connected:
+					case OpenVpnState.Active:
+						return imageConnected;
+
+					case OpenVpnState.GetConfiguration:
+					case OpenVpnState.Reconnecting:
+					case OpenVpnState.Wait:
+					case OpenVpnState.AddingRoutes:
+					case OpenVpnState.AssignIP:
+					case OpenVpnState.Authentifaction:
+					case OpenVpnState.Connecting:
+						return imageConnecting;
+
+					case OpenVpnState.Exiting:
+					case OpenVpnState.Disconnected:
+						return imageDisconnecting;
+					case OpenVpnState.Unknown:
+					default:
+						return imageDisconnected;
+				}
+			}
+			else
+				return imageDisconnected;
 		} // func GetImage
 
 		public bool CanExecute(object parameter)
@@ -95,14 +170,31 @@ namespace Neo.PerfectWorking.QuickConnect
 		private void ShowException(Exception e)
 			=> global.UI.ShowException(e);
 
+		private void VpnInfo_NeedPassword(object sender, OpenVpnNeedPasswordArgs e)
+		{
+			var nc = global.GetCredential("vpn://" + name);
+			if (e.NeedUsername)
+				e.UserName = nc?.UserName ?? "anonymous";
+			if (e.NeedPassword)
+				e.Password = nc?.Password ?? "none";
+			e.Handled = true;
+		} // event VpnInfo_NeedPassword
+
 		public string Title => name;
 		public string Label => GetLabelText();
 		public object Image => GetImage();
 
+		public bool IsProgressVisible => IsRunning;
+		public int ProgressValue => -1;
+
 		public bool IsRunning
 		{
 			get => isRunning;
-			set => Set(ref isRunning, value, nameof(IsRunning));
+			set
+			{
+				if (Set(ref isRunning, value, nameof(IsRunning)))
+					OnPropertyChanged(nameof(IsProgressVisible));
+			}
 		} // prop IsRunning
 
 		public string EventName => vpnInfo.EventName;
@@ -111,6 +203,8 @@ namespace Neo.PerfectWorking.QuickConnect
 		private bool IsActive => vpnInfo != null && vpnInfo.IsActive;
 
 		private static readonly ImageSource imageConnected = new BitmapImage(new Uri("pack://application:,,,/PW.QuickConnect;component/Resources/VpnConnected.png", UriKind.Absolute));
+		private static readonly ImageSource imageConnecting = new BitmapImage(new Uri("pack://application:,,,/PW.QuickConnect;component/Resources/VpnConnecting.png", UriKind.Absolute));
+		private static readonly ImageSource imageDisconnecting = new BitmapImage(new Uri("pack://application:,,,/PW.QuickConnect;component/Resources/VpnDisconnecting.png", UriKind.Absolute));
 		private static readonly ImageSource imageDisconnected = new BitmapImage(new Uri("pack://application:,,,/PW.QuickConnect;component/Resources/VpnDisconnected.png", UriKind.Absolute));
 
 		private static readonly List<WeakReference<VpnConnection>> connections = new List<WeakReference<VpnConnection>>();

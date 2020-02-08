@@ -29,6 +29,9 @@ namespace Neo.PerfectWorking.Data
 		string Title { get; }
 		string Label { get; }
 		object Image { get; }
+
+		bool IsProgressVisible { get; }
+		int ProgressValue { get; }
 	} // interface IPwAction
 
 	#endregion
