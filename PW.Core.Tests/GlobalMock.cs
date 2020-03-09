@@ -54,13 +54,14 @@ namespace PW.Core.Tests
 		public IPwShellUI UI => shellUIMock;
 
 		public object ConvertImage(object image) => throw new NotImplementedException();
-		public IPwCollection<T> GetCollection<T>() where T : class => throw new NotImplementedException();
-		public NetworkCredential GetCredential(string targetName, string serviceName) => throw new NotImplementedException();
+		public IPwCollection<T> GetCollection<T>(IPwPackage package) where T : class => throw new NotImplementedException();
+		public NetworkCredential GetCredential(string targetName) => throw new NotImplementedException();
 		public object GetService(Type serviceType) => throw new NotImplementedException();
-		public bool IsCollectionType(Type type) => throw new NotImplementedException();
+		public bool IsCollectionType(IPwPackage package, Type type) => throw new NotImplementedException();
 		public IPwCollection<T> RegisterCollection<T>(IPwPackage package) where T : class => throw new NotImplementedException();
 		public IPwObject RegisterObject(IPwPackage package, string name, object value = null) => throw new NotImplementedException();
 		public string ResolveFile(string fileName, bool throwException = true) => throw new NotImplementedException();
+		public IEnumerable<T> EnumerateObjects<T>() => throw new NotImplementedException();
 
 		public static GlobalMock Instance { get; } = new GlobalMock();
 

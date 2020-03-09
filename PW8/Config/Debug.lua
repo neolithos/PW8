@@ -47,6 +47,38 @@ local function sendKeyCommand()
 	SendKeyData("[Hallo]");
 end;
 
+
+local d = NewDashboard();
+d {
+	Columns = {
+		"*"
+	},
+	Rows = {
+		"*",
+		"*"
+	},
+
+	--[[d:NetworkInterface {
+		Row = 2,
+		Column = 1
+	},
+	d:NetworkInterface {
+		Row = 2,
+		Column = 2
+	},
+	d:NetworkInterface {
+		Row = 2,
+		Column = 3
+	},]]
+	d:Log {
+		Row = 1
+	},
+	d:Text {
+		Row = 2,
+		Text = "Hallo Welt"
+	}
+};
+
 package("test",
 	function (self)
 		self.passwordStore = creds:CreateFileCredentialProvider("pwds", cryptKey.Protector);

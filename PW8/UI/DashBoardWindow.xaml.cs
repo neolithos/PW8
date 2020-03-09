@@ -15,22 +15,31 @@
 #endregion
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.UI.Dashboard;
 using Neo.PerfectWorking.Win32;
 
 namespace Neo.PerfectWorking.UI
 {
-	public partial class DashBoardWindow : Window
+	internal partial class DashBoardWindow : Window
 	{
+		private readonly IPwGlobal global;
+
 		private Rect rcCurrentCursor;
 		private readonly DispatcherTimer mousePositionTimer;
 
 		private readonly Storyboard hideAnimation;
 		private readonly Storyboard showAnimation;
 
-		public DashBoardWindow()
+		//private LogWidget log;
+
+		public DashBoardWindow(PwGlobal global)
 		{
+			this.global = global ?? throw new ArgumentNullException(nameof(global));
+
 			InitializeComponent();
 
 			showAnimation = (Storyboard)FindResource(nameof(showAnimation));
@@ -48,6 +57,9 @@ namespace Neo.PerfectWorking.UI
 
 			Visibility = Visibility.Hidden;
 		} // ctor
+
+		public object SetDashboard(FrameworkElement dash)
+			=> this.dash.Content = dash;
 
 		public void RecalcPosition()
 		{

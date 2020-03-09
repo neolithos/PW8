@@ -14,6 +14,7 @@
 //
 #endregion
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -142,17 +143,80 @@ namespace Neo.PerfectWorking.Data
 
 	#endregion
 
-	#region -- interface IPwContextMenuFactory ----------------------------------------
+	#region -- interface IPwContextMenu -----------------------------------------------
 
 	/// <summary></summary>
-	public interface IPwContextMenuFactory
+	public interface IPwContextMenu : ICommand
 	{
-	} // interface IPwContextMenuFactory
+		string Title { get; }
+		object Image { get; }
+
+		IEnumerable<IPwContextMenu> Menu { get; }
+	} // interface IPwContextMenu
+
+	#endregion
+
+	#region -- interface IPwContextMenu2 ----------------------------------------------
+
+	/// <summary></summary>
+	public interface IPwContextMenu2 : IPwContextMenu
+	{
+		bool IsCheckable { get; }
+		bool IsChecked { get; }
+	} // interface IPwContextMenu2
 
 	#endregion
 
 	public static class UIHelper
 	{
+		#region -- class GenericContextMenu -------------------------------------------
+
+		private sealed class GenericContextMenu : IPwContextMenu
+		{
+			public event EventHandler CanExecuteChanged
+			{
+				add
+				{
+					if (command != null)
+						command.CanExecuteChanged += value;
+				}
+				remove
+				{
+					if (command != null)
+						command.CanExecuteChanged -= value;
+				}
+			} // event CanExecuteChanged
+
+			private readonly IPwContextMenu[] menu;
+			private readonly string title;
+			private readonly object image;
+			private readonly ICommand command;
+
+			public GenericContextMenu(string title, object image, ICommand command, IPwContextMenu[] menu)
+			{
+				this.title = title;
+				this.image = image;
+				this.command = command;
+				this.menu = menu;
+			}
+
+			public void Execute(object parameter)
+				=> command?.Execute(parameter);
+
+			public bool CanExecute(object parameter)
+				=> command?.CanExecute(parameter) ?? false;
+
+			public string Title => title;
+			public object Image => image;
+
+			public IEnumerable<IPwContextMenu> Menu => menu;
+		} // class GenericContextMenu
+
+		#endregion
+
+		public static IPwContextMenu CreateMenu(string title, object image, ICommand command, params IPwContextMenu[] menu)
+			=> new GenericContextMenu(title, image, command, menu);
+
 		public static void ShowException(this IPwShellUI ui, Exception e)
 			=> ui.ShowException(e?.Message, e);
 

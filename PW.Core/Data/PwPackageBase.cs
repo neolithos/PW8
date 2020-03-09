@@ -80,6 +80,10 @@ namespace Neo.PerfectWorking.Data
 		/// <param name="value"></param>
 		/// <returns></returns>
 		IPwObject RegisterObject(IPwPackage package, string name, object value = null);
+		/// <summary>Returns all registered objects of an type.</summary>
+		/// <typeparam name="T"></typeparam>
+		/// <returns></returns>
+		IEnumerable<T> EnumerateObjects<T>();
 
 		/// <summary>A collection that collects local objects from different moduls.</summary>
 		/// <typeparam name="T">Base type of the objects.</typeparam>
@@ -89,16 +93,18 @@ namespace Neo.PerfectWorking.Data
 		IPwCollection<T> RegisterCollection<T>(IPwPackage package)
 			where T : class;
 
-		/// <summary>Gets the pointer to an collection.</summary>
+		/// <summary>Gets the pointer to an existing collection.</summary>
 		/// <typeparam name="T"></typeparam>
+		/// <param name="package"></param>
 		/// <returns></returns>
-		IPwCollection<T> GetCollection<T>()
+		IPwCollection<T> GetCollection<T>(IPwPackage package)
 			where T : class;
 
 		/// <summary>Is the type assigned to an collection.</summary>
+		/// <param name="package"></param>
 		/// <param name="type"></param>
 		/// <returns></returns>
-		bool IsCollectionType(Type type);
+		bool IsCollectionType(IPwPackage package, Type type);
 
 		/// <summary></summary>
 		/// <param name="fileName"></param>

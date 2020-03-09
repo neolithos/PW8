@@ -15,7 +15,11 @@
 #endregion
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 
 namespace Neo.PerfectWorking.UI
 {
@@ -70,5 +74,20 @@ namespace Neo.PerfectWorking.UI
 			}
 			catch (Exception) { }
 		} // func ToClipboard
+
+		public static MenuItem FindMenuItem(this ItemsControl menu, string name)
+		{
+			if (menu is MenuItem mi && mi.Name == name)
+				return mi;
+
+			foreach (var m in menu.Items.OfType<ItemsControl>())
+			{
+				var r = FindMenuItem(m, name);
+				if (r != null)
+					return r;
+			}
+
+			return null;
+		} // func FindMenuItem
 	} // class UIHelper
 }

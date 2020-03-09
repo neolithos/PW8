@@ -252,3 +252,5 @@ paket-files/
 *.sln.iml
 /PW8/Resources/Resource.res
 /PW.Core.Tests/Configs/Saved
+/PW8/_EventRegisterUsersGuide.docx
+/Extern/QuickConnect/_EventRegisterUsersGuide.docx

@@ -24,21 +24,6 @@ namespace Neo.PerfectWorking.Stuff
 {
 	public static partial class ProcsPW
 	{
-		// todo: create in des.core
-		public static bool TryConvertToBytes(string dataString, out byte[] data)
-		{
-			try
-			{
-				data = Procs.ConvertToBytes(dataString);
-				return true;
-			}
-			catch
-			{
-				data = null;
-				return false;
-			}
-		} // func TryConvertToBytes
-
 		public static string GetUserName(this NetworkCredential cred)
 			=> String.IsNullOrEmpty(cred.Domain)
 				? cred.UserName

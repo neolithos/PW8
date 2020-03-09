@@ -301,4 +301,20 @@ specific language governing permissions and limitations under the Licence.
 			</Setter.Value>
 		</Setter>
 	</Style>
+
+	<Style TargetType="{x:Type ui:PwGeometry}">
+		<Setter Property="IsEnabled" Value="False" />
+		<Setter Property="IsHitTestVisible" Value="False" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type ui:PwGeometry}">
+					<Viewbox x:Name="ImageBox">
+						<Canvas Width="24" Height="24" Margin="{TemplateBinding Padding}">
+							<Path Data="{TemplateBinding Geometry}" Fill="{TemplateBinding Foreground}" />
+						</Canvas>
+					</Viewbox>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
 </ResourceDictionary>

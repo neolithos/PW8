@@ -34,6 +34,8 @@ namespace Neo.PerfectWorking.QuickConnect
 			this.lastConnectionEnum = Environment.TickCount;
 
 			global.UI.AddIdleAction(this);
+
+			Global.RegisterObject(this, "Log", Log.Default);
 		} // ctor
 
 		public void Dispose()

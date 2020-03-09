@@ -22,6 +22,7 @@ using System.Text;
 using Neo.PerfectWorking.Cred.Provider;
 using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.Stuff;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Cred
 {
@@ -55,7 +56,7 @@ namespace Neo.PerfectWorking.Cred
 
 		public ICredentialProtector CreateStaticDesProtector(string prefix, string keyInfo)
 		{
-			if (ProcsPW.TryConvertToBytes(keyInfo, out var bytes))
+			if (Procs.TryConvertToBytes(keyInfo, out var bytes))
 				return CreateStaticDesProtector(prefix, bytes);
 			else
 				throw new FormatException();

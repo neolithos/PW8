@@ -19,6 +19,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -231,17 +232,60 @@ namespace Neo.PerfectWorking.UI
 
 			CommandBindings.AddRange(new CommandBinding[] {
 				new CommandBinding(ApplicationCommands.Open,
-					(sender, e) => OpenConfiguration(((PwGlobal)global).ConfigurationFile)
+					(sender, e) =>
+					{
+						OpenConfiguration(((PwGlobal)global).ConfigurationFile);
+						e.Handled = true;
+					}
 				),
 				new CommandBinding(ApplicationCommands.Properties,
 					(sender, e) =>
 					{
 						((PwGlobal)global).RefreshConfiguration();
 						model.Global.UI.ShowNotification("Konfiguration neu geladen!");
+						e.Handled = true;
 					}
 				),
 				new CommandBinding(ApplicationCommands.Close,
-					(sender, e) => ((App)global.UI).ExitApplication()
+					(sender, e) =>
+					{
+						((App)global.UI).ExitApplication();
+						e.Handled = true;
+					}
+				),
+
+				new CommandBinding(AppCommands.OpenEventLog,
+					(sender, e) =>
+					{
+						((App)Application.Current).OpenEventLog((EventSource)e.Parameter);
+						e.Handled = true;
+					},
+					(sender, e) =>
+					{
+						e.CanExecute = e.Parameter is EventSource;
+						e.Handled=true;
+					}
+				),
+				new CommandBinding(AppCommands.InstallEventLogs,
+					(sender, e) =>
+					{
+						((App)Application.Current).InstallEventLogs();
+						e.Handled = true;
+					}
+				),
+				new CommandBinding(AppCommands.DeinstallEventLogs,
+					(sender, e) =>
+					{
+						((App)Application.Current).DeinstallEventLogs();
+						e.Handled = true;
+					}
+				),
+				new CommandBinding(AppCommands.ExportEventLogs,
+					(sender, e) =>
+					{
+						((App)Application.Current).ExportEventLogs();
+						e.Handled = true;
+					}
 				)
 			});
 

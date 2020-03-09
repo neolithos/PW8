@@ -18,8 +18,12 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
+using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,6 +33,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Markup;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using Neo.PerfectWorking.Data;
 using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.Win32;
@@ -106,17 +111,17 @@ namespace Neo.PerfectWorking.UI
 				// unregister current hotkey
 				UnRegister();
 
-				if (!RegisterHotKey(hwnd.Handle, HotKeyId, (uint)Key.Modifiers, (uint)Key.VirtualKey))
+				if (!RegisterHotKey(hwnd.Handle, HotKeyId, (uint)Key.Modifiers, Key.VirtualKey))
 				{
-					Debug.Print($"Register HotKey '{Key}' with Id {HotKeyId}: Failed");
 					var e = new Win32Exception();
+					Log.Default.RegisterHotKeyFailed(Key.ToString(), HotKeyId, e.NativeErrorCode);
 					if (e.NativeErrorCode != 1409) // Failed to register
 						throw e;
 				}
 				else
 				{
 					isRegistered = true;
-					Debug.Print($"Register HotKey '{Key}' with Id {HotKeyId}: Successful");
+					Log.Default.RegisterHotKeySuccess(Key.ToString(), HotKeyId);
 				}
 			} // proc Register
 
@@ -186,6 +191,8 @@ namespace Neo.PerfectWorking.UI
 
 		private IPwCollection<IPwHotKey> hotkeys;
 		private readonly Dictionary<int, PwRegisteredHotKey> registeredHotkeys = new Dictionary<int, PwRegisteredHotKey>();
+		private IPwCollection<EventSource> eventSources;
+		private MenuItem logEventMenuItem;
 
 		#region -- Ctor ---------------------------------------------------------------
 
@@ -484,10 +491,10 @@ namespace Neo.PerfectWorking.UI
 				global = new PwGlobal(this, configurationFile);
 
 				// create windows
-				dashBoardWindow = new DashBoardWindow();
+				dashBoardWindow = new DashBoardWindow(global);
 				mainWindow = new MainWindow(global);
 				notificationWindow = new NotificationWindow();
-				
+
 				SystemParameters.StaticPropertyChanged += (sender, e2) =>
 				{
 					switch (e2.PropertyName)
@@ -500,8 +507,16 @@ namespace Neo.PerfectWorking.UI
 					}
 				};
 
+				AssignCommandTarget(contextMenu, mainWindow);
+
 				// create hotkey list
 				hotkeys = global.RegisterCollection<IPwHotKey>(global);
+
+				// Events
+				logEventMenuItem = contextMenu.FindMenuItem("logMainMenuItem");
+				eventSources = global.RegisterCollection<EventSource>(global);
+				eventSources.CollectionChanged += EventSources_CollectionChanged;
+				EventSources_CollectionChanged(eventSources, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 
 				// read configuration
 				global.RefreshConfiguration();
@@ -526,6 +541,15 @@ namespace Neo.PerfectWorking.UI
 			}
 		} // proc OnStartup
 
+		private void AssignCommandTarget(ItemsControl items, IInputElement commandTarget)
+		{
+			if (items is MenuItem mnu)
+				mnu.CommandTarget = commandTarget;
+
+			foreach (var m in items.Items.OfType<ItemsControl>())
+				AssignCommandTarget(m, commandTarget);
+		} // proc AssignCommandTarget
+
 		protected override void OnExit(ExitEventArgs e)
 		{
 			base.OnExit(e);
@@ -538,14 +562,9 @@ namespace Neo.PerfectWorking.UI
 			global?.Dispose();
 		} // proc OnExit
 
-		private void ApplicationClose(object sender, RoutedEventArgs e)
-			=> ExitApplication();
-
 		public void ExitApplication()
-		{
-			Shutdown();
-		} // proc ExitApplication
-
+			=> Shutdown();
+		
 		#endregion
 
 		#region -- HotKey List --------------------------------------------------------
@@ -660,6 +679,194 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
+		#region -- EventSource - Management -------------------------------------------
+
+		private int FindEventSourceItem(EventSource source)
+		{
+			var i = 0;
+			while (i < logEventMenuItem.Items.Count)
+			{
+				if (logEventMenuItem.Items[i] is Separator)
+					break;
+				else if (logEventMenuItem.Items[i] is MenuItem m && m.CommandParameter == source)
+					return i;
+				i++;
+			}
+			return ~i;
+		} // func FindEventSourceItem
+
+		private static string CleanEventLogName(string name)
+		{
+			const string prefix = "PerfectWorking-";
+			const string suffix = "-Log";
+
+			if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+				name = name.Substring(prefix.Length);
+			if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+				name = name.Substring(0, name.Length - suffix.Length);
+
+			return name;
+		} // func CleanEventLogName
+
+		private void AddEventSource(EventSource source)
+		{
+			var index = FindEventSourceItem(source);
+			if (index < 0)
+			{
+				logEventMenuItem.Items.Insert(~index, new MenuItem
+				{
+					Header = CleanEventLogName(source.Name),
+					Command = AppCommands.OpenEventLog,
+					CommandParameter = source,
+					CommandTarget = mainWindow
+				});
+			}
+		} // proc AddEventSource
+
+		private void RemoveEventSource(EventSource source)
+		{
+			var index = FindEventSourceItem(source);
+			if (index >= 0)
+				logEventMenuItem.Items.RemoveAt(index);
+		} // proc RemoveEventSource
+
+		private void ClearEventSources()
+		{
+			while (logEventMenuItem.Items.Count > 0 && !(logEventMenuItem.Items[0] is Separator))
+				logEventMenuItem.Items.RemoveAt(0);
+		} // proc ClearEventSources
+
+		private void EventSources_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+		{
+			switch (e.Action)
+			{
+				case NotifyCollectionChangedAction.Add:
+					foreach (var c in e.NewItems.OfType<EventSource>())
+						AddEventSource(c);
+					break;
+				case NotifyCollectionChangedAction.Remove:
+					foreach (var c in e.OldItems.OfType<EventSource>())
+						RemoveEventSource(c);
+					break;
+				case NotifyCollectionChangedAction.Reset:
+					ClearEventSources();
+					foreach (var c in eventSources)
+						AddEventSource(c);
+					break;
+			}
+		} // event EventSources_CollectionChanged
+
+		private static string CompleteEventSourceName(EventSource source)
+			=> source.Name + "/Operational";
+
+		public void OpenEventLog(EventSource source)
+		{
+			var eventViewer = Path.Combine(Environment.SystemDirectory, "eventvwr.exe");
+			Process.Start(eventViewer, $"/c:\"{CompleteEventSourceName(source)}\"");
+		} // proc OpenEventLog
+
+		private IEnumerable<(string name, string manifestFileName, string manifestResourceFileName)> EnumerateEventSources()
+		{
+			foreach (var source in global.EnumerateObjects<EventSource>())
+			{
+				var manifestFileName = global.ResolveFile(source.GetType().Assembly.GetName().Name + "." + source.Name + ".etwManifest.man", false);
+				if (manifestFileName == null)
+					break;
+
+				var manifestResourceFileName = Path.ChangeExtension(manifestFileName, ".dll");
+				yield return (CompleteEventSourceName(source), manifestFileName, manifestResourceFileName);
+			}
+		} // func EnumerateEventSources
+
+		private string CreateLogScript(bool install)
+		{
+			var sb = new StringBuilder("@ECHO OFF");
+			sb.AppendLine();
+			foreach (var (name, manifestFileName, manifestResourceFileName) in EnumerateEventSources())
+			{
+				sb.AppendLine("ECHO " + name);
+				sb.AppendLine($"WEVTUTIL um \"{manifestFileName}\"");
+				if (install)
+					sb.AppendLine($"WEVTUTIL im \"{manifestFileName}\" /rf:\"{manifestResourceFileName}\" /mf:\"{manifestResourceFileName}\"");
+			}
+			sb.AppendLine("PAUSE");
+			return sb.ToString();
+		} // func CreateLogScript
+
+		private static void RunBatchScriptUAC(string script)
+		{
+			// write script
+			var tempBatch = Path.GetTempPath() + Guid.NewGuid().ToString("N") + ".bat";
+			File.WriteAllText(tempBatch, script + Environment.NewLine + "DEL \"" + tempBatch + "\"");
+
+			// run script
+			var psi = new ProcessStartInfo
+			{
+				FileName = Path.Combine(Environment.SystemDirectory, "cmd.exe"),
+				Arguments = "/c \"" + tempBatch + "\"",
+				Verb = "runas"
+			};
+			Process.Start(psi);
+		} // proc RunBatchScriptUAC
+
+		public void InstallEventLogs()
+			=> RunBatchScriptUAC(CreateLogScript(true));
+
+		public void DeinstallEventLogs()
+			=> RunBatchScriptUAC(CreateLogScript(false));
+
+		public void ExportEventLogs()
+		{
+			var dlg = new SaveFileDialog
+			{
+				Title = "Exportiere Log-Dateien",
+				DefaultExt = "zip",
+				Filter = "Zip-Dateien (*.zip)|*.zip"
+			};
+			if (dlg.ShowDialog() == true)
+			{
+				var exportedLogs = new List<(string, string)>();
+				try
+				{
+					foreach (var source in global.EnumerateObjects<EventSource>())
+					{
+						var tempExportFileName = Path.GetTempFileName();
+						exportedLogs.Add((tempExportFileName, source.Name + ".evtx"));
+						File.Delete(tempExportFileName);
+						EventLogSession.GlobalSession.ExportLog(CompleteEventSourceName(source), PathType.LogName, null, tempExportFileName);
+					}
+
+					using (var dst = new FileStream(dlg.FileName, FileMode.Create))
+					using (var zip = new ZipArchive(dst, ZipArchiveMode.Create))
+					{
+						foreach (var cur in exportedLogs)
+						{
+							var entry = zip.CreateEntry(Path.GetFileName(cur.Item2));
+							using (var dst2 = entry.Open())
+							using (var src2 = new FileStream(cur.Item1, FileMode.Open))
+								src2.CopyTo(dst2);
+						}
+					}
+
+					global.UI.ShowNotification("Logs exportiert.");
+				}
+				catch(Exception e)
+				{
+					global.UI.ShowException(e);
+				}
+				finally
+				{
+					foreach (var cur in exportedLogs)
+					{
+						try { File.Delete(cur.Item1); }
+						catch { }
+					}
+				}
+			}
+		} // proc ExportEventLogs
+
+		#endregion
+
 		#region -- Invoke -------------------------------------------------------------
 
 		public Task InvokeAsync(Action action)
@@ -695,6 +902,8 @@ namespace Neo.PerfectWorking.UI
 				sb.AppendLine(text).AppendLine();
 
 			sb.Append(e.ToString());
+
+			Log.Default.Exception(text, e.ToString());
 
 			MessageBox.Show(sb.ToString(), "Error", MessageBoxButton.OK, MessageBoxImage.Error);
 		} // proc ShowException
@@ -889,6 +1098,8 @@ namespace Neo.PerfectWorking.UI
 
 		public DirectoryInfo ApplicationLocalDirectory { get; }
 
+		internal DashBoardWindow DashBoardWindow => dashBoardWindow;
+
 		// -- Static part -----------------------------------------------------
 
 		private const string configurationFileArgument = "--config:";
@@ -903,5 +1114,13 @@ namespace Neo.PerfectWorking.UI
 					configurationFile = a.Substring(configurationFileArgument.Length);
 			}
 		} // proc ParseArguments
-	}
+	} // class App
+
+	public static class AppCommands
+	{
+		public static readonly RoutedUICommand OpenEventLog = new RoutedUICommand("Open", "OpenEventLog", typeof(AppCommands));
+		public static readonly RoutedUICommand InstallEventLogs = new RoutedUICommand("Install", "InstallEventLog", typeof(AppCommands));
+		public static readonly RoutedUICommand DeinstallEventLogs = new RoutedUICommand("Deinstall", "UninstallEventLog", typeof(AppCommands));
+		public static readonly RoutedUICommand ExportEventLogs = new RoutedUICommand("Export", "ExportEventLog", typeof(AppCommands));
+	} // class AppCommands
 }

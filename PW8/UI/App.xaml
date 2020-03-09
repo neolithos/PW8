@@ -21,10 +21,23 @@ specific language governing permissions and limitations under the Licence.
 		<ResourceDictionary>
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceDictionary Source="pack://application:,,,/PW.Wpf;component/Themes/Generic.xaml" />
+				<ResourceDictionary Source="Dashboard/LogWidget.xaml" />
 			</ResourceDictionary.MergedDictionaries>
 
 			<ContextMenu x:Key="applicationMenu" Placement="AbsolutePoint">
-				<MenuItem Header="Exit" Click="ApplicationClose" />
+				<MenuItem Header="Konfiguration">
+					<MenuItem Header="Bearbeiten..." Command="{x:Static ApplicationCommands.Open}" />
+					<MenuItem Header="Neu laden" Command="{x:Static ApplicationCommands.Properties}" />
+				</MenuItem>
+				<MenuItem x:Name="logMainMenuItem" Header="Logs">
+					<Separator />
+					<MenuItem Header="Installieren" Command="{x:Static local:AppCommands.InstallEventLogs}" />
+					<MenuItem Header="Deinstallieren" Command="{x:Static local:AppCommands.DeinstallEventLogs}" />
+					<Separator />
+					<MenuItem Header="Exportieren..." Command="{x:Static local:AppCommands.ExportEventLogs}" />
+				</MenuItem>
+				<Separator />
+				<MenuItem Header="Beenden" Command="{x:Static ApplicationCommands.Close}" />
 			</ContextMenu>
 		</ResourceDictionary>
 	</Application.Resources>

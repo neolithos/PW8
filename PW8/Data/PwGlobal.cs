@@ -15,6 +15,7 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -27,6 +28,7 @@ using System.Windows.Threading;
 using Neo.IronLua;
 using Neo.PerfectWorking.Stuff;
 using Neo.PerfectWorking.UI;
+using Neo.PerfectWorking.UI.Dashboard;
 using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Data
@@ -184,7 +186,13 @@ namespace Neo.PerfectWorking.Data
 			// load options
 			userLocal = RegisterObject(this, nameof(IPwGlobal.UserLocal), new PwConfigTable(Path.Combine(app.ApplicationLocalDirectory.FullName, "global.xml")));
 			userRemote = RegisterObject(this, nameof(IPwGlobal.UserRemote), new PwConfigTable(Path.Combine(app.ApplicationRemoteDirectory.FullName, "global.xml")));
-			
+
+			// default widgets
+			RegisterObject(this, nameof(LogWidget), LogWidget.Factory);
+			RegisterObject(this, nameof(TextWidget), TextWidget.Factory);
+
+			RegisterObject(this, "Log", Log.Default);
+
 			autoSaveFilesIdleAction = AddIdleAction(AutoSaveFilesIdle);
 		} // ctor
 
@@ -212,13 +220,15 @@ namespace Neo.PerfectWorking.Data
 
 		#region -- Object Manager -----------------------------------------------------
 
-		private IPwInternalCollection FindCollection(Type itemType)
+		private IPwInternalCollection FindCollection(IPwPackage package, Type itemType)
 		{
+			if (package == null)
+				throw new ArgumentNullException(nameof(package));
 			if (itemType == null)
 				throw new ArgumentNullException(nameof(itemType));
 
 			lock (collections)
-				return collections.FirstOrDefault(c => c.ItemType == itemType);
+				return collections.FirstOrDefault(c => c.Package == package && c.ItemType == itemType);
 		} // func FindCollection
 
 		private int FindObjectIndex(IPwPackage package, string name)
@@ -246,13 +256,22 @@ namespace Neo.PerfectWorking.Data
 			lock (collections)
 				objects.Remove(obj);
 		} // proc ObjectRemove
-		
+
+		public IEnumerable<T> EnumerateObjects<T>()
+		{
+			lock (collections)
+			{
+				foreach (var c in objects.Select(o => o.Value).OfType<T>())
+					yield return c;
+			}
+		} // func EnumerateObjects
+
 		public IPwCollection<T> RegisterCollection<T>(IPwPackage package)
 			where T : class
 		{
 			lock (collections)
 			{
-				var collection = FindCollection(typeof(T));
+				var collection = FindCollection(package, typeof(T));
 				if (collection == null)
 				{
 					collection = new PwObjectCollection<T>(package);
@@ -269,12 +288,12 @@ namespace Neo.PerfectWorking.Data
 			}
 		} // func RegisterCollection
 
-		public bool IsCollectionType(Type itemType)
-			=> FindCollection(itemType) != null;
+		public bool IsCollectionType(IPwPackage package, Type itemType)
+			=> FindCollection(package, itemType) != null;
 
-		public IPwCollection<T> GetCollection<T>()
+		public IPwCollection<T> GetCollection<T>(IPwPackage package)
 			where T : class
-			=> (IPwCollection<T>)FindCollection(typeof(T));
+			=> (IPwCollection<T>)FindCollection(package, typeof(T));
 
 		private void CollectionsAdd(IPwObject obj, object value)
 		{
@@ -297,8 +316,11 @@ namespace Neo.PerfectWorking.Data
 			}
 		} // proc CollectionsRemove
 
+		private static bool CheckItemTypeAssignable(Type itemType, IPwObject obj)
+			=> obj.Value != null && itemType.IsAssignableFrom(obj.Value.GetType());
+
 		private static bool CheckCollectionAssignable(IPwInternalCollection collection, IPwObject obj)
-			=> obj.Value != null && collection.ItemType.IsAssignableFrom(obj.Value.GetType());
+			=> CheckItemTypeAssignable(collection.ItemType, obj);
 
 		public object GetService(Type serviceType)
 		{
@@ -640,11 +662,20 @@ namespace Neo.PerfectWorking.Data
 			currentInitializationExceptions = new List<PwPackageInitializationException>();
 			currentPackage = null;
 
+			Log.Default.StartRefreshCongifuration(ConfigurationFile);
+
 			// run init script
 			try
 			{
+				var sw = new Stopwatch();
 				var c = CompileFile(ConfigurationFile);
+				var compileTime = sw.ElapsedMilliseconds;
+				sw.Restart();
+
 				c.Run(this);
+				var runTime = sw.ElapsedMilliseconds;
+				sw.Restart();
+
 
 				// clear out of scope variables
 				for (var i = packages.Count - 1; i >= 0; i--)
@@ -659,11 +690,15 @@ namespace Neo.PerfectWorking.Data
 				// not touched packages -> add all
 				packages.AddRange(currentInitializedPackages);
 
+				var cleanTime = sw.ElapsedMilliseconds;
+				
 				if (currentInitializationExceptions.Count > 0)
 				{
 					foreach (var e in currentInitializationExceptions)
 						UI.ShowException(e);
 				}
+
+				Log.Default.FinishRefreshCongifuration(ConfigurationFile, compileTime, runTime, cleanTime);
 			}
 			catch (LuaParseException e)
 			{
@@ -891,6 +926,10 @@ namespace Neo.PerfectWorking.Data
 			=> PwKey.Parse(key).SendKey(PwKeySend.Both);
 
 		#endregion
+
+		[LuaMember]
+		public GlobalWidgetFactory NewDashboard()
+			=> new GlobalWidgetFactory(this, app.DashBoardWindow);
 
 		[LuaMember]
 		public object ConvertImage(object image)

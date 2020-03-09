@@ -619,7 +619,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			{
 				if (encrypted is byte[] b)
 					return b;
-				else if (encrypted is string s && ProcsPW.TryConvertToBytes(s, out var b2))
+				else if (encrypted is string s && Procs.TryConvertToBytes(s, out var b2))
 					return b2;
 				else
 					return null;
@@ -843,7 +843,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				if (unpackedData.Length != 3 || unpackedData[0] != "2")
 					throw new FormatException();
 
-				if (!ProcsPW.TryConvertToBytes(unpackedData[2], out var encryptedPassword))
+				if (!Procs.TryConvertToBytes(unpackedData[2], out var encryptedPassword))
 				{
 					password = null;
 					return false;
@@ -890,7 +890,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			var hData = default(GCHandle);
 			try
 			{
-				if (!ProcsPW.TryConvertToBytes(dataString, out var data))
+				if (!Procs.TryConvertToBytes(dataString, out var data))
 				{
 					password = null;
 					return false;

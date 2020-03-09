@@ -34,7 +34,7 @@ namespace Neo.PerfectWorking.UI
 			InitializeComponent();
 
 			this.global = global ?? throw new ArgumentNullException(nameof(global));
-			var actions = CollectionViewSource.GetDefaultView(global.GetCollection<IPwAction>());
+			var actions = CollectionViewSource.GetDefaultView(global.GetCollection<IPwAction>((IPwPackage)global));
 
 			actions.Filter = OnFilter;
 			actions.SortDescriptions.Add(new SortDescription("Title", ListSortDirection.Ascending));
@@ -56,8 +56,11 @@ namespace Neo.PerfectWorking.UI
 
 		private void ActionListRightClick(object sender, MouseButtonEventArgs e)
 		{
-			if((e.Source as FrameworkElement)?.DataContext is IPwContextMenuFactory f)
-				;
+			if ((e.Source as FrameworkElement)?.DataContext is IPwContextMenu f)
+			{
+				//<MenuItem Icon="" Header="" Command="" IsCheckable="" IsChecked=""
+				//ContextMenu.ItemsSource
+			}
 		} // event actionListRightClick
 
 		private bool OnFilter(object item)

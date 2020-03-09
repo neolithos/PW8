@@ -110,6 +110,7 @@ namespace Neo.PerfectWorking.QuickConnect
 		private async Task ExecuteConnect(PwAction action, CancellationToken cancellationToken)
 		{
 			action.Label = "Verbinden...";
+			Log.Default.SmbConnect(remotePath);
 
 			// get user name and password
 			var networkCredential = global.GetCredential(credentialTarget ?? remotePath);
@@ -238,6 +239,7 @@ namespace Neo.PerfectWorking.QuickConnect
 
 		public static void RefreshConnectionState()
 		{
+			//Log.Default.SmbConnect("remotePath");
 			IntPtr dataPtr;
 			var count = 100;
 			var dataSize = count * Marshal.SizeOf(typeof(NETRESOURCE));
