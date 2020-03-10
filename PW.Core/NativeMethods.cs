@@ -67,11 +67,11 @@ namespace Neo.PerfectWorking
 		[FieldOffset(0)]
 		public int type;
 
-		[FieldOffset(4)]
+		[FieldOffset(8)]
 		public MOUSEINPUT mi;
-		[FieldOffset(4)]
+		[FieldOffset(8)]
 		public KEYBDINPUT ki;
-		[FieldOffset(4)]
+		[FieldOffset(8)]
 		public HARDWAREINPUT hi;
 	} // struct INPUT
 
@@ -113,7 +113,7 @@ namespace Neo.PerfectWorking
 		[DllImport(user32)]
 		public static extern IntPtr GetMessageExtraInfo();
 
-		[DllImport(user32, SetLastError = true)]
+		[DllImport(user32, CharSet = CharSet.Unicode, SetLastError = true)]
 		public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
 		[DllImport(user32, CharSet = CharSet.Unicode, SetLastError = true)]
