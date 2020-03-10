@@ -54,10 +54,25 @@ namespace Neo.PerfectWorking.OpenVpn
 
 	#endregion
 
+	#region -- class OpenVpnExceptionArgs ---------------------------------------------
+
+	public sealed class OpenVpnExceptionArgs : EventArgs
+	{
+		public OpenVpnExceptionArgs(Exception e)
+		{
+			Exception = e ?? throw new ArgumentNullException(nameof(e));
+		} // ctor
+
+		public Exception Exception { get; }
+	} // class OpenVpnExceptionArgs
+
+	#endregion
+
 	public sealed class OpenVpnConnection : IDisposable
 	{
 		public event EventHandler<EventArgs> Closed;
 		public event EventHandler<OpenVpnNeedPasswordArgs> NeedPassword;
+		public event EventHandler<OpenVpnExceptionArgs> BackgroundException;
 
 		private event OpenVpnStateDelegate stateEvent;
 		private event OpenVpnLogLineDelegate logLineEvent;
@@ -92,6 +107,8 @@ namespace Neo.PerfectWorking.OpenVpn
 		} // proc Dispose
 
 		#endregion
+
+		#region -- ConnectAsync -------------------------------------------------------
 
 		public static async Task<OpenVpnConnection> ConnectAsync(int managementPort, string managementPassword, int retry)
 		{
@@ -130,6 +147,8 @@ namespace Neo.PerfectWorking.OpenVpn
 			}
 			return connection;
 		} // func ConnectAsync
+
+		#endregion
 
 		#region -- Core Primitives ----------------------------------------------------
 
@@ -380,7 +399,7 @@ namespace Neo.PerfectWorking.OpenVpn
 					throw new ArgumentNullException(nameof(value));
 
 				if (stateEvent == null)
-					SendAsync("state on", false).Silent(BackgroundException);
+					SendAsync("state on", false).Silent(OnBackgroundException);
 
 				stateEvent += value;
 			}
@@ -391,7 +410,7 @@ namespace Neo.PerfectWorking.OpenVpn
 
 				stateEvent -= value;
 				if (stateEvent == null)
-					SendAsync("state off", false).Silent(BackgroundException);
+					SendAsync("state off", false).Silent(OnBackgroundException);
 
 			}
 		} // event StateChanged
@@ -431,7 +450,7 @@ namespace Neo.PerfectWorking.OpenVpn
 				var activate = logLineEvent == null;
 				logLineEvent += value;
 				if (activate)
-					EnableLogAsync().Silent(BackgroundException);
+					EnableLogAsync().Silent(OnBackgroundException);
 			}
 			remove
 			{
@@ -440,7 +459,7 @@ namespace Neo.PerfectWorking.OpenVpn
 
 				logLineEvent -= value;
 				if (logLineEvent == null)
-					SendAsync("log off", false).Silent(BackgroundException);
+					SendAsync("log off", false).Silent(OnBackgroundException);
 
 			}
 		} // event LogLine
@@ -477,7 +496,7 @@ namespace Neo.PerfectWorking.OpenVpn
 					throw new ArgumentNullException(nameof(value));
 
 				if (byteCountEvent == null)
-					SendAsync("bytecount 1", false).Silent(BackgroundException);
+					SendAsync("bytecount 1", false).Silent(OnBackgroundException);
 
 				byteCountEvent += value;
 			}
@@ -488,7 +507,7 @@ namespace Neo.PerfectWorking.OpenVpn
 
 				byteCountEvent -= value;
 				if (byteCountEvent == null)
-					SendAsync("bytecount 0", false).Silent(BackgroundException);
+					SendAsync("bytecount 0", false).Silent(OnBackgroundException);
 
 			}
 		} // event ByteCountChanged
@@ -527,9 +546,10 @@ namespace Neo.PerfectWorking.OpenVpn
 
 		#endregion
 
-		private void BackgroundException(Exception ex)
+		private void OnBackgroundException(Exception ex)
 		{
+			BackgroundException?.Invoke(this, new OpenVpnExceptionArgs(ex));
 			Debug.Print(ex.ToString());
-		} // proc BackgroundException
+		} // proc OnBackgroundException
 	} // class OpenVpnConnection
 }

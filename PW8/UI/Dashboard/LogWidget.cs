@@ -23,6 +23,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.UI
 {
@@ -164,14 +165,17 @@ namespace Neo.PerfectWorking.UI
 		} // event Sources_CollectionChanged
 
 		private static string CreateMessage(EventWrittenEventArgs e)
-			=> String.Format(e.Message, e.Payload.ToArray());
+			=> String.Format(e.Message, e.Payload.ToArray()).GetFirstLine();
 
 		private void Listener_EventWritten(object sender, EventWrittenEventArgs e)
 		{
-			Dispatcher.BeginInvoke(new Action<EventLevel, DateTime, string>(items.Append),
-				DispatcherPriority.Normal,
-				e.Level, DateTime.Now, CreateMessage(e)
-			);
+			if (e.Channel == EventChannel.Operational)
+			{
+				Dispatcher.BeginInvoke(new Action<EventLevel, DateTime, string>(items.Append),
+				  DispatcherPriority.Normal,
+				  e.Level, DateTime.Now, CreateMessage(e)
+			  );
+			}
 		} // event Listener_EventWritten
 
 		#region -- LogLines - Properties ----------------------------------------------

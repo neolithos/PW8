@@ -774,7 +774,7 @@ namespace Neo.PerfectWorking.UI
 					break;
 
 				var manifestResourceFileName = Path.ChangeExtension(manifestFileName, ".dll");
-				yield return (CompleteEventSourceName(source), manifestFileName, manifestResourceFileName);
+				yield return (source.Name, manifestFileName, manifestResourceFileName);
 			}
 		} // func EnumerateEventSources
 

@@ -27,13 +27,14 @@ using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.QuickConnect
 {
-	internal class VpnConnection : ObservableObject, IPwAction
+	internal class VpnConnection : ObservableObject, IPwAction, IPwContextMenu
 	{
 		public event EventHandler CanExecuteChanged;
 
 		private readonly IPwGlobal global;
 		private readonly string name;
 		private readonly OpenVpnInfo vpnInfo;
+		private readonly IPwContextMenu[] menu;
 
 		private bool isRunning = false;
 
@@ -46,6 +47,15 @@ namespace Neo.PerfectWorking.QuickConnect
 			vpnInfo.NeedPassword += VpnInfo_NeedPassword;
 			vpnInfo.PropertyChanged += VpnInfo_PropertyChanged;
 			connections.Add(new WeakReference<VpnConnection>(this));
+
+			menu = new IPwContextMenu[]
+			{
+				UIHelper.CreateMenu("Verbinden", null, null),
+				UIHelper.CreateMenu("Trennen", null, null),
+				UIHelper.CreateMenu("Neu verbinden", null, null),
+				UIHelper.CreateMenu(null, null, null),
+				UIHelper.CreateMenu("Konfiguration...", null, null),
+			};
 		} // ctor
 
 		private void VpnInfo_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -85,6 +95,7 @@ namespace Neo.PerfectWorking.QuickConnect
 				{
 					case OpenVpnState.Active:
 					case OpenVpnState.Connected:
+						// todo: Notification
 						return $"Läuft ({new FileSize(vpnInfo.InBytes + vpnInfo.OutBytes).ToString("XiB")}, {vpnInfo.Owner})";
 					case OpenVpnState.Connecting:
 						return "Verbinden...";
@@ -201,6 +212,8 @@ namespace Neo.PerfectWorking.QuickConnect
 		public string ConfigFile => vpnInfo.ConfigFile;
 
 		private bool IsActive => vpnInfo != null && vpnInfo.IsActive;
+
+		public IEnumerable<IPwContextMenu> Menu => menu;
 
 		private static readonly ImageSource imageConnected = new BitmapImage(new Uri("pack://application:,,,/PW.QuickConnect;component/Resources/VpnConnected.png", UriKind.Absolute));
 		private static readonly ImageSource imageConnecting = new BitmapImage(new Uri("pack://application:,,,/PW.QuickConnect;component/Resources/VpnConnecting.png", UriKind.Absolute));

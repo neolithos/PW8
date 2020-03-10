@@ -31,6 +31,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
+using Neo.PerfectWorking.QuickConnect;
 using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.OpenVpn
@@ -49,10 +50,12 @@ namespace Neo.PerfectWorking.OpenVpn
 
 		#region -- Ctor/Dtor ----------------------------------------------------------
 
-		private OpenVpnInfo(string eventName, string configFile)
+		private OpenVpnInfo(string exitEventName, string configFile)
 		{
-			this.exitEventName = eventName ?? throw new ArgumentNullException(nameof(eventName));
+			this.exitEventName = exitEventName ?? throw new ArgumentNullException(nameof(exitEventName));
 			this.configFile = configFile ?? throw new ArgumentNullException(nameof(configFile));
+
+			Name = Path.GetFileNameWithoutExtension(configFile);
 
 			Refresh();
 		} // ctor
@@ -176,6 +179,7 @@ namespace Neo.PerfectWorking.OpenVpn
 				// start openvpn
 				var managementPassword = GetPasswordFromEventName();
 				var buf = GetServiceStartupMessage(workingDir, cmdLine, managementPassword);
+				Log.Default.VpnStartConfigViaPipe(Name, cmdLine);
 				await pipe.WriteAsync(buf, 0, buf.Length);
 
 				// wait for startup
@@ -247,6 +251,7 @@ namespace Neo.PerfectWorking.OpenVpn
 			{
 				var exePath = GetServiceConfiguration("exe_path");
 				var managementPassword = GetPasswordFromEventName();
+				Log.Default.VpnStartConfigViaExe(Name, exePath, cmdLine);
 				var process = Process.Start(new ProcessStartInfo(exePath, cmdLine) { WorkingDirectory = workingDir, RedirectStandardInput = true, RedirectStandardOutput = true, UseShellExecute = false });
 				await process.StandardInput.WriteLineAsync(managementPassword);
 			}
@@ -498,10 +503,13 @@ namespace Neo.PerfectWorking.OpenVpn
 				if (releaseHold || !IsLastWriteUpToDate(state.FileTimeUtc))
 				{
 					// start connection
+					Log.Default.VpnConnectionOpen(Name);
 					connection = await OpenVpnConnection.ConnectAsync(GetManagementPort(), GetPasswordFromEventName(), retry);
 					connection.ByteCountChanged += Connection_ByteCountChanged;
 					connection.StateChanged += Connection_StateChanged;
-					connection.NeedPassword += Connection_NeedPassword;					
+					connection.NeedPassword += Connection_NeedPassword;
+					connection.LogLine += Connection_LogLine;
+					connection.BackgroundException += Connection_BackgroundException;
 					connection.Closed += Connection_Closed;
 					if (releaseHold)
 						await connection.ReleaseHoldAsync();
@@ -559,7 +567,10 @@ namespace Neo.PerfectWorking.OpenVpn
 		} // func GetManagementPort
 
 		private void Connection_Closed(object sender, EventArgs e)
-			=> connection = null;
+		{
+			connection = null;
+			Log.Default.VpnConnectionClosed(Name);
+		} // event Connection_Closed
 
 		private void Connection_StateChanged(DateTime stamp, OpenVpnState state)
 		{
@@ -580,8 +591,34 @@ namespace Neo.PerfectWorking.OpenVpn
 			mem.Write(0, ref h);
 		} // event Connection_ByteCountChanged
 
+		private void Connection_LogLine(OpenVpnLogLine logLine)
+		{
+			switch (logLine.Type)
+			{
+				case OpenVpnLineTyp.Debug:
+					Log.Default.VpnLogLineDebug(Name, logLine.Text);
+					break;
+				case OpenVpnLineTyp.FatalError:
+				case OpenVpnLineTyp.NoneFatalError:
+					Log.Default.VpnLogLineError(Name, logLine.Text);
+					break;
+				case OpenVpnLineTyp.Warning:
+					Log.Default.VpnLogLineWarning(Name, logLine.Text);
+					break;
+				default:
+					Log.Default.VpnLogLineInfo(Name, logLine.Text);
+					break;
+			}
+		} // event Connection_LogLine
+
 		private void Connection_NeedPassword(object sender, OpenVpnNeedPasswordArgs e)
-			=> NeedPassword?.Invoke(this, e);
+		{
+			NeedPassword?.Invoke(this, e);
+			Log.Default.VpnPasswordNeeded(Name, e.Name, e.NeedUsername, e.UserName, e.NeedPassword, e.Handled);
+		} // event Connection_NeedPassword
+
+		private void Connection_BackgroundException(object sender, OpenVpnExceptionArgs e)
+			=> Log.Default.VpnBackgroundException(Name, e.Exception.Message, e.Exception.ToString());
 
 		#endregion
 
@@ -611,6 +648,8 @@ namespace Neo.PerfectWorking.OpenVpn
 				AccessControlType.Allow
 			));
 			newExitEvent.SetAccessControl(security);
+
+			Log.Default.VpnCreateExitEvent(Name, exitEventName);
 
 			// update event
 			UpdateExitEvent(newExitEvent);
@@ -647,7 +686,10 @@ namespace Neo.PerfectWorking.OpenVpn
 			if (exitEvent == null)
 			{
 				if (EventWaitHandle.TryOpenExisting(GetGlobalEventName(), EventWaitHandleRights.FullControl, out var ev))
+				{
+					Log.Default.VpnUseExistingEvent(Name, exitEventName);
 					UpdateExitEvent(ev);
+				}
 				else
 					return false;
 			}
@@ -677,6 +719,8 @@ namespace Neo.PerfectWorking.OpenVpn
 
 		#endregion
 
+		/// <summary>Name of the name connection.</summary>
+		public string Name { get; }
 		/// <summary>Unique key of the running vpn.</summary>
 		public string EventName => exitEventName;
 		/// <summary>Initial creator of the vpn.</summary>
@@ -740,7 +784,7 @@ namespace Neo.PerfectWorking.OpenVpn
 		private static string RegisterEventName(string configFile)
 		{
 			var exitEventName = Path.GetFileNameWithoutExtension(configFile) + "_" + configFile.GetHashCode().ToString("X");
-			var r = OpenRunningVpnKey(true);
+			using var r = OpenRunningVpnKey(true);
 			r.SetValue(exitEventName, configFile);
 			return exitEventName;
 		} // proc RegisterEventName
@@ -765,6 +809,7 @@ namespace Neo.PerfectWorking.OpenVpn
 				openVpnConfigFile = Path.GetFullPath(openVpnConfigFile);
 				if (!File.Exists(openVpnConfigFile)) // missing file
 				{
+					Log.Default.VpnRemoveConfigFileFromRegistry(eventName, openVpnConfigFile);
 					RemoveConfigFileFromRegistry(eventName);
 					return false;
 				}
@@ -796,10 +841,12 @@ namespace Neo.PerfectWorking.OpenVpn
 			{ 
 				foreach (var eventName in r.GetValueNames())
 				{
-					if (!eventName.EndsWith("_Port") 
+					if (!eventName.EndsWith("_Port")
 						&& TryGetConfigFileFromRegistry(r, eventName, out var openVpnConfigFile)
 						&& !IsReturned(openVpnConfigFile))
+					{
 						yield return new OpenVpnInfo(eventName, openVpnConfigFile);
+					}
 				}
 			}
 
@@ -815,11 +862,20 @@ namespace Neo.PerfectWorking.OpenVpn
 						foreach(var fi in di.GetFiles("*.ovpn", SearchOption.TopDirectoryOnly))
 						{
 							if (!IsReturned(fi.FullName))
-								yield return new OpenVpnInfo(RegisterEventName(fi.FullName), fi.FullName);
+							{
+								var openVpnConfigFile = fi.FullName;
+								var eventName = RegisterEventName(openVpnConfigFile);
+								yield return new OpenVpnInfo(eventName, openVpnConfigFile);
+							}
 						}
 					}
 				}
 			}
+
+			if (returned.Count > 0)
+				Log.Default.VpnConfigFound(String.Join("\n", returned));
+			else
+				Log.Default.VpnSearchConfigs(configPath);
 		} // func GetActive
 
 		public static OpenVpnInfo Get(string configFile)

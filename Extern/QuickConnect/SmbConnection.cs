@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -239,7 +240,7 @@ namespace Neo.PerfectWorking.QuickConnect
 
 		public static void RefreshConnectionState()
 		{
-			//Log.Default.SmbConnect("remotePath");
+			var sw = Stopwatch.StartNew();
 			IntPtr dataPtr;
 			var count = 100;
 			var dataSize = count * Marshal.SizeOf(typeof(NETRESOURCE));
@@ -267,16 +268,20 @@ namespace Neo.PerfectWorking.QuickConnect
 				for (var i = connections.Count - 1; i >= 0; i--)
 				{
 					if (connections[i].TryGetTarget(out var con))
+					{
 						con.UpdateState(Array.Exists(currentConnections,
-							c => String.Compare(c.Item1, con.LocalPath, StringComparison.OrdinalIgnoreCase) == 0
-								&& String.Compare(c.Item2, con.RemotePath, StringComparison.OrdinalIgnoreCase) == 0
-						));
+							  c => String.Compare(c.Item1, con.LocalPath, StringComparison.OrdinalIgnoreCase) == 0
+								  && String.Compare(c.Item2, con.RemotePath, StringComparison.OrdinalIgnoreCase) == 0
+						  ));
+					}
 					else
 						connections.RemoveAt(i);
 				}
 			}
 			finally
 			{
+				Log.Default.SmbRefreshState(sw.ElapsedMilliseconds);
+
 				Marshal.FreeHGlobal(dataPtr);
 			}
 		} // proc RefreshConnectionState
