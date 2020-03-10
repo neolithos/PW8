@@ -50,15 +50,15 @@ namespace Neo.PerfectWorking.QuickConnect
 
 		#region -- Vpn ----------------------------------------------------------------
 
-		[Event(2000, Channel = EventChannel.Operational, Tags = Tags.Vpn, Level = EventLevel.Informational, Message = "Vpn Konfigurationen gefunden.\n{0}")]
+		[Event(2000, Channel = EventChannel.Operational, Tags = Tags.Vpn, Level = EventLevel.Informational, Message = "Vpn configurations found.\n{0}")]
 		public void VpnConfigFound(string configurations)
 			=> WriteEvent(2000, configurations);
 		
-		[Event(2001, Channel = EventChannel.Operational, Tags = Tags.Vpn, Level = EventLevel.Informational, Message = "Keine Vpn Konfiguration gefunden in {0}")]
+		[Event(2001, Channel = EventChannel.Operational, Tags = Tags.Vpn, Level = EventLevel.Informational, Message = "No Vpn configuration foundin {0}")]
 		public void VpnSearchConfigs(string fullName)
 			=> WriteEvent(2001, fullName);
 
-		[Event(2002, Channel = EventChannel.Operational, Tags = Tags.Vpn, Level = EventLevel.Informational, Message = "Vpn Konfiguration wird aus der Registrierung entfernt {0}\nKonfiguration: {1})")]
+		[Event(2002, Channel = EventChannel.Operational, Tags = Tags.Vpn, Level = EventLevel.Informational, Message = "Vpn configuration removed from registry {0}\nConfiguration file: {1})")]
 		public void VpnRemoveConfigFileFromRegistry(string eventName, string openVpnConfigFile)
 			=> WriteEvent(2002, eventName, openVpnConfigFile);
 

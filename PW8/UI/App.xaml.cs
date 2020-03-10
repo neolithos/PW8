@@ -245,7 +245,7 @@ namespace Neo.PerfectWorking.UI
 				case WM_TASKBARNOTIFY:
 					return WmTaskbarNotify(hwnd, msg, wParam, lParam, ref handled);
 				case WM_HOTKEY:
-					if(InvokeHotKey(wParam.ToInt32()))
+					if (InvokeHotKey(wParam.ToInt32()))
 					{
 						handled = true;
 						return IntPtr.Zero;
@@ -675,7 +675,18 @@ namespace Neo.PerfectWorking.UI
 		} // event  Npc_PropertyChanged
 
 		private bool InvokeHotKey(int hotKeyId)
-			=> registeredHotkeys.TryGetValue(hotKeyId, out var registered) ? registered.Invoke() : false;
+		{
+			if (registeredHotkeys.TryGetValue(hotKeyId, out var registered))
+			{
+				Log.Default.HotKeyProcessed(hotKeyId, registered.Key.ToString());
+				return registered.Invoke();
+			}
+			else
+			{
+				Log.Default.HotKeyUnprocessed(hotKeyId);
+				return false;
+			}
+		} // func InvokeHotKey
 
 		#endregion
 

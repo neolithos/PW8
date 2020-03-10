@@ -910,20 +910,29 @@ namespace Neo.PerfectWorking.Data
 			foreach (var c in data)
 				keyList.Append(c);
 
+			Log.Default.SendKeyData(data);
 			keyList.Send();
 		} // proc SendKeyData
 
 		[LuaMember]
 		public void SendKeyDown(string key)
-			=> PwKey.Parse(key).SendKey(PwKeySend.Down);
+		{
+			Log.Default.SendKeyDown(key);
+			PwKey.Parse(key).SendKey(PwKeySend.Down);
+		} // proc SendKeyDown
 
 		[LuaMember]
 		public void SendKeyUp(string key)
-			=> PwKey.Parse(key).SendKey(PwKeySend.Up);
-
+		{
+			Log.Default.SendKeyUp(key);
+			PwKey.Parse(key).SendKey(PwKeySend.Up);
+		} // proc SendKeyUp
 		[LuaMember]
 		public void SendKey(string key)
-			=> PwKey.Parse(key).SendKey(PwKeySend.Both);
+		{
+			Log.Default.SendKey(key);
+			PwKey.Parse(key).SendKey(PwKeySend.Both);
+		} // proc SendKey
 
 		#endregion
 
@@ -957,11 +966,22 @@ namespace Neo.PerfectWorking.Data
 				{
 					var nc = c.GetCredential(new Uri(targetName, UriKind.RelativeOrAbsolute), String.Empty);
 					if (nc != null)
+					{
+						Log.Default.CredentialReturned(targetName, nc.Domain, nc.UserName);
 						return nc;
+					}
 				}
 			}
+
+			Log.Default.CredentialNotReturned(targetName);
 			return null;
 		} // func GetCredential
+
+		protected override void OnPrint(string text)
+		{
+			Log.Default.LuaPrint(text);
+			base.OnPrint(text);
+		} // proc OnPrint
 
 		[LuaMember]
 		public IPwCollection<IPwAction> Actions { get; }
