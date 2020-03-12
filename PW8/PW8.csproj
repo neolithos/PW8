@@ -83,6 +83,7 @@
       <DependentUpon>ActionsPane.xaml</DependentUpon>
     </Compile>
     <Compile Include="UI\Dashboard\LogWidget.cs" />
+    <Compile Include="UI\Dashboard\NetworkInterfaceWidget.cs" />
     <Compile Include="UI\Dashboard\TextWidget.cs" />
     <Compile Include="UI\Dashboard\Widget.cs" />
     <Compile Include="UI\NotificationWindow.xaml.cs">
@@ -97,6 +98,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="UI\Dashboard\LogWidget.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\Dashboard\NetworkInterfaceWiget.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

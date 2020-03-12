@@ -14,8 +14,10 @@
 //
 #endregion
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using Neo.PerfectWorking.Data;
@@ -54,12 +56,39 @@ namespace Neo.PerfectWorking.UI
 			}
 		} // event actionListDoubleClick
 
+		private static void BuildContextMenu(IEnumerable<IPwContextMenu> menu, ItemsControl items)
+		{
+			foreach (var m in menu)
+			{
+				if (m.Title == null)
+					items.Items.Add(new Separator());
+				else
+				{
+					//<MenuItem Icon="" Header="" Command="" IsCheckable="" IsChecked=""
+					var cur = new MenuItem { Icon = m.Image, Header = m.Title, Command = m };
+					if (m is IPwContextMenu2 m2)
+					{
+						cur.IsCheckable = m2.IsCheckable;
+						cur.IsChecked = m2.IsChecked;
+					}
+
+					items.Items.Add(cur);
+					BuildContextMenu(m.Menu, cur);
+				}
+			}
+		} // proc BuildContextMenu
+
 		private void ActionListRightClick(object sender, MouseButtonEventArgs e)
 		{
-			if ((e.Source as FrameworkElement)?.DataContext is IPwContextMenu f)
+			if (e.Source is FrameworkElement element && element.DataContext is IPwContextMenu f)
 			{
-				//<MenuItem Icon="" Header="" Command="" IsCheckable="" IsChecked=""
-				//ContextMenu.ItemsSource
+				var contextMenu = new ContextMenu();
+				BuildContextMenu(f.Menu, contextMenu);
+
+				// show context menu
+				contextMenu.PlacementTarget = element;
+				contextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Mouse;
+				contextMenu.IsOpen = true;
 			}
 		} // event actionListRightClick
 

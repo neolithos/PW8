@@ -25,10 +25,10 @@ namespace Neo.PerfectWorking.UI.Dashboard
 {
 	public class TextWidget : TextBlock
 	{
-		public TextWidget(IPwGlobal global)
+		public TextWidget(IPwWidgetWindow window)
 		{
 		} // ctor
 
-		public static IWidgetFactory Factory { get; } = new WidgetFactory<TextWidget>();
+		public static IPwWidgetFactory Factory { get; } = new PwWidgetFactory<TextWidget>();
 	} // class TextWidget
 }

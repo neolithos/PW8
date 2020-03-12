@@ -18,40 +18,52 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Neo.IronLua;
 using Neo.PerfectWorking.Data;
 
 namespace Neo.PerfectWorking.UI
 {
-	#region -- interface IWidgetFactory -----------------------------------------------
+	#region -- interface IPwWidgetWindow ----------------------------------------------
 
-	public interface IWidgetFactory
+	public interface IPwWidgetWindow
 	{
-		FrameworkElement Create(IPwGlobal global, LuaTable t);
+		Brush Foreground { get; }
 
-		string Name { get; }
-	} // interface IWidgetFactory
+		IPwGlobal Global { get; }
+	} // interface IPwWidgetWindow
 
 	#endregion
 
-	#region -- class WidgetFactory ----------------------------------------------------
+	#region -- interface IPwWidgetFactory ---------------------------------------------
 
-	public class WidgetFactory<T> : IWidgetFactory
+	public interface IPwWidgetFactory
+	{
+		FrameworkElement Create(IPwWidgetWindow window, LuaTable t);
+
+		string Name { get; }
+	} // interface IPwWidgetFactory
+
+	#endregion
+
+	#region -- class PwWidgetFactory --------------------------------------------------
+
+	public class PwWidgetFactory<T> : IPwWidgetFactory
 		where T : FrameworkElement
 	{
-		public WidgetFactory()
+		public PwWidgetFactory()
 			: this(FormatName(typeof(T).Name))
 		{
 		} // ctor
 
-		public WidgetFactory(string name)
+		public PwWidgetFactory(string name)
 			=> Name = name ?? throw new ArgumentNullException(nameof(name));
 
 		private static string FormatName(string name)
 			=> name.EndsWith("Widget") ? name.Substring(0, name.Length - 6) : name;
 
-		protected virtual T CreateControl(IPwGlobal global)
-			=> (T)Activator.CreateInstance(typeof(T), global);
+		protected virtual T CreateControl(IPwWidgetWindow window)
+			=> (T)Activator.CreateInstance(typeof(T), window);
 
 		protected virtual void SetMember(T control, string memberName, object value)
 		{
@@ -75,10 +87,18 @@ namespace Neo.PerfectWorking.UI
 		{
 		} // proc SetIndex
 
-		protected virtual T Create(IPwGlobal global, LuaTable t)
+		protected virtual T Create(IPwWidgetWindow window, LuaTable t)
 		{
-			var c = CreateControl(global);
-			
+			var c = CreateControl(window);
+
+			// update default properties
+			if (c is Control control)
+			{
+				control.Foreground = window.Foreground;
+				control.Background = Brushes.Transparent;
+			}
+
+			// set member
 			foreach (var kv in t)
 			{
 				if (kv.Key is int idx)
@@ -90,11 +110,11 @@ namespace Neo.PerfectWorking.UI
 			return c;
 		} // func Create
 
-		FrameworkElement IWidgetFactory.Create(IPwGlobal global, LuaTable t)
-			=> Create(global, t);
+		FrameworkElement IPwWidgetFactory.Create(IPwWidgetWindow window, LuaTable t)
+			=> Create(window, t);
 
 		public string Name { get; }
-	} // class WidgetFactory
+	} // class PwWidgetFactory
 
 	#endregion
 }

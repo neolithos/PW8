@@ -522,7 +522,7 @@ namespace Neo.PerfectWorking.UI
 				global.RefreshConfiguration();
 
 				// Start idle implementation
-				idleTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.ApplicationIdle, (sender, _e) => OnIdle(), Dispatcher);
+				idleTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Normal, (sender, _e) => OnIdle(), Dispatcher);
 				InputManager.Current.PreProcessInput += (sender, _e) => RestartIdleTimer(_e);
 
 				// create the event sink, for the win32 integration

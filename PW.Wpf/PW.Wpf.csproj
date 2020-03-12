@@ -56,6 +56,7 @@
   <ItemGroup>
     <Compile Include="Data\Services.cs" />
     <Compile Include="UI\Converter.cs" />
+    <Compile Include="UI\PwSparkLine.cs" />
     <Compile Include="UI\PwGeometry.cs" />
     <Compile Include="UI\PwNavigationPane.cs" />
     <Compile Include="UI\PwPasswordBox.cs" />
@@ -66,7 +67,7 @@
     <Compile Include="UI\PwTextBoxCommand.cs" />
     <Compile Include="UI\PwSearchListBox.cs" />
     <Compile Include="UI\UI.cs" />
-    <Compile Include="UI\WidgetFactory.cs" />
+    <Compile Include="UI\PwWidgetFactory.cs" />
     <Page Include="Themes\CommonIcons.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

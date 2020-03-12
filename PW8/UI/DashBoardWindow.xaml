@@ -23,6 +23,7 @@ specific language governing permissions and limitations under the Licence.
         mc:Ignorable="d" MinWidth="500" MinHeight="60" SizeToContent="WidthAndHeight" ResizeMode="NoResize" Topmost="True" ShowInTaskbar="False" Title="{x:Static ui:App.Title}" WindowStyle="None" Opacity="0.95"
         AllowsTransparency="True"
         Background="{x:Static SystemColors.WindowFrameBrush}"
+		Foreground="White"
         BorderBrush="{x:Static SystemColors.ControlDarkDarkBrush}"
         BorderThickness="1">
     <Window.Resources>

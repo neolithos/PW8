@@ -190,6 +190,7 @@ namespace Neo.PerfectWorking.Data
 			// default widgets
 			RegisterObject(this, nameof(LogWidget), LogWidget.Factory);
 			RegisterObject(this, nameof(TextWidget), TextWidget.Factory);
+			RegisterObject(this, nameof(NetworkInterfaceWidget), NetworkInterfaceWidget.Factory);
 
 			RegisterObject(this, "Log", Log.Default);
 

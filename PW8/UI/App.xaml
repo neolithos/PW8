@@ -22,6 +22,7 @@ specific language governing permissions and limitations under the Licence.
 			<ResourceDictionary.MergedDictionaries>
 				<ResourceDictionary Source="pack://application:,,,/PW.Wpf;component/Themes/Generic.xaml" />
 				<ResourceDictionary Source="Dashboard/LogWidget.xaml" />
+				<ResourceDictionary Source="Dashboard/NetworkInterfaceWiget.xaml" />
 			</ResourceDictionary.MergedDictionaries>
 
 			<ContextMenu x:Key="applicationMenu" Placement="AbsolutePoint">

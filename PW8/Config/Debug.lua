@@ -55,6 +55,7 @@ d {
 	},
 	Rows = {
 		"*",
+		"*",
 		"*"
 	},
 
@@ -73,9 +74,20 @@ d {
 	d:Log {
 		Row = 1
 	},
-	d:Text {
+	d:NetworkInterface {
 		Row = 2,
-		Text = "Hallo Welt"
+		InterfaceName = "LAN"
+	},
+	d:NetworkInterface {
+		Row = 3,
+		InterfaceName = "OpenVPN",
+		IpLookup = function (addr) : string
+			local s = addr:ToString();
+			if s:StartsWith("10.0.58.") then
+				return "TecWare";
+			end;
+			return nil;
+		end
 	}
 };
 

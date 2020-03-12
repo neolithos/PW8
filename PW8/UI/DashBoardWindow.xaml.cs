@@ -15,16 +15,14 @@
 #endregion
 using System;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
-using Neo.PerfectWorking.UI.Dashboard;
 using Neo.PerfectWorking.Win32;
 
 namespace Neo.PerfectWorking.UI
 {
-	internal partial class DashBoardWindow : Window
+	internal partial class DashBoardWindow : Window, IPwWidgetWindow
 	{
 		private readonly IPwGlobal global;
 
@@ -118,5 +116,7 @@ namespace Neo.PerfectWorking.UI
 			if (IsVisible && !rcCurrentCursor.Contains(GetCursorPosition()))
 				BeginHide(false);
 		} // proc CheckMousePosition
+
+		public IPwGlobal Global => global;
 	} // class DashBoardWindow
 }

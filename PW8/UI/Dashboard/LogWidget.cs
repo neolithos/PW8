@@ -129,12 +129,12 @@ namespace Neo.PerfectWorking.UI
 
 		private readonly LogItemArray items = new LogItemArray();
 
-		public LogWidget(IPwGlobal global)
+		public LogWidget(IPwWidgetWindow window)
 		{
 			ItemsSource = items;
 			OnLogLinesChanged(items.Capacity);
 
-			sources = global.RegisterCollection<EventSource>((IPwPackage)global);
+			sources = window.Global.RegisterCollection<EventSource>((IPwPackage)window.Global);
 			listener = new EventListener();
 			listener.EventWritten += Listener_EventWritten;
 			sources.CollectionChanged += Sources_CollectionChanged;
@@ -204,6 +204,6 @@ namespace Neo.PerfectWorking.UI
 			DefaultStyleKeyProperty.OverrideMetadata(typeof(LogWidget), new FrameworkPropertyMetadata(typeof(LogWidget)));
 		} // sctor
 
-		public static IWidgetFactory Factory { get; } = new WidgetFactory<LogWidget>();
+		public static IPwWidgetFactory Factory { get; } = new PwWidgetFactory<LogWidget>();
 	} // class LogWidget
 }

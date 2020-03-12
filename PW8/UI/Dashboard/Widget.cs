@@ -30,17 +30,17 @@ namespace Neo.PerfectWorking.UI.Dashboard
 	{
 		private readonly PwGlobal global;
 		private readonly DashBoardWindow window;
-		private readonly IPwCollection<IWidgetFactory> factories;
+		private readonly IPwCollection<IPwWidgetFactory> factories;
 
 		public GlobalWidgetFactory(PwGlobal global, DashBoardWindow window)
 		{
 			this.global = global ?? throw new ArgumentNullException(nameof(global));
 			this.window = window ?? throw new ArgumentNullException(nameof(window));
 
-			 factories = global.RegisterCollection<IWidgetFactory>(global);
+			 factories = global.RegisterCollection<IPwWidgetFactory>(global);
 		} // ctor
 
-		private IWidgetFactory FindFactory(string name)
+		private IPwWidgetFactory FindFactory(string name)
 			=> factories.First(c => c.Name == name);
 
 		private object CreateDashboard(LuaTable t)
@@ -102,7 +102,7 @@ namespace Neo.PerfectWorking.UI.Dashboard
 			}
 			else
 			{
-				result = new Func<LuaTable, FrameworkElement>(t => f.Create(global, t));
+				result = new Func<LuaTable, FrameworkElement>(t => f.Create(window, t));
 				return true;
 			}
 		} // func TryGetMember
@@ -112,7 +112,7 @@ namespace Neo.PerfectWorking.UI.Dashboard
 			if (args.Length == 1 && args[0] is LuaTable t)
 			{
 				var f = FindFactory(binder.Name);
-				result = f?.Create(global, t);
+				result = f?.Create(window, t);
 				return true;
 			}
 			else
