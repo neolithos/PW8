@@ -15,6 +15,7 @@
 #endregion
 using System;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
@@ -32,7 +33,9 @@ namespace Neo.PerfectWorking.UI
 		private readonly Storyboard hideAnimation;
 		private readonly Storyboard showAnimation;
 
-		//private LogWidget log;
+		private Color foregroundColor;
+		private Color backgroundColor;
+		private Color borderColor;
 
 		public DashBoardWindow(PwGlobal global)
 		{
@@ -56,8 +59,11 @@ namespace Neo.PerfectWorking.UI
 			Visibility = Visibility.Hidden;
 		} // ctor
 
-		public object SetDashboard(FrameworkElement dash)
-			=> this.dash.Content = dash;
+		public object SetDashboard(UIElement dash)
+		{
+			this.dash.Child = dash ?? throw new ArgumentNullException(nameof(dash));
+			return dash;
+		} // proc SetDashboard
 
 		public void RecalcPosition()
 		{
@@ -85,7 +91,7 @@ namespace Neo.PerfectWorking.UI
 			rcCurrentCursor = new Rect(
 				x - dragSizeX / 2,
 				y - dragSizeY / 2,
-				dragSizeX, 
+				dragSizeX,
 				dragSizeY
 			);
 			mousePositionTimer.IsEnabled = true;
@@ -116,6 +122,49 @@ namespace Neo.PerfectWorking.UI
 			if (IsVisible && !rcCurrentCursor.Contains(GetCursorPosition()))
 				BeginHide(false);
 		} // proc CheckMousePosition
+
+		public Color BackgroundColor
+		{
+			get => backgroundColor;
+			internal set
+			{
+				if (backgroundColor != value)
+				{
+					backgroundColor = value;
+					Background = new SolidColorBrush(backgroundColor);
+				}
+			}
+		} // prop BackgroundColor
+
+		Brush IPwWidgetWindow.BackgroundBrush => Background;
+
+		public Color ForegroundColor
+		{
+			get => foregroundColor;
+			internal set
+			{
+				if (foregroundColor != value)
+				{
+					foregroundColor = value;
+					Foreground = new SolidColorBrush(foregroundColor);
+				}
+			}
+		} // prop ForegroundColor
+
+		Brush IPwWidgetWindow.ForegroundBrush => Foreground;
+
+		public Color BorderColor
+		{
+			get => borderColor;
+			internal set
+			{
+				if (borderColor != value)
+				{
+					borderColor = value;
+					BorderBrush = new SolidColorBrush(borderColor);
+				}
+			}
+		} // prop BorderColor
 
 		public IPwGlobal Global => global;
 	} // class DashBoardWindow

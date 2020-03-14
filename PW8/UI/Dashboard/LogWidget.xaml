@@ -1,5 +1,6 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+					xmlns:diag="clr-namespace:System.Diagnostics;assembly=WindowsBase"
 					xmlns:ui="clr-namespace:Neo.PerfectWorking.UI;assembly=PW.Wpf"
 					xmlns:uiL="clr-namespace:Neo.PerfectWorking.UI">
 
@@ -9,12 +10,6 @@
 			<PathGeometry x:Key="infoGeometry">M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z</PathGeometry>
 			<PathGeometry x:Key="warningGeometry">M12,2L1,21H23M12,6L19.53,19H4.47M11,10V14H13V10M11,16V18H13V16</PathGeometry>
 			<PathGeometry x:Key="errorGeometry">M20,8H17.19C16.74,7.2 16.12,6.5 15.37,6L17,4.41L15.59,3L13.42,5.17C12.96,5.06 12.5,5 12,5C11.5,5 11.05,5.06 10.59,5.17L8.41,3L7,4.41L8.62,6C7.87,6.5 7.26,7.21 6.81,8H4V10H6.09C6.03,10.33 6,10.66 6,11V12H4V14H6V15C6,15.34 6.03,15.67 6.09,16H4V18H6.81C8.47,20.87 12.14,21.84 15,20.18C15.91,19.66 16.67,18.9 17.19,18H20V16H17.91C17.97,15.67 18,15.34 18,15V14H20V12H18V11C18,10.66 17.97,10.33 17.91,10H20V8M16,15A4,4 0 0,1 12,19A4,4 0 0,1 8,15V11A4,4 0 0,1 12,7A4,4 0 0,1 16,11V15M14,10V12H10V10H14M10,14H14V16H10V14Z</PathGeometry>
-
-			<Color x:Key="TextColor">DarkGray</Color>
-			<Color x:Key="TextLightColor">Gray</Color>
-
-			<SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
-			<SolidColorBrush x:Key="TextLightBrush" Color="{StaticResource TextLightColor}"/>
 		</Style.Resources>
 		<Setter Property="Margin" Value="0" />
 		<Setter Property="Padding" Value="0" />
@@ -28,17 +23,21 @@
 		<Setter Property="ItemTemplate">
 			<Setter.Value>
 				<DataTemplate DataType="{x:Type uiL:LogItem}">
-					<Grid Height="20" TextBlock.Foreground="{StaticResource TextBrush}">
+					<DataTemplate.Resources>
+						<!--<SolidColorBrush x:Key="TextGrayBrush" Color="{Binding Path=ForegroundMiddle,RelativeSource={RelativeSource AncestorType=uiL:LogWidget,AncestorLevel=10},diag:PresentationTraceSources.TraceLevel=High}" />-->
+						<SolidColorBrush x:Key="TextGrayBrush" Color="DarkGray" />
+					</DataTemplate.Resources>
+					<Grid Height="20">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="22" />
 							<ColumnDefinition Width="70" />
 							<ColumnDefinition />
 						</Grid.ColumnDefinitions>
-						<ui:PwGeometry x:Name="img" Foreground="DarkGray" Geometry="{StaticResource infoGeometry}" Width="16" Height="16" VerticalAlignment="Center" HorizontalAlignment="Center" />
-						<TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" >
-							<Run Text="{Binding Stamp,StringFormat=HH:mm:ss,Mode=OneWay}"/>,<Run Foreground="{StaticResource TextLightBrush}" Text="{Binding Stamp,StringFormat=fff,Mode=OneWay}" />
+						<ui:PwGeometry x:Name="img" Geometry="{StaticResource infoGeometry}" Foreground="{StaticResource TextGrayBrush}" Width="16" Height="16" VerticalAlignment="Center" HorizontalAlignment="Center" />
+						<TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="3,0" Foreground="{StaticResource TextGrayBrush}">
+							<Run Text="{Binding Stamp,StringFormat=HH:mm:ss,Mode=OneWay}"/>,<Run Text="{Binding Stamp,StringFormat=fff,Mode=OneWay}" />
 						</TextBlock>
-						<TextBlock Grid.Column="2" Text="{Binding Text}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+						<TextBlock Grid.Column="2" Text="{Binding Text}" Margin="3,0" HorizontalAlignment="Left" VerticalAlignment="Center" />
 					</Grid>
 					<DataTemplate.Triggers>
 						<DataTrigger Binding="{Binding Level}" Value="Verbose">

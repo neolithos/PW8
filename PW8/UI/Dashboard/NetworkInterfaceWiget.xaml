@@ -3,12 +3,6 @@
                     xmlns:ui="clr-namespace:Neo.PerfectWorking.UI;assembly=PW.Wpf"
 					xmlns:uiL="clr-namespace:Neo.PerfectWorking.UI">
 	<Style TargetType="{x:Type uiL:NetworkInterfaceWidget}">
-		<Style.Resources>
-			<Pen x:Key="downloadSpeedPen" Thickness="1" Brush="Green" />
-			<Pen x:Key="uploadSpeedPen" Thickness="1" Brush="Red" />
-			<SolidColorBrush x:Key="downloadFillBrush" Color="Green" Opacity="0.3" />
-			<SolidColorBrush x:Key="uploadFillBrush" Color="Red" Opacity="0.3" />
-		</Style.Resources>
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="uiL:NetworkInterfaceWidget">
@@ -24,32 +18,71 @@
 							<RowDefinition />
 						</Grid.RowDefinitions>
 
-						<TextBlock Grid.Column="0" Grid.Row="0">
+						<TextBlock Grid.Column="0" Grid.Row="0" VerticalAlignment="Bottom" Margin="0,2">
 							<Run Text="{TemplateBinding InterfaceName}" />
-							<Run Text="(" /><Run Text="{TemplateBinding NetworkSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert}}" />,<Run Text="{TemplateBinding NetworkState}" /><Run Text=")" />
+							<Run Foreground="{TemplateBinding ForegroundMiddle}" FontSize="10">
+								<Run.Text>
+									<MultiBinding Converter="{x:Static uiL:NetworkInterfaceWidget.NetworkStateConvert}">
+										<Binding Path="NetworkState" RelativeSource="{RelativeSource Mode=TemplatedParent}" Mode="OneWay" />
+										<Binding Path="NetworkSpeed" RelativeSource="{RelativeSource Mode=TemplatedParent}" Mode="OneWay" />
+									</MultiBinding>
+								</Run.Text>
+							</Run>
 						</TextBlock>
-						<TextBlock Grid.Column="1" Grid.Row="0" Text="{TemplateBinding CurrentSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert2}}" />
-
-						<Border Grid.Column="0" Grid.Row="1" Grid.RowSpan="2" Padding="1" BorderBrush="{TemplateBinding Foreground}" BorderThickness="1">
+						<TextBlock Grid.Column="0" Grid.Row="0"
+								   VerticalAlignment="Bottom"  HorizontalAlignment="Right" Margin="0,2,6,2"
+								   FontSize="10" 
+								   Foreground="{TemplateBinding ForegroundMiddle}" 
+								   Text="{TemplateBinding CurrentSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert}}" />
+						<Border Grid.Column="0" Grid.Row="1" Grid.RowSpan="2" Margin="0,2" BorderBrush="{TemplateBinding ForegroundMiddle}" BorderThickness="1">
 							<Grid>
-								<ui:PwSparkLine LineSource="{TemplateBinding DownloadSpeedLine}" Foreground="{StaticResource downloadSpeedPen}" Fill="{StaticResource downloadFillBrush}" />
-								<ui:PwSparkLine LineSource="{TemplateBinding UploadSpeedLine}" Foreground="{StaticResource uploadSpeedPen}" Fill="{StaticResource uploadFillBrush}" />
+								<ui:PwSparkLine LineSource="{TemplateBinding DownloadSpeedLine}">
+									<ui:PwSparkLine.Foreground>
+										<Pen Thickness="1">
+											<Pen.Brush>
+												<SolidColorBrush Color="{Binding Path=DownloadSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" />
+											</Pen.Brush>
+										</Pen>
+									</ui:PwSparkLine.Foreground>
+									<ui:PwSparkLine.Fill>
+										<SolidColorBrush Color="{Binding Path=DownloadSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" Opacity="0.4" />
+									</ui:PwSparkLine.Fill>
+								</ui:PwSparkLine>
+								<ui:PwSparkLine LineSource="{TemplateBinding UploadSpeedLine}">
+									<ui:PwSparkLine.Foreground>
+										<Pen Thickness="1">
+											<Pen.Brush>
+												<SolidColorBrush Color="{Binding Path=UploadSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" />
+											</Pen.Brush>
+										</Pen>
+									</ui:PwSparkLine.Foreground>
+									<ui:PwSparkLine.Fill>
+										<SolidColorBrush Color="{Binding Path=UploadSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" Opacity="0.4" />
+									</ui:PwSparkLine.Fill>
+								</ui:PwSparkLine>
 							</Grid>
 						</Border>
 
-						<TextBlock Grid.Column="1" Grid.Row="1" HorizontalAlignment="Left" Padding="2,0,2,0" Foreground="LightGray" FontSize="9" 
+						<TextBlock Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="2" 
+								   Margin="2,2"
+								   Text="{TemplateBinding Description}" />
+
+						<TextBlock Grid.Column="1" Grid.Row="1"
+								   Padding="2,0,2,0" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+								   Foreground="{TemplateBinding ForegroundMiddle}" FontSize="9" 
 								   Text="Down:"/>
-						<TextBlock Grid.Column="1" Grid.Row="1" HorizontalAlignment="Right" Padding="2,0,2,0"
-								   Text="{TemplateBinding CurrentDownSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert2}}"/>
+						<TextBlock Grid.Column="1" Grid.Row="1" HorizontalAlignment="Right" Padding="2,0,6,0"
+								   Text="{TemplateBinding CurrentDownSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert}}"/>
 
-						<TextBlock Grid.Column="1" Grid.Row="2" HorizontalAlignment="Left" Padding="2,0,2,0" Foreground="LightGray" FontSize="9" 
+						<TextBlock Grid.Column="1" Grid.Row="2" 
+								   Padding="2,0,2,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" 
+								   Foreground="{TemplateBinding ForegroundMiddle}" FontSize="9" 
 								   Text="Up:"/>
-						<TextBlock Grid.Column="1" Grid.Row="2" HorizontalAlignment="Right" Padding="2,0,2,0"
-							Text="{TemplateBinding CurrentUpSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert2}}" />
+						<TextBlock Grid.Column="1" Grid.Row="2" HorizontalAlignment="Right" Padding="2,0,6,0"
+							Text="{TemplateBinding CurrentUpSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert}}" />
 
-						<TextBlock Grid.Column="2" Grid.Row="0" Text="{TemplateBinding Description}" />
-						<TextBlock Grid.Column="2" Grid.Row="1" Text="{TemplateBinding UnicastAddress4}" />
-						<TextBlock Grid.Column="2" Grid.Row="2" Text="{TemplateBinding UnicastAddress6}" />
+						<TextBlock Grid.Column="2" Grid.Row="1" Text="{TemplateBinding UnicastAddress4}" Foreground="{TemplateBinding ForegroundMiddle}" />
+						<TextBlock Grid.Column="2" Grid.Row="2" Text="{TemplateBinding UnicastAddress6}" Foreground="{TemplateBinding ForegroundMiddle}" />
 					</Grid>
 				</ControlTemplate>
 			</Setter.Value>

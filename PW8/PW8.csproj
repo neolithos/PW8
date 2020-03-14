@@ -82,10 +82,13 @@
     <Compile Include="UI\ActionsPane.xaml.cs">
       <DependentUpon>ActionsPane.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UI\Dashboard\GridWidget.cs" />
     <Compile Include="UI\Dashboard\LogWidget.cs" />
     <Compile Include="UI\Dashboard\NetworkInterfaceWidget.cs" />
+    <Compile Include="UI\Dashboard\StackWidget.cs" />
     <Compile Include="UI\Dashboard\TextWidget.cs" />
     <Compile Include="UI\Dashboard\Widget.cs" />
+    <Compile Include="UI\Dashboard\BorderWidget.cs" />
     <Compile Include="UI\NotificationWindow.xaml.cs">
       <DependentUpon>NotificationWindow.xaml</DependentUpon>
     </Compile>

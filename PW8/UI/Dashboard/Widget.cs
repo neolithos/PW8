@@ -19,6 +19,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Neo.IronLua;
 using Neo.PerfectWorking.Data;
 
@@ -28,6 +29,29 @@ namespace Neo.PerfectWorking.UI.Dashboard
 
 	internal sealed class GlobalWidgetFactory : DynamicObject
 	{
+		#region -- class WidgetFactoryOrder -------------------------------------------
+
+		private sealed class WidgetFactoryOrder : IPwWidgetFactoryOrder
+		{
+			private readonly IPwWidgetFactory factory;
+			private readonly IPwWidgetWindow window;
+			private readonly LuaTable arguments;
+
+			public WidgetFactoryOrder(IPwWidgetFactory factory, IPwWidgetWindow window, LuaTable arguments)
+			{
+				this.factory = factory ?? throw new ArgumentNullException(nameof(factory));
+				this.window = window ?? throw new ArgumentNullException(nameof(window));
+				this.arguments = arguments ?? new LuaTable();
+			} // ctor
+
+			public UIElement Create(FrameworkElement parent)
+				=> factory.Create(parent, window, arguments);
+
+			public LuaTable Arguments => arguments;
+		} // class WidgetFactoryOrder
+
+		#endregion
+
 		private readonly PwGlobal global;
 		private readonly DashBoardWindow window;
 		private readonly IPwCollection<IPwWidgetFactory> factories;
@@ -45,51 +69,32 @@ namespace Neo.PerfectWorking.UI.Dashboard
 
 		private object CreateDashboard(LuaTable t)
 		{
-			var g = new Grid();
-			var gridLengthConvert = new GridLengthConverter();
+			// check for basic properties for the window
+			window.ForegroundColor = UIHelper.ConvertValue(t.GetMemberValue("Foreground"), SystemColors.WindowTextColor);
+			window.BackgroundColor = UIHelper.ConvertValue(t.GetMemberValue("Background"), SystemColors.WindowColor);
+			window.BorderColor = UIHelper.ConvertValue(t.GetMemberValue("Border"), SystemColors.ActiveBorderColor);
 
-			GridLength ConvertLength(string value)
-				=> (GridLength)gridLengthConvert.ConvertFrom(null, CultureInfo.InvariantCulture, value);
+			window.Opacity = t.GetOptionalValue("Opacity", 1.0);
+			window.BorderThickness = UIHelper.ConvertValue(t.GetMemberValue("BorderThickness"), new Thickness(0));
 
-			ColumnDefinition ConvertColumn(object column)
+			var orders = t.ArrayList.OfType<IPwWidgetFactoryOrder>().ToArray();
+			if (orders.Length == 0)
+				return null;
+			else if (orders.Length == 1)
+				return window.SetDashboard(orders[0].Create(window));
+			else
 			{
-				switch(column)
-				{
-					case string t:
-						return new ColumnDefinition { Width = ConvertLength(t) };
-					default:
-						throw new ArgumentException();
-				}
-			} // func ConvertColumn
+				t["Foreground"] = null;
+				t["Background"] = null;
+				t["Border"] = null;
+				t["Opacity"] = null;
+				t["BorderThickness"] = null;
 
-			RowDefinition ConvertRow(object column)
-			{
-				switch (column)
-				{
-					case string t:
-						return new RowDefinition { Height = ConvertLength(t) };
-					default:
-						throw new ArgumentException();
-				}
-			} // func ConvertColumn
-
-			// read columns/rows
-			if (t["Columns"] is LuaTable columns)
-			{
-				foreach (var c in columns.ArrayList)
-					g.ColumnDefinitions.Add(ConvertColumn(c));
+				if (t.Members.ContainsKey("Columns") || t.Members.ContainsKey("Rows")) // use a grid
+					return window.SetDashboard(GridWidget.Factory.Create(window, window, t));
+				else
+					return window.SetDashboard(StackWidget.Factory.Create(window, window, t));
 			}
-			if (t["Rows"] is LuaTable rows)
-			{
-				foreach (var c in rows.ArrayList)
-					g.RowDefinitions.Add(ConvertRow(c));
-			}
-
-			// read elements
-			foreach (var v in t.ArrayList.OfType<UIElement>())
-				g.Children.Add(v);
-
-			return window.SetDashboard(g);
 		} // func CreateDashboard
 
 		public override bool TryGetMember(GetMemberBinder binder, out object result)
@@ -102,7 +107,7 @@ namespace Neo.PerfectWorking.UI.Dashboard
 			}
 			else
 			{
-				result = new Func<LuaTable, FrameworkElement>(t => f.Create(window, t));
+				result = new Func<LuaTable, WidgetFactoryOrder>(t => new WidgetFactoryOrder(f, window, t));
 				return true;
 			}
 		} // func TryGetMember
@@ -112,7 +117,7 @@ namespace Neo.PerfectWorking.UI.Dashboard
 			if (args.Length == 1 && args[0] is LuaTable t)
 			{
 				var f = FindFactory(binder.Name);
-				result = f?.Create(window, t);
+				result = f == null ? null : new WidgetFactoryOrder(f, window, t);
 				return true;
 			}
 			else

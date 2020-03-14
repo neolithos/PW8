@@ -69,7 +69,7 @@ namespace Neo.PerfectWorking.UI
 			}
 
 			// draw background
-			if (Fill != null && Fill != Brushes.Transparent)
+			if (Fill != null && !Fill.Equals(Brushes.Transparent))
 			{
 				var figure = new PathFigure
 				{

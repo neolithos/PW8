@@ -16,10 +16,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Media;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.UI
 {
@@ -89,5 +93,31 @@ namespace Neo.PerfectWorking.UI
 
 			return null;
 		} // func FindMenuItem
+
+		public static object ConvertValue(Type toType, object value, object @default)
+		{
+			if (value == null)
+				return @default;
+
+			if (value is string fromString)
+			{
+				var conv = TypeDescriptor.GetConverter(toType);
+				return conv.ConvertFromInvariantString(null, fromString);
+			}
+			else
+				return Procs.ChangeType(value, toType);
+		} // func ConvertValue
+
+		public static T ConvertValue<T>(object value, T @default)
+			=> (T)ConvertValue(typeof(T), value, @default);
+
+		public static Color GetMixedColor(Color color1, Color color2, float f)
+		{
+			return Color.FromScRgb(1.0f,
+				color1.ScR * f + color2.ScR * (1.0f - f),
+				color1.ScG * f + color2.ScG * (1.0f - f),
+				color1.ScB * f + color2.ScB * (1.0f - f)
+			);
+		} // func GetMixedColor
 	} // class UIHelper
 }

@@ -190,7 +190,10 @@ namespace Neo.PerfectWorking.Data
 			// default widgets
 			RegisterObject(this, nameof(LogWidget), LogWidget.Factory);
 			RegisterObject(this, nameof(TextWidget), TextWidget.Factory);
+			RegisterObject(this, nameof(BorderWidget), BorderWidget.Factory);
 			RegisterObject(this, nameof(NetworkInterfaceWidget), NetworkInterfaceWidget.Factory);
+			RegisterObject(this, nameof(GridWidget), GridWidget.Factory);
+			RegisterObject(this, nameof(StackWidget), StackWidget.Factory);
 
 			RegisterObject(this, "Log", Log.Default);
 
@@ -977,6 +980,40 @@ namespace Neo.PerfectWorking.Data
 			Log.Default.CredentialNotReturned(targetName);
 			return null;
 		} // func GetCredential
+
+		[LuaMember]
+		public IPAddress GetIPAddress(object addr)
+		{
+			if (addr is string s)
+				return IPAddress.Parse(s);
+			else if (addr is IPAddress a)
+				return a;
+			else
+				throw new FormatException();
+		} // func GetIPAddress
+
+		[LuaMember]
+		public bool IsNetwork(int maskSize, object addr1, object addr2)
+		{
+			var a1 = GetIPAddress(addr1);
+			var a2 = GetIPAddress(addr2);
+
+			if (a1.AddressFamily == a2.AddressFamily)
+			{
+				var b1 = a1.GetAddressBytes();
+				var b2 = a2.GetAddressBytes();
+
+				for (var i = 0; i < maskSize / 8; i++) // fixme:
+				{
+					if (b1[i] != b2[i])
+						return false;
+				}
+
+				return true;
+			}
+			else
+				return false;
+		} // func IsNetwork
 
 		protected override void OnPrint(string text)
 		{

@@ -21,6 +21,7 @@ using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Neo.PerfectWorking.Data;
 using TecWare.DE.Stuff;
@@ -122,6 +123,8 @@ namespace Neo.PerfectWorking.UI
 
 	#endregion
 
+	#region -- class LogWidget --------------------------------------------------------
+
 	internal sealed class LogWidget : ItemsControl
 	{
 		private readonly IPwCollection<EventSource> sources;
@@ -131,6 +134,8 @@ namespace Neo.PerfectWorking.UI
 
 		public LogWidget(IPwWidgetWindow window)
 		{
+			ForegroundMiddle = new SolidColorBrush(UIHelper.GetMixedColor(window.ForegroundColor, window.BackgroundColor, 0.5f));
+
 			ItemsSource = items;
 			OnLogLinesChanged(items.Capacity);
 
@@ -196,7 +201,15 @@ namespace Neo.PerfectWorking.UI
 		} // proc OnLogLinesChanged
 
 		public int LogLines { get => (int)GetValue(LogLinesProperty); set => SetValue(LogLinesProperty, value); }
-		
+
+		#endregion
+
+		#region -- ForegroundMiddle - Property ----------------------------------------
+
+		public static readonly DependencyProperty ForegroundMiddleProperty = NetworkInterfaceWidget.ForegroundMiddleProperty.AddOwner(typeof(LogWidget), new FrameworkPropertyMetadata(null));
+
+		public Brush ForegroundMiddle { get => (Brush)GetValue(ForegroundMiddleProperty); set => SetValue(ForegroundMiddleProperty, value); }
+
 		#endregion
 
 		static LogWidget()
@@ -206,4 +219,6 @@ namespace Neo.PerfectWorking.UI
 
 		public static IPwWidgetFactory Factory { get; } = new PwWidgetFactory<LogWidget>();
 	} // class LogWidget
+
+	#endregion
 }

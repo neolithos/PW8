@@ -21,11 +21,12 @@ using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
 using Neo.PerfectWorking.Data;
 
 namespace Neo.PerfectWorking.UI
 {
-	internal class NetworkInterfaceWidget : Control, IPwIdleAction
+	internal sealed class NetworkInterfaceWidget : Control, IPwIdleAction
 	{
 		#region -- class NetworkTrafficGraph ------------------------------------------
 
@@ -114,14 +115,12 @@ namespace Neo.PerfectWorking.UI
 				var deletedUpValue = uploadSpeed[lastAdded];
 				downloadSpeed[lastAdded] = downBytesPerSec;
 				uploadSpeed[lastAdded] = upBytesPerSec;
-			
-				// check max value
-				var recalcMax = deletedDownValue > deletedUpValue
-					? downBytesPerSec < deletedDownValue && deletedDownValue == currentMax
-					: upBytesPerSec < deletedUpValue && deletedUpValue == currentMax;
 
+				// check max value
+				var recalcMax = deletedDownValue > deletedUpValue ? deletedDownValue == currentMax : deletedUpValue == currentMax;
 				if (recalcMax)
 				{
+					currentMax = 0;
 					for (var i = 0; i < downloadSpeed.Length; i++)
 						UpdateCurrentMax(downloadSpeed[i], uploadSpeed[i]);
 				}
@@ -228,6 +227,11 @@ namespace Neo.PerfectWorking.UI
 			if (window == null)
 				throw new ArgumentNullException(nameof(window));
 
+			// update colors
+			ForegroundMiddle = new SolidColorBrush(UIHelper.GetMixedColor(window.ForegroundColor, window.BackgroundColor, 0.5f));
+			DownloadSpeedLineColor = UIHelper.GetMixedColor(window.BackgroundColor, Colors.Green, 0.5f);
+			UploadSpeedLineColor = UIHelper.GetMixedColor(window.BackgroundColor, Colors.Red, 0.5f);
+
 			window.Global.UI.AddIdleAction(this);
 		} // ctor
 
@@ -253,18 +257,7 @@ namespace Neo.PerfectWorking.UI
 		} // proc OnIdle
 
 		private NetworkInterface GetCurrentNetworkInterface()
-		{
-			var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
-			var interfaceName = InterfaceName;
-			if (networkInterfaceIndex >= 0 && networkInterfaceIndex < networkInterfaces.Length
-				&& String.Compare(networkInterfaces[networkInterfaceIndex].Name, interfaceName, StringComparison.OrdinalIgnoreCase) == 0)
-				return networkInterfaces[networkInterfaceIndex];
-			else
-			{
-				networkInterfaceIndex = Array.FindIndex(networkInterfaces, c => String.Compare(c.Name, interfaceName, StringComparison.OrdinalIgnoreCase) == 0);
-				return networkInterfaceIndex >= 0 ? networkInterfaces[networkInterfaceIndex] : null;
-			}
-		} // func GetCurrentNetworkInterface
+			=> GetNetworkInterface(ref networkInterfaceIndex, InterfaceName);
 
 		private void UpdateProperties()
 		{
@@ -408,6 +401,30 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
+		#region -- DownloadSpeedLineColor - Property ----------------------------------
+
+		public static readonly DependencyProperty DownloadSpeedLineColorProperty = DependencyProperty.Register(nameof(DownloadSpeedLineColor), typeof(Color), typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(Colors.Green));
+
+		public Color DownloadSpeedLineColor { get => (Color)GetValue(DownloadSpeedLineColorProperty); set => SetValue(DownloadSpeedLineColorProperty, value); }
+
+		#endregion
+
+		#region -- UploadSpeedLineColor - Property ------------------------------------
+
+		public static readonly DependencyProperty UploadSpeedLineColorProperty = DependencyProperty.Register(nameof(UploadSpeedLineColor), typeof(Color), typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(Colors.Red));
+
+		public Color UploadSpeedLineColor { get => (Color)GetValue(UploadSpeedLineColorProperty); set => SetValue(UploadSpeedLineColorProperty, value); }
+
+		#endregion
+
+		#region -- ForegroundMiddle - Property ----------------------------------------
+
+		public static readonly DependencyProperty ForegroundMiddleProperty = DependencyProperty.Register(nameof(ForegroundMiddle), typeof(Brush), typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(null));
+
+		public Brush ForegroundMiddle { get => (Brush)GetValue(ForegroundMiddleProperty); set => SetValue(ForegroundMiddleProperty, value); }
+
+		#endregion
+
 		public Func<IPAddress, string> IpLookup { get; set; } = null;
 
 		static NetworkInterfaceWidget()
@@ -415,35 +432,40 @@ namespace Neo.PerfectWorking.UI
 			DefaultStyleKeyProperty.OverrideMetadata(typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(typeof(NetworkInterfaceWidget)));
 		} // sctor
 
-		#region -- class NetworkSpeedConverter ----------------------------------------
+		#region -- class NetworkStateConverter ----------------------------------------
 
-		private sealed class NetworkSpeedConverter : IValueConverter
+		private sealed class NetworkStateConverter : IMultiValueConverter
 		{
-			public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+			public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
 			{
-				if (value is long l)
+				if(values[0] is string state && values[1] is long speed)
 				{
-					if (l < 1000)
-						return $"{l} Bits/s";
-					else if (l < 1000000)
-						return $"{l / 1000} KBits/s";
-					else if (l < 1000000000)
-						return $"{l / 1000000} MBits/s";
+					if (state == "Up")
+					{
+						if (speed < 1000)
+							return $"{speed} Bits/s";
+						else if (speed < 1000000)
+							return $"{speed / 1000} KBits/s";
+						else if (speed < 1000000000)
+							return $"{speed / 1000000} MBits/s";
+						else
+							return $"{speed / 1000000000} GBits/s";
+					}
 					else
-						return $"{l / 1000000000} GBits/s";
+						return state;
 				}
 				return "?";
 			} // func Convert
 
-			public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) 
+			public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
 				=> throw new NotSupportedException();
-		} // class NetworkSpeedConverter
+		} // class NetworkStateConverter
 
 		#endregion
 
-		#region -- class NetworkSpeedConverter2 ---------------------------------------
+		#region -- class NetworkSpeedConverter ----------------------------------------
 
-		private sealed class NetworkSpeedConverter2 : IValueConverter
+		private sealed class NetworkSpeedConverter : IValueConverter
 		{
 			public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
 			{
@@ -461,12 +483,35 @@ namespace Neo.PerfectWorking.UI
 
 			public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
 				=> throw new NotSupportedException();
-		} // class NetworkSpeedConverter2
+		} // class NetworkSpeedConverter
 
 		#endregion
 
+		private static NetworkInterface[] networkInterfaces = null;
+		private static int networkInterfaceTick = 0;
+
+		private static NetworkInterface GetNetworkInterface(ref int networkInterfaceIndex, string interfaceName)
+		{
+			// get interfaces
+			if (networkInterfaces == null || unchecked(Environment.TickCount - networkInterfaceTick) > 5000)
+			{
+				networkInterfaces = NetworkInterface.GetAllNetworkInterfaces();
+				networkInterfaceTick = Environment.TickCount;
+			}
+
+			// find interface
+			if (networkInterfaceIndex >= 0 && networkInterfaceIndex < networkInterfaces.Length
+				&& String.Compare(networkInterfaces[networkInterfaceIndex].Name, interfaceName, StringComparison.OrdinalIgnoreCase) == 0)
+				return networkInterfaces[networkInterfaceIndex];
+			else
+			{
+				networkInterfaceIndex = Array.FindIndex(networkInterfaces, c => String.Compare(c.Name, interfaceName, StringComparison.OrdinalIgnoreCase) == 0);
+				return networkInterfaceIndex >= 0 ? networkInterfaces[networkInterfaceIndex] : null;
+			}
+		} // func GetNetworkInterface
+
+		public static IMultiValueConverter NetworkStateConvert { get; } = new NetworkStateConverter();
 		public static IValueConverter NetworkSpeedConvert { get; } = new NetworkSpeedConverter();
-		public static IValueConverter NetworkSpeedConvert2 { get; } = new NetworkSpeedConverter2();
 
 		public static IPwWidgetFactory Factory { get; } = new PwWidgetFactory<NetworkInterfaceWidget>();
 	} // class NetworkInterfaceWidget

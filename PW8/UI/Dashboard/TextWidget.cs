@@ -23,7 +23,7 @@ using Neo.PerfectWorking.Data;
 
 namespace Neo.PerfectWorking.UI.Dashboard
 {
-	public class TextWidget : TextBlock
+	internal sealed class TextWidget : TextBlock
 	{
 		public TextWidget(IPwWidgetWindow window)
 		{

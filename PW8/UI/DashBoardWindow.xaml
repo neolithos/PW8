@@ -20,28 +20,23 @@ specific language governing permissions and limitations under the Licence.
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="clr-namespace:Neo.PerfectWorking.UI"
         x:Name="dashBoardWindow"
-        mc:Ignorable="d" MinWidth="500" MinHeight="60" SizeToContent="WidthAndHeight" ResizeMode="NoResize" Topmost="True" ShowInTaskbar="False" Title="{x:Static ui:App.Title}" WindowStyle="None" Opacity="0.95"
-        AllowsTransparency="True"
-        Background="{x:Static SystemColors.WindowFrameBrush}"
-		Foreground="White"
-        BorderBrush="{x:Static SystemColors.ControlDarkDarkBrush}"
-        BorderThickness="1">
-    <Window.Resources>
-        <Storyboard x:Key="showAnimation" FillBehavior="Stop">
-            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+        mc:Ignorable="d" MinWidth="500" MinHeight="60" SizeToContent="WidthAndHeight" ResizeMode="NoResize" Topmost="True" ShowInTaskbar="False" Title="{x:Static ui:App.Title}" WindowStyle="None"
+        AllowsTransparency="True">
+	<Window.Resources>
+		<Storyboard x:Key="showAnimation" FillBehavior="Stop">
+			<DoubleAnimation Storyboard.TargetProperty="Opacity"
                                          From="0.0"
                                          To="0.95"
                                          Duration="0:0:0.2" />
-        </Storyboard>
-        <Storyboard x:Key="hideAnimation" FillBehavior="Stop">
-            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+		</Storyboard>
+		<Storyboard x:Key="hideAnimation" FillBehavior="Stop">
+			<DoubleAnimation Storyboard.TargetProperty="Opacity"
                                          From="0.95"
                                          To="0.0"
                                          Duration="0:0:0.2" />
-        </Storyboard>
+		</Storyboard>
 	</Window.Resources>
-    <StackPanel>
-        <TextBlock Text="{Binding ElementName=dashBoardWindow,Path=Title,Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="30" Foreground="{x:Static SystemColors.ControlLightLightBrush}" />
-		<ContentControl x:Name="dash" />
-	</StackPanel>
+	<Border x:Name="dash">
+		<TextBlock Text="{Binding ElementName=dashBoardWindow,Path=Title,Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="30" Foreground="{x:Static SystemColors.ControlLightLightBrush}" />
+	</Border>
 </Window>

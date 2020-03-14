@@ -50,40 +50,32 @@ end;
 
 local d = NewDashboard();
 d {
-	Columns = {
-		"*"
-	},
-	Rows = {
-		"*",
-		"*",
-		"*"
+	Background = "#1C1C1C",
+	Foreground = "#FFFFFF",
+	Border = "#6DB8F2",
+	Opaciy = 0.95,
+	
+	Margin = "12";
+
+	d:Text {
+		Text = "Perfect Working"
 	},
 
-	--[[d:NetworkInterface {
-		Row = 2,
-		Column = 1
+	d:Border {
+		BorderThickness = "0,1,0,1",
+		Margin = "0,3,0,3",
+		Padding = "0,3,0,3",
+		d:Log {
+		}
 	},
+
 	d:NetworkInterface {
-		Row = 2,
-		Column = 2
-	},
-	d:NetworkInterface {
-		Row = 2,
-		Column = 3
-	},]]
-	d:Log {
-		Row = 1
-	},
-	d:NetworkInterface {
-		Row = 2,
 		InterfaceName = "LAN"
 	},
 	d:NetworkInterface {
-		Row = 3,
 		InterfaceName = "OpenVPN",
 		IpLookup = function (addr) : string
-			local s = addr:ToString();
-			if s:StartsWith("10.0.58.") then
+			if IsNetwork(24, addr, "10.0.58.0") then
 				return "TecWare";
 			end;
 			return nil;
