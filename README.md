@@ -1,6 +1,6 @@
 # Perfect Working 8
 
-This is a tray program, that is heavly based on NeoLua. Because, this is a hoppy project,
+This is a tray program, that is heavly based on NeoLua. Because this is a hoppy project,
 I will only write help texts in german.
 
 But feel free to translate or ask me question in english.
@@ -10,7 +10,7 @@ But feel free to translate or ask me question in english.
 Dieses Projekt hat eine lange Geschichte. Es hat für mich von je her
 zwei Zwecke. Zum einen ist es ein kleines Programm mit Helfern, die
 das Betriebssystem mir nicht passend liefert und zweitens möchte ich
-aktuelle Technoligien in einen ungezwungenen Projekt umsetzen.
+aktuelle Technologien in einem ungezwungenen Projekt umsetzen.
 
 ![Main](docs/imgs/main.png)
 
@@ -64,6 +64,8 @@ ab. Dies ermöglicht ein Neuladen der Konfiguration zur Laufzeit.
 
 Das gesamte System baut auf diesen Konzept auf.
 
-# Mitmachen
+# Mitmachen / Contribution 
 
 Sprecht mich an...
+
+Talk to me...
