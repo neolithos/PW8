@@ -36,16 +36,16 @@
 								   Text="{TemplateBinding CurrentSpeed,Converter={x:Static uiL:NetworkInterfaceWidget.NetworkSpeedConvert}}" />
 						<Border Grid.Column="0" Grid.Row="1" Grid.RowSpan="2" Margin="0,2" BorderBrush="{TemplateBinding ForegroundMiddle}" BorderThickness="1">
 							<Grid>
-								<ui:PwSparkLine LineSource="{TemplateBinding DownloadSpeedLine}">
+								<ui:PwSparkLine LineSource="{TemplateBinding TotalSpeedLine}">
 									<ui:PwSparkLine.Foreground>
 										<Pen Thickness="1">
 											<Pen.Brush>
-												<SolidColorBrush Color="{Binding Path=DownloadSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" />
+												<SolidColorBrush Color="{Binding Path=TotalSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" />
 											</Pen.Brush>
 										</Pen>
 									</ui:PwSparkLine.Foreground>
 									<ui:PwSparkLine.Fill>
-										<SolidColorBrush Color="{Binding Path=DownloadSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" Opacity="0.4" />
+										<SolidColorBrush Color="{Binding Path=TotalSpeedLineColor,RelativeSource={RelativeSource Mode=TemplatedParent}}" Opacity="0.4" />
 									</ui:PwSparkLine.Fill>
 								</ui:PwSparkLine>
 								<ui:PwSparkLine LineSource="{TemplateBinding UploadSpeedLine}">

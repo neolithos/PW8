@@ -42,7 +42,7 @@ namespace Neo.PerfectWorking.UI
 					=> this.graph = graph ?? throw new ArgumentNullException(nameof(graph));
 
 				public double GetPoint(int index, double scaleY)
-					=> graph.GetScaledPoint(graph.downloadSpeed, index, scaleY);
+					=> graph.GetScaledPoint(graph.totalSpeed, index, scaleY);
 
 				public event EventHandler Changed
 				{
@@ -50,7 +50,7 @@ namespace Neo.PerfectWorking.UI
 					remove { graph.GraphChanged -= value; }
 				} // event Changed
 
-				public int Count => graph.downloadSpeed.Length;
+				public int Count => graph.totalSpeed.Length;
 			} // class DownSpeed
 
 			#endregion
@@ -85,62 +85,53 @@ namespace Neo.PerfectWorking.UI
 			private int lastAdded = 0;
 			private long currentMax = 0;
 			private long discreteMax = 1024;
-			private readonly long[] downloadSpeed = new long[60]; // speed in byte/sec
+			private readonly long[] totalSpeed = new long[60]; // speed in byte/sec
 			private readonly long[] uploadSpeed = new long[60]; // speed in byte/sec
 
-			private long lastDownBytes = -1L;
+			private long lastTotalBytes = -1L;
 			private long lastUpBytes = -1L;
 			private int lastTick = -1;
 			private int lastDiffRest = 0;
 
-			private readonly IPwSparkLineSource downloadLine;
+			private readonly IPwSparkLineSource totalLine;
 			private readonly IPwSparkLineSource uploadLine;
 
 			public NetworkTrafficGraph(NetworkInterface networkInterface)
 			{
 				this.networkInterface = networkInterface ?? throw new ArgumentNullException(nameof(networkInterface));
 
-				downloadLine = new DownSpeed(this);
+				totalLine = new DownSpeed(this);
 				uploadLine = new UpSpeed(this);
 			} // ctor
 
-			private void Append(long downBytesPerSec, long upBytesPerSec)
+			private void Append(long totalBytesPerSec, long upBytesPerSec)
 			{
 				lastAdded += 1;
-				if (lastAdded >= downloadSpeed.Length)
+				if (lastAdded >= totalSpeed.Length)
 					lastAdded = 0;
 
 				// update array
-				var deletedDownValue = downloadSpeed[lastAdded];
-				var deletedUpValue = uploadSpeed[lastAdded];
-				downloadSpeed[lastAdded] = downBytesPerSec;
+				var deletedTotalValue = totalSpeed[lastAdded];
+				totalSpeed[lastAdded] = totalBytesPerSec;
 				uploadSpeed[lastAdded] = upBytesPerSec;
 
 				// check max value
-				var recalcMax = deletedDownValue > deletedUpValue ? deletedDownValue == currentMax : deletedUpValue == currentMax;
+				var recalcMax = deletedTotalValue == currentMax;
 				if (recalcMax)
 				{
 					currentMax = 0;
-					for (var i = 0; i < downloadSpeed.Length; i++)
-						UpdateCurrentMax(downloadSpeed[i], uploadSpeed[i]);
+					for (var i = 0; i < totalSpeed.Length; i++)
+					{
+						if (totalSpeed[i] > currentMax)
+							SetCurrentMax(totalSpeed[i]);
+					}
 				}
 				else // check for new max value
-					UpdateCurrentMax(downBytesPerSec, upBytesPerSec);
+				{
+					if (totalBytesPerSec > currentMax)
+						SetCurrentMax(totalBytesPerSec);
+				}
 			} // proc Append
-
-			private void UpdateCurrentMax(long downBytesPerSec, long upBytesPerSec)
-			{
-				if (downBytesPerSec > upBytesPerSec)
-				{
-					if (downBytesPerSec > currentMax)
-						SetCurrentMax(downBytesPerSec);
-				}
-				else
-				{
-					if (upBytesPerSec > currentMax)
-						SetCurrentMax(upBytesPerSec);
-				}
-			} // proc UpdateCurrentMax
 
 			private void SetCurrentMax(long bytesPerSec)
 			{
@@ -150,11 +141,12 @@ namespace Neo.PerfectWorking.UI
 					if (r > 0)
 						v++;
 
-					v = Math.DivRem(v, 100, out r);
+					var t = v < 10 ? 10 : 100;
+					v = Math.DivRem(v, t, out r);
 					if (r > 0)
 						v++;
 
-					return v * 100 * dim;
+					return v * t * dim;
 				} // CalcDiscrete
 
 				currentMax = bytesPerSec;
@@ -169,7 +161,7 @@ namespace Neo.PerfectWorking.UI
 			private double GetScaledPoint(long[] bytesPerSecArray, int index, double scaleY)
 			{
 				var realIndex = lastAdded + index + 1;
-				var count = downloadSpeed.Length;
+				var count = totalSpeed.Length;
 				while (realIndex >= count)
 					realIndex -= count;
 				return bytesPerSecArray[realIndex] * scaleY / discreteMax;
@@ -178,41 +170,42 @@ namespace Neo.PerfectWorking.UI
 			public void Update()
 			{
 				var stat = networkInterface.GetIPStatistics();
-				if (lastDownBytes == -1L)
+				if (lastTotalBytes == -1L)
 				{
-					lastDownBytes = stat.BytesReceived;
+					lastTotalBytes = stat.BytesReceived;
 					lastUpBytes = stat.BytesSent;
 					lastTick = Environment.TickCount;
 				}
 				else
 				{
-					var newDownBytes = stat.BytesReceived;
 					var newUpBytes = stat.BytesSent;
+					var newTotalBytes = stat.BytesReceived + newUpBytes;
 					var newTick = Environment.TickCount;
 					
 					var diff = unchecked(newTick - lastTick); // time between measures
 
-					var downBytesPerSec = (newDownBytes - lastDownBytes) * 1000 / diff;
+					var totalBytesPerSec = (newTotalBytes - lastTotalBytes) * 1000 / diff;
 					var upBytesPerSec = (newUpBytes - lastUpBytes) * 1000 / diff;
 
 					var count = Math.DivRem(lastDiffRest + diff, 1000, out var newRest);
 					lastDiffRest = newRest;
 
 					while (count-- > 0)
-						Append(downBytesPerSec, upBytesPerSec);
+						Append(totalBytesPerSec, upBytesPerSec);
 					GraphChanged?.Invoke(this, EventArgs.Empty);
 
-					lastDownBytes = newDownBytes;
+					lastTotalBytes = newTotalBytes;
 					lastUpBytes = newUpBytes;
 					lastTick = newTick;
 				}
 			} // proc Update
 
-			public long LastDownloadSpeed => downloadSpeed[lastAdded];
+			public long LastTotalSpeed => totalSpeed[lastAdded];
+			public long LastDownloadSpeed => LastTotalSpeed - LastUploadSpeed;
 			public long LastUploadSpeed => uploadSpeed[lastAdded];
 			public long DiscreteMax => discreteMax;
 
-			public IPwSparkLineSource DownloadLine => downloadLine;
+			public IPwSparkLineSource TotalLine => totalLine;
 			public IPwSparkLineSource UploadLine => uploadLine;
 		} // class NetworkTrafficGraph
 
@@ -229,7 +222,7 @@ namespace Neo.PerfectWorking.UI
 
 			// update colors
 			ForegroundMiddle = new SolidColorBrush(UIHelper.GetMixedColor(window.ForegroundColor, window.BackgroundColor, 0.5f));
-			DownloadSpeedLineColor = UIHelper.GetMixedColor(window.BackgroundColor, Colors.Green, 0.5f);
+			TotalSpeedLineColor = UIHelper.GetMixedColor(window.BackgroundColor, Colors.Green, 0.5f);
 			UploadSpeedLineColor = UIHelper.GetMixedColor(window.BackgroundColor, Colors.Red, 0.5f);
 
 			window.Global.UI.AddIdleAction(this);
@@ -238,7 +231,7 @@ namespace Neo.PerfectWorking.UI
 		private void ClearProperties()
 		{
 			networkSpeed = null;
-			DownloadSpeedLine = null;
+			TotalSpeedLine = null;
 			UploadSpeedLine = null;
 			CurrentSpeed = 0;
 		} // proc ClearProperties
@@ -275,7 +268,7 @@ namespace Neo.PerfectWorking.UI
 				if (networkSpeed == null)
 				{
 					networkSpeed = new NetworkTrafficGraph(networkInterface);
-					DownloadSpeedLine = networkSpeed.DownloadLine;
+					TotalSpeedLine = networkSpeed.TotalLine;
 					UploadSpeedLine = networkSpeed.UploadLine;
 				}
 
@@ -383,12 +376,12 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- DownloadSpeedLine - Property ---------------------------------------
+		#region -- TotalSpeedLine - Property ------------------------------------------
 
-		private static readonly DependencyPropertyKey downloadSpeedLinePropertyKey = DependencyProperty.RegisterReadOnly(nameof(DownloadSpeedLine), typeof(IPwSparkLineSource), typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(null));
-		public static readonly DependencyProperty DownloadSpeedLineProperty = downloadSpeedLinePropertyKey.DependencyProperty;
+		private static readonly DependencyPropertyKey totalSpeedLinePropertyKey = DependencyProperty.RegisterReadOnly(nameof(TotalSpeedLine), typeof(IPwSparkLineSource), typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(null));
+		public static readonly DependencyProperty TotalSpeedLineProperty = totalSpeedLinePropertyKey.DependencyProperty;
 
-		public IPwSparkLineSource DownloadSpeedLine { get => (IPwSparkLineSource)GetValue(DownloadSpeedLineProperty); private set => SetValue(downloadSpeedLinePropertyKey, value); }
+		public IPwSparkLineSource TotalSpeedLine { get => (IPwSparkLineSource)GetValue(TotalSpeedLineProperty); private set => SetValue(totalSpeedLinePropertyKey, value); }
 
 		#endregion
 
@@ -401,11 +394,11 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
-		#region -- DownloadSpeedLineColor - Property ----------------------------------
+		#region -- TotalSpeedLineColor - Property -------------------------------------
 
-		public static readonly DependencyProperty DownloadSpeedLineColorProperty = DependencyProperty.Register(nameof(DownloadSpeedLineColor), typeof(Color), typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(Colors.Green));
+		public static readonly DependencyProperty TotalSpeedLineColorProperty = DependencyProperty.Register(nameof(TotalSpeedLineColor), typeof(Color), typeof(NetworkInterfaceWidget), new FrameworkPropertyMetadata(Colors.Green));
 
-		public Color DownloadSpeedLineColor { get => (Color)GetValue(DownloadSpeedLineColorProperty); set => SetValue(DownloadSpeedLineColorProperty, value); }
+		public Color TotalSpeedLineColor { get => (Color)GetValue(TotalSpeedLineColorProperty); set => SetValue(TotalSpeedLineColorProperty, value); }
 
 		#endregion
 
@@ -476,7 +469,7 @@ namespace Neo.PerfectWorking.UI
 					else if (l < 1 << 20)
 						return $"{l / 1024.0:N1} KiB/s";
 					else 
-						return $"{l / 1048576.0} MiB/s";
+						return $"{l / 1048576.0:N1} MiB/s";
 				}
 				return "?";
 			} // func Convert
