@@ -914,7 +914,7 @@ namespace Neo.PerfectWorking.Data
 			foreach (var c in data)
 				keyList.Append(c);
 
-			Log.Default.SendKeyData(data);
+			Log.Default.SendKeyData(data.Length);
 			keyList.Send();
 		} // proc SendKeyData
 

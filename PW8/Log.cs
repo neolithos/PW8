@@ -85,9 +85,9 @@ namespace Neo.PerfectWorking
 			=> WriteEvent(13, hotKeyId);
 
 		[Event(14, Channel = EventChannel.Operational, Level = EventLevel.Informational, Keywords = EventKeywords.None, Tags = Tags.HotKey,
-			Message = "Send key strokes: {0}")]
-		public void SendKeyData(string data)
-			=> WriteEvent(14, data);
+			Message = "Send key strokes: {0} chars")]
+		public void SendKeyData(int chars)
+			=> WriteEvent(14, chars);
 
 		[Event(15, Channel = EventChannel.Operational, Level = EventLevel.Informational, Keywords = EventKeywords.None, Tags = Tags.HotKey,
 			Message = "Send KeyDown: {0}")]
