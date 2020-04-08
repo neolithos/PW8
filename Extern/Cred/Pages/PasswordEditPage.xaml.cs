@@ -48,7 +48,7 @@ namespace Neo.PerfectWorking.Cred.Pages
 
 				password.PasswordChanged += (sender, e) => SetModified();
 
-				if(currentInfo == null)
+				if (currentInfo == null)
 				{
 					provider = page.Providers.CurrentItem as ICredentialProvider;
 					targetName = String.Empty;
@@ -116,6 +116,8 @@ namespace Neo.PerfectWorking.Cred.Pages
 				if (currentInfo == null) // create a new one
 				{
 					currentInfo = provider.Append(this);
+					if (currentInfo.TargetName != targetName)
+						TargetName = currentInfo.TargetName;
 					OnPropertyChanged(nameof(IsNew));
 				}
 				else if (currentInfo.TargetName != targetName) // remove and create it with a new target
@@ -161,7 +163,7 @@ namespace Neo.PerfectWorking.Cred.Pages
 
 		public PasswordEditPage(CredPackagePane credPane)
 		{
-			this.credPane = credPane;
+			this.credPane = credPane ?? throw new ArgumentNullException(nameof(credPane));
 
 			ui = credPane.Package.Global.UI;
 

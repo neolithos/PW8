@@ -309,31 +309,31 @@ namespace Neo.PerfectWorking.Cred.Provider
 		{
 			CheckReadOnly();
 
-			var createItem = false;
-
 			// find existing item
 			var targetName = newItem.TargetName;
-			var currentItem = FindItemByUri(targetName);
-
-			// create new
-			if (currentItem == null)
+			var baseTargetName = targetName;
+			var targetNameCounter = 0;
+			while (true)
 			{
-				currentItem = new FileCredentialInfo(this, newItem.TargetName);
-				createItem = true;
+				if (FindItemByUri(targetName) == null)
+					break;
+				else
+					targetName = baseTargetName + "/" + (++targetNameCounter).ToString();
 			}
 
-			// update item
-			currentItem.Comment = newItem.Comment;
-			currentItem.UserName = newItem.UserName;
+
+			// create item
+			var currentItem = new FileCredentialInfo(this, targetName)
+			{
+				Comment = newItem.Comment,
+				UserName = newItem.UserName
+			};
 			currentItem.SetPassword(newItem.GetPassword());
-
+			
 			// add
-			if (createItem)
-			{
-				var index = items.Count;
-				items.Add(currentItem);
-				OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, currentItem, index));
-			}
+			var index = items.Count;
+			items.Add(currentItem);
+			OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, currentItem, index));
 
 			return currentItem;
 		} // proc Append

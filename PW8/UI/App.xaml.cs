@@ -175,6 +175,43 @@ namespace Neo.PerfectWorking.UI
 
 		#endregion
 
+		#region -- class IdleAction ---------------------------------------------------
+
+		private sealed class IdleAction
+		{
+			private readonly WeakReference<IPwIdleAction> action;
+			private bool isActive = true;
+
+			public IdleAction(IPwIdleAction action)
+			{
+				this.action = new WeakReference<IPwIdleAction>(action);
+			} // ctor
+
+			public void Reset()
+				=> isActive = true;
+
+			public bool OnIdle(int timeSinceRestart, ref bool totalIdleStop)
+			{
+				if (action.TryGetTarget(out var idleAction))
+				{
+					if (isActive)
+					{
+						isActive = idleAction.OnIdle(timeSinceRestart);
+						if (isActive)
+							totalIdleStop = false;
+					}
+					return true; // is alive
+				}
+				else
+					return false; // remove
+			} // func OnIdle
+
+			public bool Equal(IPwIdleAction other)
+				=> action.TryGetTarget(out var idleAction) && idleAction == other;
+		} // class IdleAction
+
+		#endregion
+
 		private HwndSource hwnd = null;
 		private IntPtr notificationIcon = IntPtr.Zero;
 
@@ -187,7 +224,7 @@ namespace Neo.PerfectWorking.UI
 
 		private int restartTime = -1;
 		private DispatcherTimer idleTimer;
-		private readonly List<WeakReference<IPwIdleAction>> idleActions = new List<WeakReference<IPwIdleAction>>();
+		private readonly List<IdleAction> idleActions = new List<IdleAction>();
 
 		private IPwCollection<IPwHotKey> hotkeys;
 		private readonly Dictionary<int, PwRegisteredHotKey> registeredHotkeys = new Dictionary<int, PwRegisteredHotKey>();
@@ -279,7 +316,7 @@ namespace Neo.PerfectWorking.UI
 		{
 			for (var i = 0; i < idleActions.Count; i++)
 			{
-				if (idleActions[i].TryGetTarget(out var t) && t == idleAction)
+				if (idleActions[i].Equal(idleAction))
 					return i;
 			}
 			return -1;
@@ -288,7 +325,7 @@ namespace Neo.PerfectWorking.UI
 		public IPwIdleAction AddIdleAction(IPwIdleAction idleAction)
 		{
 			if (IndexOfIdleAction(idleAction) == -1)
-				idleActions.Add(new WeakReference<IPwIdleAction>(idleAction));
+				idleActions.Add(new IdleAction(idleAction));
 			return idleAction;
 		} // proc AddIdleAction
 
@@ -308,9 +345,7 @@ namespace Neo.PerfectWorking.UI
 			var timeSinceRestart = unchecked(Environment.TickCount - restartTime);
 			for (var i = idleActions.Count - 1; i >= 0; i--)
 			{
-				if (idleActions[i].TryGetTarget(out var t))
-					stopIdle = stopIdle && t.OnIdle(timeSinceRestart);
-				else
+				if (!idleActions[i].OnIdle(timeSinceRestart, ref stopIdle))
 					idleActions.RemoveAt(i);
 			}
 
@@ -331,6 +366,7 @@ namespace Neo.PerfectWorking.UI
 				{
 					restartTime = Environment.TickCount;
 					idleTimer.Stop();
+					idleActions.ForEach(c => c.Reset());
 					idleTimer.Start();
 				}
 			}
