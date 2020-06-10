@@ -15,6 +15,7 @@
 #endregion
 using System;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Neo.IronLua;
 using Neo.PerfectWorking.Data;
@@ -40,7 +41,19 @@ namespace Neo.PerfectWorking.Stuff
 		} // func GetLuaTable
 
 		public static void OnException(this Task task, IPwShellUI ui)
-			=> TecWare.DE.Stuff.Procs.Silent(task, e => ui.ShowExceptionAsync(e));
+			=> Procs.Silent(task, e => ui.ShowExceptionAsync(e));
+
+		public static T SafeCall<T>(Func<T> f, T @default = default)
+		{
+			try
+			{
+				return f();
+			}
+			catch
+			{
+				return @default;
+			}
+		} // func SafeCall
 
 		public static bool IsWin7
 			=> Environment.OSVersion.Version > new Version(6, 0, 0, 0);

@@ -23,6 +23,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.Stuff;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.UI
 {
@@ -263,7 +265,7 @@ namespace Neo.PerfectWorking.UI
 				var ipV6 = props.UnicastAddresses.FirstOrDefault(c => c.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6);
 				UnicastAddress4 = ipV4?.Address.ToString();
 				UnicastAddress6 = ipV6?.Address.ToString();
-				Description = IpLookup?.Invoke(ipV4?.Address ?? ipV6?.Address) ?? networkInterface.Description;
+				Description = ProcsPW.SafeCall(() => IpLookup?.Invoke(ipV4?.Address ?? ipV6?.Address), null) ?? networkInterface.Description;
 
 				if (networkSpeed == null)
 				{
@@ -492,13 +494,15 @@ namespace Neo.PerfectWorking.UI
 				networkInterfaceTick = Environment.TickCount;
 			}
 
+			var filterFunc = Procs.GetFilerFunction(interfaceName, false);
+
 			// find interface
 			if (networkInterfaceIndex >= 0 && networkInterfaceIndex < networkInterfaces.Length
-				&& String.Compare(networkInterfaces[networkInterfaceIndex].Name, interfaceName, StringComparison.OrdinalIgnoreCase) == 0)
+				&& filterFunc(networkInterfaces[networkInterfaceIndex].Name))
 				return networkInterfaces[networkInterfaceIndex];
 			else
 			{
-				networkInterfaceIndex = Array.FindIndex(networkInterfaces, c => String.Compare(c.Name, interfaceName, StringComparison.OrdinalIgnoreCase) == 0);
+				networkInterfaceIndex = Array.FindIndex(networkInterfaces, c => filterFunc(c.Name));
 				return networkInterfaceIndex >= 0 ? networkInterfaces[networkInterfaceIndex] : null;
 			}
 		} // func GetNetworkInterface

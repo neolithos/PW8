@@ -982,23 +982,39 @@ namespace Neo.PerfectWorking.Data
 		} // func GetCredential
 
 		[LuaMember]
-		public IPAddress GetIPAddress(object addr)
+		public bool TryGetIPAddress(object value, out IPAddress addr)
 		{
-			if (addr is string s)
-				return IPAddress.Parse(s);
-			else if (addr is IPAddress a)
-				return a;
+			if (value is string s)
+			{
+				addr = IPAddress.Parse(s);
+				return true;
+			}
+			else if (value is IPAddress a)
+			{
+				addr = a;
+				return true;
+			}
 			else
-				throw new FormatException();
+			{
+				addr = null;
+				return false;
+			}
+		} // func GetIPAddress
+
+		[LuaMember]
+		public IPAddress GetIPAddress(object value)
+		{
+			if (TryGetIPAddress(value, out var addr))
+				return addr;
+			else 
+				throw new FormatException($"Can format to IP: ({(value?.GetType().Name ?? "object")}){value}");
 		} // func GetIPAddress
 
 		[LuaMember]
 		public bool IsNetwork(int maskSize, object addr1, object addr2)
 		{
-			var a1 = GetIPAddress(addr1);
-			var a2 = GetIPAddress(addr2);
-
-			if (a1.AddressFamily == a2.AddressFamily)
+			if(TryGetIPAddress(addr1, out var a1)  && TryGetIPAddress(addr2, out var a2) 
+				&& a1.AddressFamily == a2.AddressFamily)
 			{
 				var b1 = a1.GetAddressBytes();
 				var b2 = a2.GetAddressBytes();
