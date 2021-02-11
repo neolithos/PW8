@@ -153,5 +153,9 @@ namespace PW.Core.Tests
 		[TestMethod]
 		public void ParseTest08()
 			=> TestCalc(14.0, "11,9/0,85");
+
+		[TestMethod]
+		public void ParseTest09()
+			=> TestCalc(13L, "0b1101");
 	}
 }

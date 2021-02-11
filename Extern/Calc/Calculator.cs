@@ -1622,12 +1622,12 @@ namespace Neo.PerfectWorking.Calc
 					case 150:
 						if (c == '0')
 						{
-							if (!((LongNumberAdd)currentNumberAdd).AddHex(0, scanStart, currentPosition, ref tok))
+							if (!((LongNumberAdd)currentNumberAdd).AddBin(0, scanStart, currentPosition, ref tok))
 								return true;
 						}
 						else if (c == '1')
 						{
-							if (!((LongNumberAdd)currentNumberAdd).AddHex(1, scanStart, currentPosition, ref tok))
+							if (!((LongNumberAdd)currentNumberAdd).AddBin(1, scanStart, currentPosition, ref tok))
 								return true;
 						}
 						else if (c != '.')

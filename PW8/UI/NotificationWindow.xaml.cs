@@ -40,7 +40,6 @@ namespace Neo.PerfectWorking.UI
 		#endregion
 
 		private readonly Storyboard windowStoryboard;
-
 		private readonly FrameworkElement textTemplate;
 
 		public NotificationWindow()
@@ -60,8 +59,8 @@ namespace Neo.PerfectWorking.UI
 		protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
 		{
 			base.OnPropertyChanged(e);
-			if (e.Property == Window.ActualWidthProperty ||
-				e.Property == Window.ActualHeightProperty)
+			if (e.Property == ActualWidthProperty ||
+				e.Property == ActualHeightProperty)
 				RecalcPosition(true);
 		} // proc OnPropertyChanged
 

@@ -823,9 +823,8 @@ namespace Neo.PerfectWorking.Stuff
 				if ((GetKeyState(91) & 0x80) != 0)
 					systemState |= PwKeyModifiers.Win;
 
-				// toggle state to none
-				if (systemState != PwKeyModifiers.None)
-					beforeList.AppendModifiers(firstState, systemState);
+				// toggle state to first
+				beforeList.AppendModifiers(firstState, systemState);
 
 				// clear modifiers to system state
 				SetModifiers(systemState);
