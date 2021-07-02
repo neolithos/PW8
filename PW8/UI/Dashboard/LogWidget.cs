@@ -75,7 +75,7 @@ namespace Neo.PerfectWorking.UI
 			foreach (var c in this)
 			{
 				newItems[j] = c;
-				j = j >= newItems.Length-1 ? 0 : j + 1;
+				j = j >= newItems.Length - 1 ? 0 : j + 1;
 			}
 
 			top = j;
@@ -100,7 +100,7 @@ namespace Neo.PerfectWorking.UI
 				var c = items[i];
 				if (c != null)
 					yield return c;
-				i = i >= items.Length-1 ? 0 : i + 1;
+				i = i >= items.Length - 1 ? 0 : i + 1;
 				if (i == top)
 					break;
 			}
@@ -166,6 +166,11 @@ namespace Neo.PerfectWorking.UI
 				case NotifyCollectionChangedAction.Reset:
 					ResetCollections();
 					break;
+
+				case NotifyCollectionChangedAction.Replace:
+				case NotifyCollectionChangedAction.Move:
+				default:
+					break;
 			}
 		} // event Sources_CollectionChanged
 
@@ -177,8 +182,8 @@ namespace Neo.PerfectWorking.UI
 			if (e.Channel == EventChannel.Operational)
 			{
 				Dispatcher.BeginInvoke(new Action<EventLevel, DateTime, string>(items.Append),
-				  DispatcherPriority.Normal,
-				  e.Level, DateTime.Now, CreateMessage(e)
+					DispatcherPriority.Normal,
+					e.Level, DateTime.Now, CreateMessage(e)
 			  );
 			}
 		} // event Listener_EventWritten

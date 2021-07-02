@@ -243,7 +243,7 @@ namespace Neo.PerfectWorking.UI
 #else
 				"8.0"
 #endif
-				)));
+			)));
 			
 			ApplicationRemoteDirectory = GetDirectory(Environment.SpecialFolder.ApplicationData);
 			ApplicationLocalDirectory = GetDirectory(Environment.SpecialFolder.LocalApplicationData);
@@ -263,7 +263,7 @@ namespace Neo.PerfectWorking.UI
 		{
 			hwnd = new HwndSource(
 				0,
-				unchecked((int)(WS_POPUP)),
+				unchecked((int)WS_POPUP),
 				0,
 				0, 0, 0, 0,
 				"Perfect Working Sink",
@@ -290,9 +290,7 @@ namespace Neo.PerfectWorking.UI
 					break;
 				default:
 					if (msg == wmTaskbarCreated)
-					{
 						UpdateNotifyIcon(true);
-					}
 					break;
 			}
 			handled = false;
@@ -570,11 +568,13 @@ namespace Neo.PerfectWorking.UI
 				hotkeys.CollectionChanged += Hotkeys_CollectionChanged;
 				Hotkeys_CollectionChanged(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
 			}
+#pragma warning disable CA1031 // Do not catch general exception types
 			catch (Exception ex)
 			{
 				ShowException(null, ex);
 				Shutdown();
 			}
+#pragma warning restore CA1031 // Do not catch general exception types
 		} // proc OnStartup
 
 		private void AssignCommandTarget(ItemsControl items, IInputElement commandTarget)
@@ -600,7 +600,7 @@ namespace Neo.PerfectWorking.UI
 
 		public void ExitApplication()
 			=> Shutdown();
-		
+
 		#endregion
 
 		#region -- HotKey List --------------------------------------------------------
@@ -618,11 +618,10 @@ namespace Neo.PerfectWorking.UI
 
 			// ensure id
 			var hotKeyId = PwRegisteredHotKey.GetHotKeyId(hotkey.Key);
-			if(!registeredHotkeys.TryGetValue(hotKeyId, out var registered))
+			if (!registeredHotkeys.TryGetValue(hotKeyId, out var registered))
 			{
 				registeredHotkeys[hotKeyId] =
 					registered = new PwRegisteredHotKey(hwnd, key, hotKeyId);
-				
 			}
 			// register hotkey
 			registered.Add(hotkey);
@@ -639,7 +638,6 @@ namespace Neo.PerfectWorking.UI
 			var key = hotkey.Key;
 			if (key != PwKey.None)
 			{
-			
 				var hotKeyId = PwRegisteredHotKey.GetHotKeyId(key);
 				if (registeredHotkeys.TryGetValue(hotKeyId, out var registered)
 					&& registered.Remove(hotkey))
@@ -693,6 +691,7 @@ namespace Neo.PerfectWorking.UI
 					foreach (var c in e.NewItems)
 						CheckResult(AddHotKey((IPwHotKey)c));
 					break;
+				case NotifyCollectionChangedAction.Move:
 				default:
 					throw new NotImplementedException();
 			}
@@ -800,6 +799,10 @@ namespace Neo.PerfectWorking.UI
 					foreach (var c in eventSources)
 						AddEventSource(c);
 					break;
+				case NotifyCollectionChangedAction.Replace:
+				case NotifyCollectionChangedAction.Move:
+				default:
+					break;
 			}
 		} // event EventSources_CollectionChanged
 
@@ -889,15 +892,16 @@ namespace Neo.PerfectWorking.UI
 						foreach (var cur in exportedLogs)
 						{
 							var entry = zip.CreateEntry(Path.GetFileName(cur.Item2));
-							using (var dst2 = entry.Open())
-							using (var src2 = new FileStream(cur.Item1, FileMode.Open))
-								src2.CopyTo(dst2);
+							using var dst2 = entry.Open();
+							using var src2 = new FileStream(cur.Item1, FileMode.Open);
+
+							src2.CopyTo(dst2);
 						}
 					}
 
 					global.UI.ShowNotification("Logs exportiert.");
 				}
-				catch(Exception e)
+				catch (Exception e)
 				{
 					global.UI.ShowException(e);
 				}
@@ -928,12 +932,7 @@ namespace Neo.PerfectWorking.UI
 		} //  proc InvokeAsync
 
 		public Task<T> InvokeAsync<T>(Func<T> action)
-		{
-			if (Dispatcher.CheckAccess())
-				return Task.FromResult(action());
-			else
-				return Dispatcher.InvokeAsync(action).Task;
-		} //  proc InvokeAsync
+			=> Dispatcher.CheckAccess() ? Task.FromResult(action()) : Dispatcher.InvokeAsync(action).Task;
 
 		public void BeginInvoke(Action action)
 			=> Dispatcher.InvokeAsync(action);
@@ -1039,6 +1038,7 @@ namespace Neo.PerfectWorking.UI
 					return "Frage";
 				case MessageBoxImage.Warning:
 					return "Warnung";
+				case MessageBoxImage.None:
 				case MessageBoxImage.Information:
 				default:
 					return "Information";

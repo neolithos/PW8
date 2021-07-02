@@ -30,7 +30,7 @@
 					<Grid Height="20">
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="22" />
-							<ColumnDefinition Width="70" />
+							<ColumnDefinition Width="74" />
 							<ColumnDefinition />
 						</Grid.ColumnDefinitions>
 						<ui:PwGeometry x:Name="img" Geometry="{StaticResource infoGeometry}" Foreground="{StaticResource TextGrayBrush}" Width="16" Height="16" VerticalAlignment="Center" HorizontalAlignment="Center" />

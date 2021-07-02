@@ -10,3 +10,9 @@ insert_final_newline = true
 dotnet_diagnostic.CA1822.severity = none
 # CA2237: Mark ISerializable types with serializable
 dotnet_diagnostic.CA2237.severity = none
+
+# IDE0058: Expression value is never used
+dotnet_diagnostic.IDE0058.severity = none
+
+# CA1031: Do not catch general exception types
+dotnet_diagnostic.CA1031.severity = none

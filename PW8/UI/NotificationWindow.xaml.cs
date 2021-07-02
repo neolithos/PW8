@@ -25,12 +25,12 @@ namespace Neo.PerfectWorking.UI
 	{
 		#region -- class TextImageContent ---------------------------------------------
 
-		public sealed class TextImageContent
+		private sealed class TextImageContent
 		{
 			public TextImageContent(string text, object image)
 			{
-				this.Text = text;
-				this.Image = image;
+				Text = text;
+				Image = image;
 			} // ctor
 
 			public string Text { get; }
@@ -59,8 +59,8 @@ namespace Neo.PerfectWorking.UI
 		protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
 		{
 			base.OnPropertyChanged(e);
-			if (e.Property == ActualWidthProperty ||
-				e.Property == ActualHeightProperty)
+			if (e.Property == ActualWidthProperty
+				|| e.Property == ActualHeightProperty)
 				RecalcPosition(true);
 		} // proc OnPropertyChanged
 
@@ -133,8 +133,6 @@ namespace Neo.PerfectWorking.UI
 		} // proc Show
 
 		private void WindowStoryboard_Completed(object sender, EventArgs e)
-		{
-			Hide();
-		} // event WindowStoryboard_Completed
+			=> Hide();
 	} // class NotificationWindow
 }
