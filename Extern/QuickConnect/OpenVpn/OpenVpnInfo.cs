@@ -838,14 +838,17 @@ namespace Neo.PerfectWorking.OpenVpn
 
 			// enumerate all configurations, that are known from registry
 			using (var r = OpenRunningVpnKey(false))
-			{ 
-				foreach (var eventName in r.GetValueNames())
+			{
+				if (r != null)
 				{
-					if (!eventName.EndsWith("_Port")
-						&& TryGetConfigFileFromRegistry(r, eventName, out var openVpnConfigFile)
-						&& !IsReturned(openVpnConfigFile))
+					foreach (var eventName in r.GetValueNames())
 					{
-						yield return new OpenVpnInfo(eventName, openVpnConfigFile);
+						if (!eventName.EndsWith("_Port")
+							&& TryGetConfigFileFromRegistry(r, eventName, out var openVpnConfigFile)
+							&& !IsReturned(openVpnConfigFile))
+						{
+							yield return new OpenVpnInfo(eventName, openVpnConfigFile);
+						}
 					}
 				}
 			}
