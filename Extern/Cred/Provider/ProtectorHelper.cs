@@ -200,23 +200,31 @@ namespace Neo.PerfectWorking.Cred.Provider
 		{
 			if (CanDecryptPrefix(encrypted, out var encryptedBytes, out var key))
 			{
-				using (key)
-				using (var ss = new SecureString())
-				using (var m = new MemoryStream(encryptedBytes, false))
-				using (var src = new CryptoStream(m, key.CreateDecryptor(), CryptoStreamMode.Read))
+				try
 				{
-					while (true)
+					using (key)
+					using (var ss = new SecureString())
+					using (var m = new MemoryStream(encryptedBytes, false))
+					using (var src = new CryptoStream(m, key.CreateDecryptor(), CryptoStreamMode.Read))
 					{
-						var bLow = src.ReadByte();
-						if (bLow == -1)
+						while (true)
 						{
-							password = ss.Copy();
-							return true;
-						}
-						var bHigh = src.ReadByte();
+							var bLow = src.ReadByte();
+							if (bLow == -1)
+							{
+								password = ss.Copy();
+								return true;
+							}
+							var bHigh = src.ReadByte();
 
-						ss.AppendChar(unchecked((char)((byte)bLow | ((byte)bHigh << 8))));
+							ss.AppendChar(unchecked((char)((byte)bLow | ((byte)bHigh << 8))));
+						}
 					}
+				}
+				catch (CryptographicException)
+				{
+					password = ErrorPassword;
+					return true;
 				}
 			}
 			else
@@ -252,6 +260,19 @@ namespace Neo.PerfectWorking.Cred.Provider
 		public abstract object Encrypt(SecureString password);
 
 		#endregion
+
+		static DesEncryptProtectorBase()
+		{
+			var ss = new SecureString();
+			ss.AppendChar('E');
+			ss.AppendChar('R');
+			ss.AppendChar('R');
+			ss.AppendChar('O');
+			ss.AppendChar('R');
+			ss.MakeReadOnly();
+			ErrorPassword = ss;
+		}
+		public static SecureString ErrorPassword { get; }
 	} // class DesEncryptProtectorBase
 
 	#endregion
