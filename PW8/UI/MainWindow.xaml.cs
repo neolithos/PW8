@@ -27,6 +27,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Microsoft.Win32;
 using Neo.IronLua;
 using Neo.PerfectWorking.Data;
@@ -349,17 +350,21 @@ namespace Neo.PerfectWorking.UI
 
 		public void RecalcPosition()
 		{
+			// get current dpi
+			var src = PresentationSource.FromVisual(this);
+			var dpi = src?.CompositionTarget.TransformToDevice ?? Matrix.Identity;
+
 			var rcWorkArea = SystemParameters.WorkArea;
-			var xBorder = SystemParameters.ResizeFrameVerticalBorderWidth + SystemParameters.BorderWidth + 1;
-			var yBorder = SystemParameters.ResizeFrameHorizontalBorderHeight + SystemParameters.BorderWidth + 1;
+			var xBorder = SystemParameters.ResizeFrameVerticalBorderWidth + SystemParameters.BorderWidth + dpi.M11;
+			var yBorder = SystemParameters.ResizeFrameHorizontalBorderHeight + SystemParameters.BorderWidth + dpi.M22;
 
 			Left = rcWorkArea.Right - Width + xBorder;
 			Top = rcWorkArea.Bottom - Height + yBorder;
 
-			sizingArea.Left = Convert.ToInt32(rcWorkArea.Width / 8);
-			sizingArea.Top = Convert.ToInt32(rcWorkArea.Height / 8);
-			sizingArea.Right = Convert.ToInt32(rcWorkArea.Right + xBorder);
-			sizingArea.Bottom = Convert.ToInt32(rcWorkArea.Bottom + yBorder);
+			sizingArea.Left = Convert.ToInt32(rcWorkArea.Width / 8 * dpi.M11);
+			sizingArea.Top = Convert.ToInt32(rcWorkArea.Height / 8 * dpi.M22);
+			sizingArea.Right = Convert.ToInt32((rcWorkArea.Right + xBorder) * dpi.M11);
+			sizingArea.Bottom = Convert.ToInt32((rcWorkArea.Bottom + yBorder) * dpi.M22);
 		} // proc RecalcPosition
 
 		private IntPtr WindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -404,6 +409,7 @@ namespace Neo.PerfectWorking.UI
 						}
 						if (handled)
 						{
+							Debug.Print("Sizing: {0}", rc);
 							Marshal.StructureToPtr(rc, lParam, true);
 							return IntPtr.Zero;
 						}
