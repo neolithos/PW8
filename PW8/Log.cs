@@ -121,6 +121,5 @@ namespace Neo.PerfectWorking
 		#endregion
 
 		public static Log Default { get; } = new Log();
-
 	} // class Log
 }

@@ -13,16 +13,19 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
-using System.Windows.Controls;
+using Neo.PerfectWorking.Data;
+using System.Runtime.CompilerServices;
 
-namespace Neo.PerfectWorking.UI.Dashboard
+[assembly: PwPackage(typeof(Neo.PerfectWorking.Backup.BackupPackage))]
+[assembly: InternalsVisibleTo("PW.Core.Tests")]
+
+namespace Neo.PerfectWorking.Backup
 {
-	internal sealed class TextWidget : TextBlock
+	public sealed class BackupPackage : PwPackageBase
 	{
-		public TextWidget(IPwWidgetWindow window)
+		public BackupPackage(IPwGlobal global)
+			: base(global, nameof(BackupPackage))
 		{
 		} // ctor
-
-		public static IPwWidgetFactory Factory { get; } = new PwWidgetFactory<TextWidget>();
-	} // class TextWidget
+	} // class CredPackage
 }

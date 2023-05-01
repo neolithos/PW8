@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29519.87
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PW8", "PW8\PW8.csproj", "{39A8FCF0-E1DA-461C-8A64-FEB9EDE19502}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -35,6 +35,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{22F63B
 		Directory.Build.props = Directory.Build.props
 		README.md = README.md
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Backup", "Extern\Backup\Backup.csproj", "{46FB3E15-7961-4D14-8A18-CB3F21C185E9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -78,6 +80,10 @@ Global
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273}.Release|Any CPU.Build.0 = Release|Any CPU
+		{46FB3E15-7961-4D14-8A18-CB3F21C185E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46FB3E15-7961-4D14-8A18-CB3F21C185E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46FB3E15-7961-4D14-8A18-CB3F21C185E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46FB3E15-7961-4D14-8A18-CB3F21C185E9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -88,6 +94,7 @@ Global
 		{DC51B6E2-66EC-44E8-8F9E-D4D4D8AC5DAA} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
 		{BCA90365-4041-4D50-A890-2E94D9C6A617} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
 		{B96472D4-F3CB-4E84-9EA9-25FA88996273} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
+		{46FB3E15-7961-4D14-8A18-CB3F21C185E9} = {49A006E4-C202-4B35-B9B3-53235E1E0736}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2143D050-154F-4485-AE3F-AFF8BC60440A}

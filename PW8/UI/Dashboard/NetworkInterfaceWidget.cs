@@ -494,7 +494,7 @@ namespace Neo.PerfectWorking.UI
 				networkInterfaceTick = Environment.TickCount;
 			}
 
-			var filterFunc = Procs.GetFilerFunction(interfaceName, false);
+			var filterFunc = Procs.GetFilterFunction(interfaceName, false);
 
 			// find interface
 			if (networkInterfaceIndex >= 0 && networkInterfaceIndex < networkInterfaces.Length
