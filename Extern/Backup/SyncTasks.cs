@@ -13,9 +13,16 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
+using Microsoft.SqlServer.Server;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Contexts;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Backup
@@ -24,7 +31,22 @@ namespace Neo.PerfectWorking.Backup
 
 	public interface ISyncTaskUI
 	{
+		IProgress<int> StartTask(string taskName);
+
+		SynchronizationContext Context { get; }
 	} // interface ISyncTaskUI
+
+	#endregion
+
+	#region -- interface ISyncSafeIO --------------------------------------------------
+
+	public interface ISyncSafeIO
+	{
+		void SafeIO(Action action, string actionDescription = null);
+		T SafeIO<T>(Func<T> action, string actionDescription = null);
+
+		Stream SafeOpen(Func<FileInfo, Stream> func, FileInfo file, string actionDescription = null);
+	} // interface ISyncSafeIO
 
 	#endregion
 
@@ -37,6 +59,70 @@ namespace Neo.PerfectWorking.Backup
 
 		private sealed class CopyFileTask : SyncTask
 		{
+			#region -- Win32 CopyFile -------------------------------------------------
+
+			[Flags]
+			private enum CopyFileFlags : int
+			{
+				FailIfExists = 0x00000001,
+				Restartable = 0x00000002,
+				OpenSourceForWrite = 0x00000004,
+				AllowDecryptedDestination = 0x00000008,
+				CopySymlink = 0x00000800,
+				NoBuffering = 0x00001000,
+				RequestCompressedTraffic = 0x10000000
+			} // enum CopyFileFlags
+
+			private enum CopyFileCallbackAction : int
+			{
+				Continue = 0,
+				Cancel = 1,
+				Stop = 2,
+				Quiet = 3
+			} // enum CopyFileCallbackAction
+
+			private delegate CopyFileCallbackAction CopyProgressRoutineDelegate(ulong totalFileSize, ulong totalBytesTransferred, ulong streamSize, ulong streamBytesTransferred, uint dwStreamNumber, uint dwCallbackReason, IntPtr hSourceFile, IntPtr hDestinationFile, IntPtr lpData);
+
+			[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+			private static extern bool CopyFileEx(string sourceFileName, string destinationFileName, CopyProgressRoutineDelegate progressRoutine, IntPtr lpData, IntPtr lpCancel, CopyFileFlags copyFlags);
+
+			#endregion
+
+			#region -- class PercentProgress ------------------------------------------
+
+			private sealed class PercentProgress
+			{
+				private readonly IProgress<int> progress;
+				private readonly CancellationToken cancellationToken;
+				private readonly bool isRestartable;
+
+				private int currentProgress; // progress in based on 1000
+
+				public PercentProgress(IProgress<int> progress, CancellationToken cancellationToken, bool isRestartable)
+				{
+					this.progress = progress ?? throw new ArgumentNullException(nameof(progress));
+					this.cancellationToken = cancellationToken;
+					this.isRestartable = isRestartable;
+				} // ctor
+
+				public void Update(ulong transfered, ulong total)
+				{
+					var newProgress = total > 0 ? unchecked((int)(transfered * 1000 / total)) : -1;
+					if (newProgress != currentProgress)
+					{
+						currentProgress = newProgress;
+						progress.Report(newProgress);
+					}
+				} // proc Update
+
+				public bool IsCanceled => cancellationToken.IsCancellationRequested;
+				public bool IsRestartable => isRestartable;
+			} // class PercentProgress
+
+			#endregion
+
+			private const FileAttributes notAllowedDestinationAttributes = FileAttributes.Hidden | FileAttributes.ReadOnly;
+
 			private readonly FileInfo source;
 			private readonly FileInfo destination;
 
@@ -47,14 +133,62 @@ namespace Neo.PerfectWorking.Backup
 				this.destination = destination ?? throw new ArgumentNullException(nameof(destination));
 			} // ctor
 
-			private void Copy()
+			private CopyFileCallbackAction CopyProgress(ulong totalFileSize, ulong totalBytesTransferred, ulong streamSize, ulong streamBytesTransferred, uint dwStreamNumber, uint dwCallbackReason, IntPtr hSourceFile, IntPtr hDestinationFile, IntPtr lpData)
 			{
-				source.CopyTo(destination.FullName, true);
-				CopyAttributes(source, destination);
+				var hProgress = GCHandle.FromIntPtr(lpData);
+				if (hProgress.Target is PercentProgress pp)
+				{
+					//if (dwCallbackReason == 1) {} // next stream is copyied
+					
+					pp.Update(totalBytesTransferred, totalFileSize);
+
+					return pp.IsCanceled ? (pp.IsRestartable ? CopyFileCallbackAction.Stop : CopyFileCallbackAction.Cancel) : CopyFileCallbackAction.Continue;
+				}
+				else
+					return CopyFileCallbackAction.Continue;
+			} // proc CopyProgress
+
+			private void CopyCore(IProgress<int> progress, CopyFileFlags flags)
+			{
+				// start copy operation with progress
+				var percentProgress = new PercentProgress(progress, CancellationToken.None, (flags & CopyFileFlags.Restartable) != 0);
+				var hProgress = GCHandle.Alloc(percentProgress, GCHandleType.Normal);
+				try
+				{
+					// start copy file
+					if (!CopyFileEx(source.FullName, destination.FullName, CopyProgress, GCHandle.ToIntPtr(hProgress), IntPtr.Zero, flags))
+						throw new Win32Exception();
+				}
+				finally
+				{
+					hProgress.Free();
+				}
+			} // proc CopyCore
+
+			private void Copy(IProgress<int> progress)
+			{
+				// create
+				var flags = CopyFileFlags.AllowDecryptedDestination | CopyFileFlags.RequestCompressedTraffic;
+				if (source.Length > 1 << 19)
+					flags |= CopyFileFlags.Restartable;
+
+				// remove hidden,readonly for destination
+				if (destination.Exists && (destination.Attributes & notAllowedDestinationAttributes) != 0)
+					IO.SafeIO(() => destination.Attributes &= ~notAllowedDestinationAttributes, $"Attribute setzen: {destination.FullName}");
+
+				IO.SafeIO(() => CopyCore(progress, flags), $"Kopieren: {destination.FullName}");
+
+				// check attributes
+				progress.Report(-2);
+				IO.SafeIO(() =>
+				{
+					destination.Refresh();
+					CopyAttributes(source, destination);
+				}, $"Attribute setzen: {destination.FullName}");
 			} // proc Copy
 
-			protected override Task ExecuteAsync()
-				=> Task.Run(() => Copy());
+			protected override Task ExecuteAsync(IProgress<int> progress)
+				=> Task.Run(() => Copy(progress));
 
 			protected override string Action => "Kopiere {0}";
 			public override long Length => source.Length;
@@ -73,25 +207,50 @@ namespace Neo.PerfectWorking.Backup
 			private readonly byte[] data;
 			private readonly FileInfo destination;
 
-			public WriteFileTask(SyncTask parentTask, string relativeName, FileInfo source, FileInfo destination)
+			public WriteFileTask(ISyncSafeIO safeIO, SyncTask parentTask, string relativeName, FileInfo source, FileInfo destination)
 				: base(parentTask, relativeName)
 			{
 				sourceCreationTimeUtc = source.CreationTimeUtc;
 				sourceLastWwriteUtc = source.LastWriteTimeUtc;
 				sourceFileAttributes = source.Attributes;
-				data = File.ReadAllBytes(source.FullName);
+				
+				using (var src = safeIO.SafeOpen(fi => fi.OpenRead(), source, $"Lese: {relativeName}"))
+				{
+					if (src.Length == 0)
+						data = Array.Empty<byte>();
+					else
+					{
+						data = new byte[src.Length];
+						src.Read(data, 0, data.Length);
+					}
+				}
 
 				this.destination = destination ?? throw new ArgumentNullException(nameof(destination));
 			} // ctor
 
-			private void Write()
+			private void Write(IProgress<int> progress)
 			{
-				File.WriteAllBytes(destination.FullName, data);
-				CopyAttributes(sourceCreationTimeUtc, sourceLastWwriteUtc, sourceFileAttributes, destination);
+				using (var dst = IO.SafeOpen(fi => fi.Create(), destination, $"Datei nicht angelegt: {destination.FullName}"))
+				{
+					var offset = 0;
+					while (offset < data.Length)
+					{
+						// write content
+						var w = Math.Min(data.Length - offset, 0x10000);
+						dst.Write(data, offset, w);
+						offset += w;
+
+						// report change
+						progress.Report(offset * 1000 / data.Length);
+					}
+				}
+
+				progress.Report(-2);
+				IO.SafeIO(() => CopyAttributes(sourceCreationTimeUtc, sourceLastWwriteUtc, sourceFileAttributes, destination), $"Attribute setzen: {destination.FullName}");
 			} // proc Write
 
-			protected override Task ExecuteAsync()
-				=> Task.Run(() => Write());
+			protected override Task ExecuteAsync(IProgress<int> progress)
+				=> Task.Run(() => Write(progress));
 
 			protected override string Action => "Schreibe {0}";
 			public override long Length => data.Length;
@@ -118,12 +277,16 @@ namespace Neo.PerfectWorking.Backup
 			private void EnsureDirectory()
 			{
 				if (!destination.Exists)
-					destination.Create();
+					IO.SafeIO(destination.Create, $"Verzeichnis konnte nicht erzeugt werden: {destination.FullName}");
 
-				CopyAttributes(source, destination);
+				IO.SafeIO(() =>
+				{
+					destination.Refresh();
+					CopyAttributes(source, destination);
+				}, $"Attribute konnten nicht gesetzt werden: {destination.FullName}");
 			} // proc EnsureDirectory
 
-			protected override Task ExecuteAsync()
+			protected override Task ExecuteAsync(IProgress<int> progress)
 				=> Task.Run(() => EnsureDirectory());
 
 			protected override string Action => "Erzeuge {0}";
@@ -145,8 +308,8 @@ namespace Neo.PerfectWorking.Backup
 				this.destination = destination ?? throw new ArgumentNullException(nameof(destination));
 			} // ctor
 
-			protected override Task ExecuteAsync()
-				=> Task.Run(() => destination.Delete());
+			protected override Task ExecuteAsync(IProgress<int> progress)
+				=> Task.Run(() => IO.SafeIO(destination.Delete, $"Löschen der Datei: {destination.FullName}"));
 
 			protected override string Action => "Lösche {0}";
 			public override long Length => 0;
@@ -167,8 +330,8 @@ namespace Neo.PerfectWorking.Backup
 				this.destination = destination ?? throw new ArgumentNullException(nameof(destination));
 			} // ctor
 
-			protected override Task ExecuteAsync()
-				=> Task.Run(() => destination.Delete(true));
+			protected override Task ExecuteAsync(IProgress<int> progress)
+				=> Task.Run(() => IO.SafeIO(() => destination.Delete(true), $"Lösche des Verzeichnisses: {destination.FullName}"));
 
 			protected override string Action => "Lösche Verzeichnis {0}";
 			public override long Length => 0;
@@ -178,14 +341,20 @@ namespace Neo.PerfectWorking.Backup
 		#endregion
 
 		private readonly SyncTask parentTask;
+		private int childTasks = 0;
 		private readonly string relativeName;
 
+		private SyncItems syncService;
+		private bool isStarted = false;
 		private bool isFinished = false;
 		private readonly Queue<TaskCompletionSource<bool>> waitTasks = new Queue<TaskCompletionSource<bool>>();
 
 		protected SyncTask(SyncTask parentTask, string relativeName)
 		{
 			this.parentTask = parentTask;
+			if (parentTask != null)
+				parentTask.childTasks++;
+
 			this.relativeName = relativeName ?? throw new ArgumentNullException(nameof(relativeName));
 		} // ctor
 
@@ -197,30 +366,53 @@ namespace Neo.PerfectWorking.Backup
 
 		public int CompareTo(SyncTask other)
 		{
-			if (String.Compare(relativeName, other.relativeName, StringComparison.OrdinalIgnoreCase) == 0)
-				return 0;
+			if (other is null)
+				return -1;
 			else
 			{
-				var lengtCompare = Length - other.Length;
-				if (lengtCompare == 0)
-					return Stamp.Ticks - other.Stamp.Ticks <= 0 ? -1 : 1;
+				var n = String.Compare(relativeName, other.relativeName, StringComparison.OrdinalIgnoreCase);
+				if (n == 0)
+					return 0;
 				else
-					return lengtCompare < 0 ? -1 : 1;
+				{
+					var lengthCompare = Length - other.Length;
+					if (lengthCompare == 0)
+					{
+						var ticksCompare = Stamp.Ticks - other.Stamp.Ticks;
+						if (ticksCompare == 0)
+							return n;
+						else
+							return ticksCompare <= 0 ? -1 : 1;
+					}
+					else
+						return lengthCompare < 0 ? -1 : 1;
+				}
 			}
 		} // proc CompareTo
 
+		private static FileSystemInfo UnsetReadonly(FileSystemInfo fsi)
+		{
+			if (fsi.Exists && (fsi.Attributes & FileAttributes.ReadOnly) != 0)
+				fsi.Attributes &= ~FileAttributes.ReadOnly;
+			return fsi;
+		} // func UnsetReadonly
+
 		protected static void CopyAttributes(DateTime sourceCreationTimeUtc, DateTime sourceLastWriteTimeUtc, FileAttributes sourceAttributes, FileSystemInfo destination)
 		{
-			destination.CreationTimeUtc = sourceCreationTimeUtc;
-			destination.LastWriteTimeUtc = sourceLastWriteTimeUtc;
+			if (destination.CreationTimeUtc != sourceCreationTimeUtc)
+				UnsetReadonly(destination).CreationTimeUtc = sourceCreationTimeUtc;
+			if (destination is FileInfo && destination.LastWriteTimeUtc != sourceLastWriteTimeUtc)
+				UnsetReadonly(destination).LastWriteTimeUtc = sourceLastWriteTimeUtc;
 
-			destination.Attributes = (destination.Attributes & ~SyncItems.CheckAttributeSet) | sourceAttributes & SyncItems.CheckAttributeSet;
+			var newAttributes = (destination.Attributes & ~SyncItems.CheckAttributeSet) | sourceAttributes & SyncItems.CheckAttributeSet;
+			if (destination.Attributes != newAttributes)
+				destination.Attributes = newAttributes;
 		} // proc CopyAttributes
 
 		protected static void CopyAttributes(FileSystemInfo source, FileSystemInfo destination)
 			=> CopyAttributes(source.CreationTimeUtc, source.LastWriteTimeUtc, source.Attributes, destination);
 
-		protected abstract Task ExecuteAsync();
+		protected abstract Task ExecuteAsync(IProgress<int> progress);
 
 		private Task WaitAsync()
 		{
@@ -229,36 +421,69 @@ namespace Neo.PerfectWorking.Backup
 				if (isFinished)
 					return Task.CompletedTask;
 
-				var tcs = new TaskCompletionSource<bool>();
+				var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 				waitTasks.Enqueue(tcs);
 				return tcs.Task;
 			}
 		} // func WaitAsync
+
+		private void ExecuteFinished(Exception e)
+		{
+			// mark task finished successful
+			lock (waitTasks)
+			{
+				isFinished = true;
+				while (waitTasks.Count > 0)
+				{
+					var w = waitTasks.Dequeue();
+					if (w != null)
+						w.TrySetException(e);
+					else
+						w.TrySetResult(true);
+				}
+			}
+		} // proc ExecuteFinished
 
 		public async Task ExecuteAsync(SyncItems syncService)
 		{
 			if (parentTask != null)
 				await parentTask.WaitAsync();
 
-			await ExecuteAsync();
-
-			// mark task finished
-			lock (waitTasks)
+			this.syncService = syncService;
+			var progress = syncService.UI.StartTask(Name);
+			try
 			{
-				isFinished = true;
-				while (waitTasks.Count > 0)
-					waitTasks.Dequeue().TrySetResult(true);
+				await ExecuteAsync(progress);
+
+				ExecuteFinished(null);
+			}
+			catch (Exception e)
+			{
+				ExecuteFinished(e);
+				throw;
+			}
+			finally
+			{
+				if (progress is IDisposable d)
+					d.Dispose();
+
 				syncService.NotifyTaskExecuted(this);
+				this.syncService = null;
 			}
 		} // proc ExecuteAsync
 
 		public SyncTask Parent => parentTask;
+		public bool HasChildren => childTasks > 0;
 
 		protected abstract string Action { get; }
 		public string Name => String.Format(Action, relativeName);
 		public abstract long Length { get; }
 		public abstract DateTime Stamp { get; }
 		public virtual int CacheSize => 0;
+
+		public bool IsStarted { get => isStarted; set => isStarted = value; }
+		public bool IsFinished => isFinished;
+		protected ISyncSafeIO IO => syncService;
 
 		public static SyncTask RemoveItem(SyncTask parentTask, string relativeParentPath, FileSystemInfo fsiToRemove)
 		{
@@ -279,10 +504,10 @@ namespace Neo.PerfectWorking.Backup
 				throw new InvalidOperationException();
 		} // func EnsureAttributes
 
-		public static Task<SyncTask> CopyItemAsync(SyncTask parentTask, string relativeName, FileInfo fiSource, FileInfo fiTarget, int cacheBorder)
+		public static Task<SyncTask> CopyItemAsync(ISyncSafeIO safeIO, SyncTask parentTask, string relativeName, FileInfo fiSource, FileInfo fiTarget, int cacheBorder, bool useCopyCache)
 		{
-			if (fiSource.Length < cacheBorder)
-				return Task.Run<SyncTask>(() => new WriteFileTask(parentTask, relativeName, fiSource, fiTarget));
+			if (useCopyCache && fiSource.Length < cacheBorder)
+				return Task.Run<SyncTask>(() => new WriteFileTask(safeIO, parentTask, relativeName, fiSource, fiTarget));
 			else
 				return Task.FromResult<SyncTask>(new CopyFileTask(parentTask, relativeName, fiSource, fiTarget));
 		} // func CopyItemAsync

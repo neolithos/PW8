@@ -126,28 +126,44 @@ namespace Neo.PerfectWorking.Stuff
 
 		private static IEnumerable<FileSystemInfo> EnumerateFileSystemInfo(DirectoryInfo currentDirectory, string relativePath, Action<string> warnings)
 		{
+			string GetPathInfo()
+				=> relativePath ?? currentDirectory.FullName;
+
 			if (!currentDirectory.Exists)
 				return Array.Empty<FileSystemInfo>();
 			if ((currentDirectory.Attributes & FileAttributes.ReparsePoint) != 0)
 			{
 				if (warnings != null)
 				{
-					warnings($"ReparsePoint: {relativePath ?? currentDirectory.FullName}");
+					warnings($"ReparsePoint: {GetPathInfo()}");
 					return null;
 				}
 				else
 					throw new IOException("ReparsePoint not allowed.");
 			}
 
+			var retry = 0;
+			retry:
 			try
 			{
 				return currentDirectory.EnumerateFileSystemInfos();
+			}
+			catch (IOException e)
+			{
+				if (retry++ < 10)
+				{
+					warnings?.Invoke($"{e.Message}: {GetPathInfo()}");
+					Thread.Sleep(retry * 100);
+					goto retry;
+				}
+				else
+					throw; // unknown exception
 			}
 			catch (UnauthorizedAccessException)
 			{
 				if (warnings != null)
 				{
-					warnings($"Zugriff verweigert: {relativePath ?? currentDirectory.FullName}");
+					warnings($"Zugriff verweigert: {GetPathInfo()}");
 					return null;
 				}
 				else

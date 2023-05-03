@@ -16,18 +16,33 @@
 using Neo.PerfectWorking.Stuff;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Backup
 {
 	#region -- class SyncItems --------------------------------------------------------
 
-	public sealed class SyncItems
+	public sealed class SyncItems : INotifyPropertyChanged, ISyncSafeIO
 	{
 		#region -- enum DirtyProperty -------------------------------------------------
+
+		private static readonly PropertyChangedEventArgs[] propertyEventArgs = new PropertyChangedEventArgs[]
+		{
+			new PropertyChangedEventArgs(nameof(CacheSize)),
+			new PropertyChangedEventArgs(nameof(TotalLength)),
+			new PropertyChangedEventArgs(nameof(TaskCount)),
+
+			new PropertyChangedEventArgs(nameof(TotalScannedFiles)),
+			new PropertyChangedEventArgs(nameof(TotalEqualBytes)),
+			new PropertyChangedEventArgs(nameof(TotalWriteBytes)),
+			new PropertyChangedEventArgs(nameof(WrittenBytes)),
+			new PropertyChangedEventArgs(nameof(TotalExecutedTasks))
+		};
 
 		[Flags]
 		private enum DirtyProperty
@@ -45,9 +60,13 @@ namespace Neo.PerfectWorking.Backup
 
 		#endregion
 
-		private readonly int maxCacheSize = 1 << 20;
-		private readonly int cacheBorder = 2048;
+		public event PropertyChangedEventHandler PropertyChanged;
 
+		private const int maxCacheSize = 0x20000000;
+		private const int cacheBorder = maxCacheSize / 16;
+
+		private readonly ISyncTaskUI ui;
+		private readonly SequenceTimer propertyChangedTimer;
 		private readonly Queue<TaskCompletionSource<bool>> openTasksChangedWaiter = new Queue<TaskCompletionSource<bool>>();
 		private readonly List<SyncTask> openTasks = new List<SyncTask>();
 
@@ -62,8 +81,73 @@ namespace Neo.PerfectWorking.Backup
 		private int totalExecutedTasks = 0;
 		private long writtenBytes = 0L;
 
+		private DirtyProperty dirtyProperties = DirtyProperty.None;
+
+		public SyncItems(ISyncTaskUI ui)
+		{
+			this.ui = ui ?? throw new ArgumentNullException(nameof(ui));
+			propertyChangedTimer = new SequenceTimer(FirePropertiesChanged);
+		} // ctor
+
+		private void FirePropertiesChanged()
+		{
+			var notifyProperties = new PropertyChangedEventArgs[propertyEventArgs.Length];
+
+			lock (propertyChangedTimer)
+			{
+				if (dirtyProperties == DirtyProperty.None)
+					return;
+
+				if ((dirtyProperties & DirtyProperty.CacheSize) != 0)
+					notifyProperties[0] = propertyEventArgs[0];
+				if ((dirtyProperties & DirtyProperty.TotalLength) != 0)
+					notifyProperties[1] = propertyEventArgs[1];
+				if ((dirtyProperties & DirtyProperty.TaskCount) != 0)
+					notifyProperties[2] = propertyEventArgs[2];
+
+				if ((dirtyProperties & DirtyProperty.TotalScannedFilesAndBytes) != 0)
+				{
+					notifyProperties[3] = propertyEventArgs[3];
+					notifyProperties[4] = propertyEventArgs[4];
+					notifyProperties[5] = propertyEventArgs[5];
+				}
+				if ((dirtyProperties & DirtyProperty.WrittenBytes) != 0)
+					notifyProperties[6] = propertyEventArgs[6];
+				if ((dirtyProperties & DirtyProperty.ExecutedTasks) != 0)
+					notifyProperties[7] = propertyEventArgs[7];
+
+				dirtyProperties = DirtyProperty.None;
+			}
+
+			// invoke property changed
+			if (ui.Context == null)
+				FirePropertiesChanged(notifyProperties);
+			else
+				ui.Context.Post(FirePropertiesChanged, notifyProperties);
+		} // proc FirePropertiesChanged
+
+		private void FirePropertiesChanged(object state)
+		{
+			var notifyProperties = (PropertyChangedEventArgs[])state;
+			var propertyChanged = PropertyChanged;
+			if (propertyChanged != null)
+			{
+				for (var i = 0; i < notifyProperties.Length; i++)
+				{
+					if (notifyProperties[i] != null)
+						propertyChanged(this, notifyProperties[i]);
+				}
+			}
+		} // proc FirePropertiesChanged
+
 		private void EnqueuePropertyChanged(DirtyProperty properties)
 		{
+			lock (propertyChangedTimer)
+			{
+				dirtyProperties |= properties;
+				if (!propertyChangedTimer.IsEnabled)
+					propertyChangedTimer.Start(500);
+			}
 		} // proc EnqueuePropertyChanged
 
 		public void NotifyBytesWritten(SyncTask task, long bytesWritten)
@@ -74,8 +158,9 @@ namespace Neo.PerfectWorking.Backup
 
 		public void NotifyTaskExecuted(SyncTask task)
 		{
+			writtenBytes += task.Length;
 			totalExecutedTasks++;
-			NotifyTaskChange(DirtyProperty.ExecutedTasks);
+			NotifyTaskChange(DirtyProperty.ExecutedTasks | DirtyProperty.WrittenBytes);
 		} // proc NotifyTaskExecuted
 
 		#region -- Task Queue Management ----------------------------------------------
@@ -86,7 +171,7 @@ namespace Neo.PerfectWorking.Backup
 			cancellationToken.ThrowIfCancellationRequested();
 
 			// wait for task cache
-			var wait = new TaskCompletionSource<bool>();
+			var wait = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 			lock (openTasksChangedWaiter)
 				openTasksChangedWaiter.Enqueue(wait);
 			return wait.Task;
@@ -150,11 +235,24 @@ namespace Neo.PerfectWorking.Backup
 					return index >= 0 ? index : -1;
 				}
 				else
-					return relativeIndex < openTasks.Count ? relativeIndex : -1;
+				{
+					var resultIndex = -1;
+
+					while (relativeIndex < openTasks.Count)
+					{
+						resultIndex = relativeIndex;
+						if (!openTasks[relativeIndex].HasChildren) // skip ensure items
+							break;
+						relativeIndex++;
+					}
+
+					return resultIndex;
+				}
 			} // func DequeueTaskUnSafe
 
 			while (true)
 			{
+				SyncTask task = null;
 				lock (openTasks)
 				{
 					var taskIndex = DequeueTaskUnSafe();
@@ -162,14 +260,19 @@ namespace Neo.PerfectWorking.Backup
 					if (taskIndex >= 0)
 					{
 						var dirtyProperties = DirtyProperty.TaskCount;
-						var task = openTasks[taskIndex];
+						task = openTasks[taskIndex];
 
 						// check if parent task is finished
-						var parentTaskIndex = openTasks.BinarySearch(task.Parent);
-						if (parentTaskIndex >= 0)
+						while (task.Parent != null)
 						{
-							task = task.Parent; // first task to do before this task can be done
-							taskIndex = parentTaskIndex;
+							var parentTaskIndex = openTasks.BinarySearch(task.Parent);
+							if (parentTaskIndex >= 0)
+							{
+								task = task.Parent; // first task to do before this task can be done
+								taskIndex = parentTaskIndex;
+							}
+							else
+								break;
 						}
 
 						// update statistik
@@ -187,15 +290,95 @@ namespace Neo.PerfectWorking.Backup
 
 						// remove task
 						openTasks.RemoveAt(taskIndex);
+						task.IsStarted = true;
 
 						NotifyTaskChange(dirtyProperties);
 					}
 				}
 
+				// return task
+				if (task != null)
+					return task;
+
 				// wait for list change
 				await WaitTaskChangeAsync(cancellationToken);
 			}
 		} // proc DequeueTaskAsync
+
+		#endregion
+
+		#region -- SafeIO -------------------------------------------------------------
+
+		private (T, Exception) SafeIOcore<T>(Func<T> func)
+		{
+			const int max = 6;
+			var tries = 0;
+			while (true)
+			{
+				try
+				{
+					return (func(), null);
+				}
+				catch (UnauthorizedAccessException e)
+				{
+					if (tries++ >= max)
+						return (default, e);
+					Thread.Sleep(1000 * tries);
+				}
+				catch (IOException e)
+				{
+					if (tries++ >= max)
+						return (default, e);
+					Thread.Sleep(1000 * tries);
+				}
+			}
+		} // proc SafeIO
+
+		public void SafeIO(Action action, string actionDescription)
+		{
+			while (true)
+			{
+				var (_, e) = SafeIOcore(() => { action(); return true; });
+				if (e == null)
+					return;
+				else if (!RetryAction(actionDescription, e))
+					throw new Exception($"Action failed: {actionDescription}", e);
+			}
+		} // proc SafeIO
+
+		public T SafeIO<T>(Func<T> func, string actionDescription)
+		{
+			while (true)
+			{
+				var (r, e) = SafeIOcore(func);
+				if (e == null)
+					return r;
+				else if (!RetryAction(actionDescription, e))
+					throw new Exception($"Action failed: {actionDescription}", e);
+			}
+		} // proc SafeIO
+
+		public Stream SafeOpen(Func<FileInfo, Stream> func, FileInfo file, string actionDescription)
+		{
+			while (true)
+			{
+				var (s, e) = SafeIOcore(() => func(file));
+				if (e == null)
+					return s;
+				else
+				{
+					throw new NotImplementedException();
+				}
+			}
+		} // func SafeOpen
+
+		private bool RetryAction(string actionDescription, Exception e)
+		{
+			if(actionDescription != null)
+			throw new NotImplementedException();
+			else
+			return true;
+		} // func RetryAction
 
 		#endregion
 
@@ -241,9 +424,7 @@ namespace Neo.PerfectWorking.Backup
 				changeType = "missing";
 				return false;
 			}
-			else if (!EqualFileTime("creation", fsiSource.CreationTimeUtc, fsiTarget.CreationTimeUtc, out changeType))
-				return false;
-			else if (!EqualFileTime("lastwrite", fsiSource.LastWriteTimeUtc, fsiTarget.LastWriteTimeUtc, out changeType))
+			else if (!EqualFileTime("creation", fsiSource.CreationTimeUtc, fsiTarget.CreationTimeUtc, out changeType)) // on directories only the creation time is usefull, lastwritetime is when the last file was created
 				return false;
 			else if (!EqualAttributes(fsiSource.Attributes, fsiTarget.Attributes, out changeType))
 				return false;
@@ -254,6 +435,8 @@ namespace Neo.PerfectWorking.Backup
 		private bool EqualFileInfo(FileInfo fiSource, FileInfo fiTarget, out string changeType)
 		{
 			if (!EqualFileSystemInfo(fiSource, fiTarget, out changeType))
+				return false;
+			else if (!EqualFileTime("lastwrite", fiSource.LastWriteTimeUtc, fiTarget.LastWriteTimeUtc, out changeType))
 				return false;
 			else if (fiSource.Length != fiTarget.Length)
 			{
@@ -307,8 +490,11 @@ namespace Neo.PerfectWorking.Backup
 		{
 			await WriteLogEntyAsync(logFile, "Copy", fsiSource.RelativePath, changeType);
 			EnqueueStatisticChange(null, fsiSource);
-			return await EnqueueTaskAsync(await SyncTask.CopyItemAsync(parentTask, fsiSource.RelativePath, (FileInfo)fsiSource.Info, fiTarget, cacheBorder), cancellationToken);
+			return await EnqueueTaskAsync(await SyncTask.CopyItemAsync(this, parentTask, fsiSource.RelativePath, (FileInfo)fsiSource.Info, fiTarget, cacheBorder, UseSourceCache(fsiSource)), cancellationToken);
 		} // func EnqueueCopyItemTaskAsync
+
+		private bool UseSourceCache(FileSystemItem fsiSource)
+			=> fsiSource.RelativePath.IndexOf("Mozilla", StringComparison.OrdinalIgnoreCase) >= 0;
 
 		private async Task<SyncTask> EnqueueRemoveItemAsync(SyncLogWriter logFile, SyncTask parentTask, string relativeParentPath, FileSystemInfo removeInfo, CancellationToken cancellationToken)
 		{
@@ -414,6 +600,12 @@ namespace Neo.PerfectWorking.Backup
 		//	}
 		//} // proc AppendCleanDirectory
 
+		public async Task ProcessTaskAsync(CancellationToken cancellationToken, bool smallPrefered = true)
+		{
+			var t = await DequeueTaskAsync(smallPrefered ? 0 : -1, cancellationToken);
+			await t.ExecuteAsync(this);
+		} // proc ProcessTaskAsync
+
 		/// <summary>Total bytes to copy.</summary>
 		public long TotalLength => currentTotalLength;
 		/// <summary>Currently cached bytes to write.</summary>
@@ -432,6 +624,9 @@ namespace Neo.PerfectWorking.Backup
 		public long TotalEqualBytes => totalEqualBytes;
 		/// <summary>Total written bytes.</summary>
 		public long WrittenBytes => writtenBytes;
+
+		/// <summary>UI access</summary>
+		public ISyncTaskUI UI => ui;
 	} // class SyncItems
 
 	#endregion
