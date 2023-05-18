@@ -176,6 +176,7 @@ namespace Neo.PerfectWorking.Backup
 				if (destination.Exists && (destination.Attributes & notAllowedDestinationAttributes) != 0)
 					IO.SafeIO(() => destination.Attributes &= ~notAllowedDestinationAttributes, $"Attribute setzen: {destination.FullName}");
 
+				progress.Report(0);
 				IO.SafeIO(() => CopyCore(progress, flags), $"Kopieren: {destination.FullName}");
 
 				// check attributes
@@ -436,7 +437,7 @@ namespace Neo.PerfectWorking.Backup
 				while (waitTasks.Count > 0)
 				{
 					var w = waitTasks.Dequeue();
-					if (w != null)
+					if (e != null)
 						w.TrySetException(e);
 					else
 						w.TrySetResult(true);

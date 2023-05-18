@@ -502,7 +502,7 @@ namespace Neo.PerfectWorking.Backup
 			return await EnqueueTaskAsync(SyncTask.RemoveItem(parentTask, relativeParentPath, removeInfo), cancellationToken);
 		} // func EnqueueRemoveItemAsync
 
-		public async Task AppendSyncDirectoryAsync(SyncLogWriter logFile, string source, string target, string[] excludes, CancellationToken cancellationToken)
+		public async Task AppendSyncDirectoryAsync(SyncLogWriter logFile, IProgress<string> progress, string source, string target, string[] excludes, CancellationToken cancellationToken)
 		{
 			var warnings = logFile == null ? null : new Action<string>(m => logFile.WriteLineAsync(m).Wait());
 
@@ -519,6 +519,7 @@ namespace Neo.PerfectWorking.Backup
 				var (cur, parentTask) = recursiveDirectory.Pop();
 
 				// analyse source and target directory
+				progress?.Report(cur.RelativePath);
 				var targetDirectory = new DirectoryInfo(Path.Combine(target, cur.RelativePath));
 				var sourceItems = await Task.Run(() => cur.Enumerate(cancellationToken, excludeFilter: excludeFilter, warnings: warnings).ToArray(), cancellationToken);
 				var targetItems = await Task.Run(() => FileSystemItem.EnumerateFileSystemInfo(targetDirectory).ToArray(), cancellationToken);

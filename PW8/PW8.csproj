@@ -143,6 +143,12 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <None Include="..\..\..\Tools\PW8\Data\Backup.lua">
+      <Link>Config\Backup.lua</Link>
+    </None>
+    <None Include="..\..\..\Tools\PW8\Data\Crypt.lua">
+      <Link>Config\Crypt.lua</Link>
+    </None>
     <None Include="..\PW.Core\pw.licenseheader">
       <Link>pw.licenseheader</Link>
     </None>
@@ -203,7 +209,7 @@
       <Version>1.3.14</Version>
     </PackageReference>
     <PackageReference Include="TecWare.DES.Core">
-      <Version>3.4.107</Version>
+      <Version>3.4.108</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

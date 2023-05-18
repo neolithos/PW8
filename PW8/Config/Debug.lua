@@ -1,10 +1,12 @@
 ﻿const CryptProtectorInit = [[C:\Tools\PW8\Data\Crypt.lua]];
+const BackupTest = [[C:\Tools\PW8\Data\Backup.lua]];
 const File typeof System.IO.File;
 
 AddResolvePath[[..\..\..\Extern\Calc\bin\Debug]];
 AddResolvePath[[..\..\..\Extern\Guid\bin\Debug]];
 AddResolvePath[[..\..\..\Extern\Lua\bin\Debug]];
 AddResolvePath[[..\..\..\Extern\Cred\bin\Debug]];
+AddResolvePath[[..\..\..\Extern\Backup\bin\Debug\net48]];
 AddResolvePath[[..\..\..\Extern\QuickConnect\bin\Debug]];
 
 creds = package("PW.Cred.dll;CredPackage");
@@ -12,6 +14,11 @@ creds = package("PW.Cred.dll;CredPackage");
 package("PW.Calc.dll;CalcPackage");
 package("PW.Guid.dll;GuidPackage");
 quickConnect = package("PW.QuickConnect.dll;QuickConnectPackage");
+backup = package("PW.Backup.dll;BackupPackage");
+
+if File:Exists(BackupTest) then
+	backupTest = package("backupTest", BackupTest);
+end;
 
 -- register my crypt protectors
 if File:Exists(CryptProtectorInit) then
