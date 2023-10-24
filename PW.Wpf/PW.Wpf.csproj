@@ -50,6 +50,8 @@
   <ItemGroup>
     <Compile Include="Data\Services.cs" />
     <Compile Include="UI\Converter.cs" />
+    <Compile Include="UI\PwColor.cs" />
+    <Compile Include="UI\PwProgressBar.cs" />
     <Compile Include="UI\PwSparkLine.cs" />
     <Compile Include="UI\PwGeometry.cs" />
     <Compile Include="UI\PwNavigationPane.cs" />

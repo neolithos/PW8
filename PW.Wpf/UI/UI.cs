@@ -119,5 +119,22 @@ namespace Neo.PerfectWorking.UI
 				color1.ScB * f + color2.ScB * (1.0f - f)
 			);
 		} // func GetMixedColor
+
+		public static Color GetAlphaColor(Color source, Color destination, float sourcePart, float alpha)
+		{
+			var destinationPart = 1.0f - sourcePart;
+			if (sourcePart < 0.0f)
+				return Color.FromScRgb(alpha, source.ScR, source.ScG, source.ScB);
+			else if (sourcePart > 1.0f)
+				return Color.FromScRgb(alpha, destination.ScR, destination.ScG, destination.ScB);
+
+			// the scale 0.0 - 1.0 does not map linearly to 0 - 255
+			return Color.FromScRgb(
+				alpha,
+				source.ScR * sourcePart + destination.ScR * destinationPart,
+				source.ScG * sourcePart + destination.ScG * destinationPart,
+				source.ScB * sourcePart + destination.ScB * destinationPart
+			);
+		} // func GetAlphaColor
 	} // class UIHelper
 }

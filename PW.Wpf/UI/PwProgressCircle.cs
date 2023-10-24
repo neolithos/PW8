@@ -17,13 +17,18 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace Neo.PerfectWorking.UI
 {
-	public class PwProgressCircle : ProgressBar
+	public class PwProgressCircle : RangeBase
 	{
+		public static readonly DependencyProperty IsIndeterminateProperty = ProgressBar.IsIndeterminateProperty.AddOwner(typeof(PwProgressCircle),
+			new FrameworkPropertyMetadata(false, IsIndeterminateChanged)
+		);
+
 		private readonly static DependencyPropertyKey progressTextKey = DependencyProperty.RegisterReadOnly(nameof(ProgressText), typeof(string), typeof(PwProgressCircle), new PropertyMetadata());
 		public readonly static DependencyProperty ProgressTextProperty = progressTextKey.DependencyProperty;
 
@@ -138,7 +143,6 @@ namespace Neo.PerfectWorking.UI
 		{
 			if (Value > Minimum)
 			{
-				var color = TailColor;
 				var w = ActualWidth;
 				var h = ActualHeight;
 				var c = currentNumberOfPoints > 0 ? currentNumberOfPoints : Convert.ToInt32((w + h) / 2);
@@ -180,7 +184,7 @@ namespace Neo.PerfectWorking.UI
 
 		private static void TailSpeedPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
 			=> ((PwProgressCircle)d).OnTailSpeedPropertyChanged((TimeSpan)e.OldValue, (TimeSpan)e.NewValue);
-		
+
 		protected void OnIsIndeterminateChanged(bool newValue, bool oldValue)
 			=> PrepareIntermediateCircle();
 
@@ -227,6 +231,7 @@ namespace Neo.PerfectWorking.UI
 
 		/// <summary>Text in the middle of the circle.</summary>
 		public string ProgressText => (string)GetValue(ProgressTextProperty);
+		public bool IsIndeterminate { get => (bool)GetValue(IsIndeterminateProperty); set => SetValue(IsIndeterminateProperty, value); }
 
 		public int NumberOfPoints { get => (int)GetValue(NumberOfPointsProperty); set => SetValue(NumberOfPointsProperty, value); }
 		public int TailPoints { get => (int)GetValue(TailPointsProperty); set => SetValue(TailPointsProperty, value); }
@@ -238,7 +243,7 @@ namespace Neo.PerfectWorking.UI
 		static PwProgressCircle()
 		{
 			DefaultStyleKeyProperty.OverrideMetadata(typeof(PwProgressCircle), new FrameworkPropertyMetadata(typeof(PwProgressCircle)));
-			IsIndeterminateProperty.OverrideMetadata(typeof(PwProgressCircle), new FrameworkPropertyMetadata(false, IsIndeterminateChanged));
+			FocusableProperty.OverrideMetadata(typeof(PwProgressBar), new FrameworkPropertyMetadata(false));
 		}
 	} // class PwProgressCircle
 }
