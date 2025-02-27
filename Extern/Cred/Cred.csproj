@@ -54,6 +54,7 @@
     <Compile Include="CredPackagePane.xaml.cs">
       <DependentUpon>CredPackagePane.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Log.cs" />
     <Compile Include="Pages\PasswordEditPage.xaml.cs">
       <DependentUpon>PasswordEditPage.xaml</DependentUpon>
     </Compile>
@@ -75,6 +76,7 @@
     </Compile>
     <Compile Include="Provider\FileCredentialProvider.cs" />
     <Compile Include="Provider\ProtectorHelper.cs" />
+    <Compile Include="Provider\XmlCredentials.cs" />
     <Compile Include="Services.cs" />
     <Compile Include="Provider\WindowsCredentialProvider.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">

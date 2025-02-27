@@ -15,9 +15,11 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
@@ -25,7 +27,7 @@ using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Cred.Provider
 {
-	#region -- enum XmlCredentialProperty -----------------------------------------
+	#region -- enum XmlCredentialProperty ---------------------------------------------
 
 	[Flags]
 	internal enum XmlCredentialProperty
@@ -47,7 +49,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 	#region -- interface IXmlCredentialItem -------------------------------------------
 
-	internal interface IXmlCredentialItem : IComparable<IXmlCredentialItem>, IEquatable<IXmlCredentialItem>
+	internal interface IXmlCredentialItem
 	{
 		string TargetName { get; }
 		string UserName { get; }
@@ -129,7 +131,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				return changed;
 			if (Set(x.LastWritten.CompareTo(y.LastWritten), XmlCredentialProperty.LastWritten))
 				return changed;
-			if (Set(Equals(x.EncryptedPassword, y.EncryptedPassword) ? 0 : -1, XmlCredentialProperty.Password))
+			if (Set(Protector.EqualValue(x.EncryptedPassword, y.EncryptedPassword) ? 0 : -1, XmlCredentialProperty.Password))
 				return changed;
 
 #if DEBUG
@@ -182,7 +184,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func OpenFileStream
 
-		public static XmlCredentialItem Read(XmlReader xml, string targetName)
+		public static IXmlCredentialItem Read(XmlReader xml, string targetName)
 		{
 			string GetAttr(string name)
 			{
@@ -231,7 +233,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			return new XmlCredentialItem(targetName, userName, comment, lastWritten, encryptedPassword);
 		} // func Read
 
-		public static IEnumerable<XmlCredentialItem> Load(XmlReader xml)
+		public static IEnumerable<IXmlCredentialItem> Load(XmlReader xml)
 		{
 			xml.ReadStartElement(rootNodeName.LocalName);
 			while (xml.NodeType == XmlNodeType.Element)
@@ -242,23 +244,17 @@ namespace Neo.PerfectWorking.Cred.Provider
 				else
 					yield return Read(xml, targetName);
 			}
-		} // func ReadAsync
+		} // func Load
 
-		public static async Task<IEnumerable<XmlCredentialItem>> LoadAsync(Stream stream, XmlReaderSettings settings = null)
+		public static IEnumerable<IXmlCredentialItem> Load(Stream stream, XmlReaderSettings settings = null)
 		{
-			using (var xml = XmlReader.Create(stream, settings ?? Procs.XmlReaderSettings))
-				return await Load(xml).ToAsync();
-		} // func LoadAsync
+			if (settings != null)
+				settings.CloseInput = true;
+			return Load(XmlReader.Create(stream, settings ?? Procs.XmlReaderSettings));
+		} // func Load
 
-		public static async Task<IEnumerable<XmlCredentialItem>> LoadAsync(string fileName)
-		{
-			if (String.IsNullOrEmpty(fileName))
-				throw new ArgumentNullException(nameof(fileName));
-
-			// parse content
-			using (var src = await Task.Run(() => OpenFileStream(fileName)))
-				return await LoadAsync(src);
-		} // func LoadAsync
+		public static IEnumerable<IXmlCredentialItem> Load(string fileName)
+			=> Load(OpenFileStream(fileName));
 
 		#endregion
 
@@ -282,7 +278,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func CreateFileStream
 
-		public void Write(XmlWriter xml)
+		public static void Write(XmlWriter xml, IXmlCredentialItem item)
 		{
 			void WriteAttr(string name, string value)
 			{
@@ -291,49 +287,49 @@ namespace Neo.PerfectWorking.Cred.Provider
 			} // proc WriteAttr
 
 			xml.WriteStartElement(entryName.LocalName);
-			WriteAttr("uri", targetName);
-			WriteAttr("uname", userName);
-			WriteAttr("comment", comment);
+			WriteAttr("uri", item.TargetName);
+			WriteAttr("uname", item.UserName);
+			WriteAttr("comment", item.Comment);
 
-			if (lastWritten != DateTime.MinValue)
-				xml.WriteAttributeString("written", lastWritten.ToFileTimeUtc().ToString());
+			if (item.LastWritten != DateTime.MinValue)
+				xml.WriteAttributeString("written", item.LastWritten.ToFileTimeUtc().ToString());
 
-			if (Protector.HasValue(encryptedPassword))
+			if (Protector.HasValue(item.EncryptedPassword))
 			{
-				if (encryptedPassword is byte[] passwordBytes)
+				if (item.EncryptedPassword is byte[] passwordBytes)
 				{
 					WriteAttr("fmt", "base64");
 					xml.WriteValue(Convert.ToBase64String(passwordBytes));
 				}
 				else
-					xml.WriteValue(encryptedPassword.ToString());
+					xml.WriteValue(item.EncryptedPassword.ToString());
 			}
 
 			xml.WriteEndElement();
 		} // proc Write
 
-		public static void Save(XmlWriter xml, IEnumerable<XmlCredentialItem> items)
+		public static void Save(XmlWriter xml, IEnumerable<IXmlCredentialItem> items)
 		{
 			xml.WriteStartDocument();
 			xml.WriteStartElement(rootNodeName.LocalName);
 
 			foreach (var c in items)
-				c.Write(xml);
+				Write(xml, c);
 
 			xml.WriteEndElement();
 			xml.WriteEndDocument();
 		} // proc Save
 
-		public static async Task SaveAsync(Stream stream, IEnumerable<XmlCredentialItem> items, XmlWriterSettings settings = null)
+		public static void Save(Stream stream, IEnumerable<IXmlCredentialItem> items, XmlWriterSettings settings = null)
 		{
-			using (var xml = XmlWriter.Create(stream, settings ?? Procs.XmlWriterSettings))
-				await Task.Run(() => Save(xml, items));
+			using var xml = XmlWriter.Create(stream, settings ?? Procs.XmlWriterSettings);
+			Save(xml, items);
 		} // proc SaveAsync
 
-		public static async Task SaveAsync(string fileName, IEnumerable<XmlCredentialItem> items)
+		public static void Save(string fileName, IEnumerable<IXmlCredentialItem> items)
 		{
-			using (var dst = CreateFileStream(fileName))
-				await SaveAsync(dst, items);
+			using var dst = CreateFileStream(fileName);
+			Save(dst, items);
 		} // proc SaveAsync
 
 		#endregion

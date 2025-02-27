@@ -19,10 +19,10 @@ namespace Neo.PerfectWorking.Stuff
 {
 	public class CredCompareValue
 	{
-		private string credentialProvider;
-		private string targetName;
-		private int targetNameServerLength;
-		private string userName;
+		private readonly string credentialProvider;
+		private readonly string targetName;
+		private readonly int targetNameServerLength;
+		private readonly string userName;
 
 		public CredCompareValue(Uri uri)
 		{
@@ -55,11 +55,13 @@ namespace Neo.PerfectWorking.Stuff
 		} // ctor
 
 		public bool IsSameProvider(string otherProvider)
-			=> otherProvider == null
+		{
+			return otherProvider == null
 				? false
 				: credentialProvider == null
 					? true
 					: String.Compare(credentialProvider, otherProvider, StringComparison.OrdinalIgnoreCase) == 0;
+		} // func IsSameProvider
 
 		public int TestTargetName(string otherTargetName)
 		{
@@ -94,7 +96,7 @@ namespace Neo.PerfectWorking.Stuff
 		} // func TestTargetName
 
 		public bool IsUserName(string otherUserName)
-			=> userName == null ? true : String.Compare(userName, otherUserName, StringComparison.OrdinalIgnoreCase) == 0;
+			=> userName == null || String.Compare(userName, otherUserName, StringComparison.OrdinalIgnoreCase) == 0;
 
 		public bool HasContent => targetName != null;
 	} // class CredCompare

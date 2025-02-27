@@ -214,5 +214,16 @@ namespace Neo.PerfectWorking.Stuff
 
 		private static Predicate<string> StaticAlways { get; } = Procs.GetFilterFunction(null, false);
 		public static Action<string> EmptyLog { get; } = new Action<string>(c => { });
+
+		public static bool IsLocalDrive(string fileName)
+		{
+			if (fileName.Length > 3 && fileName.Substring(1, 2) == ":\\")
+			{
+				var d = new DriveInfo(fileName.Substring(0, 1));
+				return d.DriveType != DriveType.Network;
+			}
+			else
+				return false;
+		} // func IsLocalDrive
 	} // class FileSystemItem
 }

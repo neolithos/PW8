@@ -15,7 +15,6 @@
 #endregion
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Neo.IronLua;
 
 namespace Neo.PerfectWorking.Data

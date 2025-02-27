@@ -125,9 +125,7 @@ namespace Neo.PerfectWorking.Data
 						if (old == null) // value added
 							global.CollectionsAdd(this, value);
 						else if (value == null) // value removed
-						{
 							global.CollectionsRemove(this, old);
-						}
 						else // value replaced
 						{
 							global.CollectionsRemove(this, old);
@@ -592,7 +590,7 @@ namespace Neo.PerfectWorking.Data
 					{
 						if (c.IsModified)
 							c.Save();
-						else if (c.FileName.Length > 3 && c.FileName.Substring(1, 2) == ":\\")
+						else if (FileSystemItem.IsLocalDrive(c.FileName))
 						{
 							var dt = GetLastWriteTimeSecure(c.FileName);
 							if (dt.HasValue && dt.Value != c.LastModificationTime)
@@ -695,7 +693,7 @@ namespace Neo.PerfectWorking.Data
 				packages.AddRange(currentInitializedPackages);
 
 				var cleanTime = sw.ElapsedMilliseconds;
-				
+
 				if (currentInitializationExceptions.Count > 0)
 				{
 					foreach (var e in currentInitializationExceptions)
@@ -818,7 +816,7 @@ namespace Neo.PerfectWorking.Data
 			public bool CanExecute(object parameter)
 				=> command.CanExecute(parameter);
 
-			public void Execute(object parameter) 
+			public void Execute(object parameter)
 				=> command.Execute(parameter);
 
 			public PwKey Key { get; }
@@ -826,11 +824,11 @@ namespace Neo.PerfectWorking.Data
 
 		#endregion
 
-		#region -- class PwNoneUIHotKey -----------------------------------------------
+		#region -- class PwUIHotKey ---------------------------------------------------
 
 		private sealed class PwUIHotKey : PwNoneUIHotKey, IPwUIHotKey
 		{
-			public PwUIHotKey(string title, object image, PwKey key, ICommand command) 
+			public PwUIHotKey(string title, object image, PwKey key, ICommand command)
 				: base(key, command)
 			{
 				Title = title ?? throw new ArgumentNullException(nameof(title));
@@ -862,7 +860,7 @@ namespace Neo.PerfectWorking.Data
 				=> CanExecuteChanged?.Invoke(this, EventArgs.Empty);
 
 			public bool CanExecute(object parameter)
-				=> canFunc != null ? Procs.ChangeType<bool>(new LuaResult(Lua.RtInvoke(canFunc, parameter))[0]) : true;
+				=> canFunc == null || Procs.ChangeType<bool>(new LuaResult(Lua.RtInvoke(canFunc, parameter))[0]);
 
 			public void Execute(object parameter)
 				=> Lua.RtInvoke(func);
@@ -931,6 +929,7 @@ namespace Neo.PerfectWorking.Data
 			Log.Default.SendKeyUp(key);
 			PwKey.Parse(key).SendKey(PwKeySend.Up);
 		} // proc SendKeyUp
+
 		[LuaMember]
 		public void SendKey(string key)
 		{
@@ -1006,14 +1005,14 @@ namespace Neo.PerfectWorking.Data
 		{
 			if (TryGetIPAddress(value, out var addr))
 				return addr;
-			else 
+			else
 				throw new FormatException($"Can format to IP: ({(value?.GetType().Name ?? "object")}){value}");
 		} // func GetIPAddress
 
 		[LuaMember]
 		public bool IsNetwork(int maskSize, object addr1, object addr2)
 		{
-			if(TryGetIPAddress(addr1, out var a1)  && TryGetIPAddress(addr2, out var a2) 
+			if (TryGetIPAddress(addr1, out var a1) && TryGetIPAddress(addr2, out var a2)
 				&& a1.AddressFamily == a2.AddressFamily)
 			{
 				var b1 = a1.GetAddressBytes();

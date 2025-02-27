@@ -41,6 +41,7 @@ namespace Neo.PerfectWorking.Cred
 			credentialProviders = global.RegisterCollection<ICredentialProvider>(this);
 			credentialProtectors = global.RegisterCollection<ICredentialProtector>(this);
 
+			global.RegisterObject(this, "Log", Log.Default);
 			global.RegisterObject(this, nameof(CredPackagePane), new CredPackagePane(this));
 		} // ctor
 
@@ -170,6 +171,9 @@ namespace Neo.PerfectWorking.Cred
 
 		public ICredentialProvider CreateFileCredentialProvider(string fileName, ICredentialProtector protector = null, bool readOnly = false)
 		{
+			var shadowFileName = (string)null;
+			var isProfilePath = false;
+
 			if (readOnly)
 				fileName = Global.ResolveFile(fileName);
 			else if (!Path.IsPathRooted(fileName))
@@ -177,9 +181,19 @@ namespace Neo.PerfectWorking.Cred
 				if (fileName.IndexOf('\\') >= 0)
 					throw new Exception("Relative paths are not allowed.");
 
+				isProfilePath = true;
 				fileName = Path.Combine(Global.UI.ApplicationLocalDirectory.FullName, fileName + ".xcred");
 			}
-			return new FileCredentialProvider(this, fileName, readOnly, protector);
+
+			// shadow copy for network credentials
+			if (!isProfilePath && !FileSystemItem.IsLocalDrive(fileName))
+				shadowFileName = Path.Combine(Global.UI.ApplicationLocalDirectory.FullName, Path.GetFileNameWithoutExtension(fileName) + "-shadow" + Path.GetExtension(fileName));
+
+			// return provider
+			if (readOnly)
+				return new FileReadOnlyCredentialProvider(this, fileName, protector, shadowFileName);
+			else
+				return new FileCredentialProvider(this, fileName, protector, shadowFileName);
 		} // func CreateCredentialFileProvider
 
 		public ICredentialProvider CreateWindowsCredentialProviderReadOnly(string name, params string[] filter)

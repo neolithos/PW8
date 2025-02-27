@@ -190,7 +190,7 @@ namespace Neo.PerfectWorking.Data
 		public static T GetService<T>(this IServiceProvider sp, Type serviceType, bool throwException = false)
 			where T : class
 		{
-			var obj = sp.GetService(typeof(T));
+			var obj = sp.GetService(serviceType);
 			if (obj == null && throwException)
 				throw new ArgumentException($"Requested service '{typeof(T).Name}' not found.");
 			return obj as T;

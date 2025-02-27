@@ -309,8 +309,19 @@ namespace Neo.PerfectWorking.Backup
 				this.destination = destination ?? throw new ArgumentNullException(nameof(destination));
 			} // ctor
 
+			private void DeleteCore()
+			{
+				destination.Refresh();
+				if (destination.Exists)
+				{
+					if (destination.Attributes != FileAttributes.Normal)
+						destination.Attributes = FileAttributes.Normal;
+					destination.Delete();
+				}
+			} // proc DeleteCore
+
 			protected override Task ExecuteAsync(IProgress<int> progress)
-				=> Task.Run(() => IO.SafeIO(destination.Delete, $"Löschen der Datei: {destination.FullName}"));
+				=> Task.Run(() => IO.SafeIO(DeleteCore, $"Löschen der Datei: {destination.FullName}"));
 
 			protected override string Action => "Lösche {0}";
 			public override long Length => 0;
@@ -332,7 +343,7 @@ namespace Neo.PerfectWorking.Backup
 			} // ctor
 
 			protected override Task ExecuteAsync(IProgress<int> progress)
-				=> Task.Run(() => IO.SafeIO(() => destination.Delete(true), $"Lösche des Verzeichnisses: {destination.FullName}"));
+				=> Task.Run(() => IO.SafeIO(() => destination.Delete(true), $"Löschen des Verzeichnisses: {destination.FullName}"));
 
 			protected override string Action => "Lösche Verzeichnis {0}";
 			public override long Length => 0;

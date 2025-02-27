@@ -13,15 +13,12 @@
 // specific language governing permissions and limitations under the Licence.
 //
 #endregion
-using System;
-using System.Dynamic;
-using System.Globalization;
-using System.Linq;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
 using Neo.IronLua;
 using Neo.PerfectWorking.Data;
+using System;
+using System.Dynamic;
+using System.Linq;
+using System.Windows;
 
 namespace Neo.PerfectWorking.UI.Dashboard
 {
