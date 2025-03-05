@@ -149,7 +149,7 @@ namespace Neo.PerfectWorking.Cred.Pages
 
 			public ICredentialInfo CurrentInfo => currentInfo;
 
-			DateTime ICredentialInfo.LastWritten => DateTime.Now;
+			DateTime ICredentialInfo.LastWritten => DateTime.UtcNow;
 			object ICredentialInfo.Image => null;
 		} // class PasswordEditModel
 

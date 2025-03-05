@@ -46,9 +46,9 @@ namespace Neo.PerfectWorking.Cred
 		public void SourceFileCopy(string provider, string fileName)
 			=> WriteEvent(1001, provider, fileName);
 
-		[Event(1002, Channel = EventChannel.Operational, Tags = Tags.FileProvider, Level = EventLevel.Warning, Message = "[{0}] Quelldatei konnte nicht kopiert werden.\n{1}")]
-		public void SourceFileCopyFailed(string provider, string fileName)
-			=> WriteEvent(1002, provider, fileName);
+		[Event(1002, Channel = EventChannel.Operational, Tags = Tags.FileProvider, Level = EventLevel.Warning, Message = "[{0}] Quelldatei konnte nicht kopiert werden.\n{1}\nFehler: {2}")]
+		public void SourceFileCopyFailed(string provider, string fileName, string message)
+			=> WriteEvent(1002, provider, fileName, message);
 
 		public static void FileProviderLoadFailed(string provider, Exception e)
 			=> Default.FileProviderLoadFailed(provider, e.GetInnerException().Message, e.GetMessageString());

@@ -278,7 +278,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func CreateFileStream
 
-		public static void Write(XmlWriter xml, IXmlCredentialItem item)
+		public static void Write(XmlWriter xml, IXmlCredentialItem item, string elementName = null)
 		{
 			void WriteAttr(string name, string value)
 			{
@@ -286,7 +286,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 					xml.WriteAttributeString(name, value);
 			} // proc WriteAttr
 
-			xml.WriteStartElement(entryName.LocalName);
+			xml.WriteStartElement(elementName ?? entryName.LocalName);
 			WriteAttr("uri", item.TargetName);
 			WriteAttr("uname", item.UserName);
 			WriteAttr("comment", item.Comment);
