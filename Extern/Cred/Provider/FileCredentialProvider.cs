@@ -319,7 +319,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 			=> lastModification < GetLastWriteTimeSafe();
 
 		protected virtual IEnumerable<IXmlCredentialItem> LoadItemsCore()
-			=> XmlCredentialItem.Load(shadowFileName ?? fileName);
+		{
+			var loadFileName = shadowFileName ?? fileName;
+			return File.Exists(loadFileName) ? XmlCredentialItem.Load(loadFileName) : Array.Empty<IXmlCredentialItem>();
+		} // func LoadItemsCore
 
 		protected abstract CredentialItemBase CreateItem(IXmlCredentialItem item);
 

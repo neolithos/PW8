@@ -90,5 +90,23 @@ namespace PW.Core.Tests
 			TestCredItem("ftp://test1", "user3", "pwd1", "ftp test3", (IXmlCredentialItem)ro.FirstOrDefault());
 			TestCredItem("ftp://test4", "user4", "pwd4", "ftp test4", (IXmlCredentialItem)ro.Skip(1).FirstOrDefault());
 		}
+
+		[TestMethod]
+		public void XmlReadOnlyTestShadow()
+		{
+			var shadowInfo = new FileInfo(@"Cred\XmlReadOnly.Shadow.xml");
+			if (File.Exists(@"Cred\XmlReadOnly.xml"))
+				File.Delete(@"Cred\XmlReadOnly.xml");
+			if (shadowInfo.Exists)
+			{
+				shadowInfo.Attributes = shadowInfo.Attributes & ~FileAttributes.ReadOnly;
+				shadowInfo.Delete();
+			}
+
+			var ro = new FileReadOnlyCredentialProvider(package, @"Cred\XmlReadOnly.xml", Protector.NoProtector, @"Cred\XmlReadOnly.Shadow.xml");
+			File.Copy(@"Cred\XmlParseTest.xml", @"Cred\XmlReadOnly.xml", true);
+			((IPwAutoSaveFile)ro).Reload();
+			todo
+		}
 	} // class CredTests
 }
