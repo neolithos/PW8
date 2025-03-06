@@ -93,6 +93,8 @@ d {
 package("test",
 	function (self)
 		self.passwordStore = creds:CreateFileCredentialProvider("pwds", cryptKey.Protector);
+		-- self.tecwareCreds = creds:CreateFileCredentialProvider('C:\\Temp\\Test\\tecware.xcreds', cryptKey.twDes, true);
+
 
 		self.testProgress = CreateAction(title = "Test Progress", label = "Zeigt die Progressbar", func = executeTestProgress);
 		self.sendKey = CreateHotKey(title = "Send",  key = "Ctrl+Win+T", command = sendKeyCommand);

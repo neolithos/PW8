@@ -250,7 +250,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 		{
 			if (settings != null)
 				settings.CloseInput = true;
-			return Load(XmlReader.Create(stream, settings ?? Procs.XmlReaderSettings));
+
+			using var xml = XmlReader.Create(stream, settings ?? Procs.XmlReaderSettings);
+			foreach (var c in Load(xml))
+				yield return c;
 		} // func Load
 
 		public static IEnumerable<IXmlCredentialItem> Load(string fileName)

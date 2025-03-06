@@ -15,6 +15,8 @@
 #endregion
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -47,9 +49,62 @@ namespace PW.Core.Tests
 		public void ShowNotification(object message, object image = null) => throw new NotImplementedException();
 	}
 
+	internal class ObjectMock : IPwObject
+	{
+		private readonly IPwPackage package;
+		private readonly string name;
+		private object value;
+
+		public ObjectMock(IPwPackage package, string name, object value)
+		{
+			this.package = package;
+			this.name = name;
+			this.value = value;
+		}
+
+		public void Dispose()
+		{
+			if (value is IDisposable d)
+				d.Dispose();
+		}
+
+		public IPwPackage Package => package;
+		public string Name => name;
+		public object Value { get => value; set => this.value = value; }
+
+		public bool Equals(IPwObject other)
+		{
+			throw new NotImplementedException();
+		}
+	}
+
+	internal class CollectionMock<T> : List<T>, IPwCollection<T>
+		where T : class
+	{
+		public CollectionMock(IPwPackage package)
+		{
+		}
+
+		public T this[IPwObject index] => throw new NotImplementedException();
+
+		public T this[IPwPackage package, string name] => throw new NotImplementedException();
+
+		public object SyncRoot => throw new NotImplementedException();
+
+		public event NotifyCollectionChangedEventHandler CollectionChanged;
+		public event PropertyChangedEventHandler PropertyChanged;
+	}
+
 	internal class GlobalMock : IPwGlobal
 	{
-		private readonly static ShellUIMock shellUIMock = new ShellUIMock(); 
+		private readonly static ShellUIMock shellUIMock = new ShellUIMock();
+
+		public IPwCollection<T> RegisterCollection<T>(IPwPackage package)
+			where T : class
+			=> new CollectionMock<T>(package);
+
+		public IPwObject RegisterObject(IPwPackage package, string name, object value = null)
+			=> new ObjectMock(package, name, value);
 
 		public IPwShellUI UI => shellUIMock;
 
@@ -58,8 +113,7 @@ namespace PW.Core.Tests
 		public NetworkCredential GetCredential(string targetName) => throw new NotImplementedException();
 		public object GetService(Type serviceType) => throw new NotImplementedException();
 		public bool IsCollectionType(IPwPackage package, Type type) => throw new NotImplementedException();
-		public IPwCollection<T> RegisterCollection<T>(IPwPackage package) where T : class => throw new NotImplementedException();
-		public IPwObject RegisterObject(IPwPackage package, string name, object value = null) => throw new NotImplementedException();
+
 		public string ResolveFile(string fileName, bool throwException = true) => throw new NotImplementedException();
 		public IEnumerable<T> EnumerateObjects<T>() => throw new NotImplementedException();
 

@@ -26,7 +26,13 @@ using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Cred
 {
-	public sealed class CredPackage : PwPackageBase, ICredentials
+	public interface ICredPackage : IPwPackage, ICredentials
+	{
+		object EncryptPassword(SecureString password, ICredentialProtector protector = null);
+		SecureString DecryptPassword(object encryptedPassword, ICredentialProtector protector = null);
+	} // interface ICredPackage
+
+	public sealed class CredPackage : PwPackageBase, ICredPackage
 	{
 		private readonly IPwCollection<ICredentialProvider> credentialProviders;
 		private readonly IPwCollection<ICredentialProtector> credentialProtectors;

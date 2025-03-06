@@ -88,7 +88,7 @@
       <Version>1.1.28</Version>
     </PackageReference>
     <PackageReference Include="TecWare.DES.Core">
-      <Version>3.4.108</Version>
+      <Version>3.4.119</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

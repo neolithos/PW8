@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<passwords>
+	<entry uri="ftp://test1" uname="user3" comment="ftp test3">pwd1</entry>
+	<entry uri="ftp://test4" uname="user4" comment="ftp test4">pwd4</entry>
+</passwords>

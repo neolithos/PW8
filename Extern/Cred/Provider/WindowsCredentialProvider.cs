@@ -434,6 +434,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			=> GetEnumerator();
 
 		public string Name => name;
+		public int Count => credentials.Count;
 		public abstract bool IsReadOnly { get; }
 
 		protected abstract ICredentialProtector DefaultProtector { get; }

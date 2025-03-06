@@ -49,7 +49,7 @@ namespace Neo.PerfectWorking.Cred
 
 	#region -- interface ICredentialProvider --------------------------------------------
 
-	public interface ICredentialProvider : ICredentials, IEnumerable<ICredentialInfo>, INotifyCollectionChanged
+	public interface ICredentialProvider : ICredentials, IReadOnlyCollection<ICredentialInfo>, INotifyCollectionChanged
 	{
 		/// <summary>Adds the new credential item.</summary>
 		/// <param name="newItem"></param>

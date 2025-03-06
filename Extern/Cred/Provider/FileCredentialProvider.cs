@@ -55,13 +55,13 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 				All = UserName | Comment | LastWritten | EncryptedPassword,
 
-				IsVisible = 16
+				IsVisible = 32
 			} // enum PropertyName
 
 			public event PropertyChangedEventHandler PropertyChanged;
 
 			private readonly FileCredentialProviderBase provider;
-			private bool isTouched = true;
+			private bool isTouched = false;
 
 			private PropertyName propertyChanged = PropertyName.None;
 
@@ -137,7 +137,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		public event NotifyCollectionChangedEventHandler CollectionChanged;
 
-		private readonly CredPackage package;
+		private readonly ICredPackage package;
 		private readonly ICredentialProtector protector;
 		private readonly string fileName;
 		private readonly string shadowFileName; // Local copy for network files
@@ -147,7 +147,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		#region -- Ctor/Dtor ----------------------------------------------------------
 
-		protected FileCredentialProviderBase(CredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
+		protected FileCredentialProviderBase(ICredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
 		{
 			this.package = package ?? throw new ArgumentNullException(nameof(package));
 			this.fileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
@@ -357,9 +357,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 						if (item.Update(cur, null)) // update current item
 						{
 							if (isVisibleOld)
-								itemsAdded.Add(item);
-							else
 								item.NotifyPropertyChanged();
+							else
+								itemsAdded.Add(item);
 						}
 					}
 				}
@@ -392,9 +392,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (allowSyncData)
 			{
 				shadowFileSynced = UpdateShadowFileAsync();
-				if (shadowFileSynced.Wait(200) && shadowFileSynced.Result)
+				if (shadowFileSynced.Wait(200))
 				{
-					force = true;
+					if (shadowFileSynced.Result)
+						force = true;
 					shadowFileSynced = null;
 				}
 			}
@@ -431,13 +432,15 @@ namespace Neo.PerfectWorking.Cred.Provider
 		protected CredentialItemBase Find(string targetName)
 			=> items.FirstOrDefault(c => String.Compare(c.TargetName, targetName, StringComparison.OrdinalIgnoreCase) == 0);
 
-		public CredPackage Package => package;
+		public ICredPackage Package => package;
 		public ICredentialProtector Protector => protector;
 
 		public string Name => Path.GetFileNameWithoutExtension(fileName);
 		public abstract bool IsReadOnly { get; }
 		public abstract bool IsModified { get; }
 		public DateTime LastModificationTime => lastModification;
+
+		public int Count => items.Count;
 
 		protected string FileName => fileName;
 		protected string ShadowFileName => shadowFileName;
@@ -503,7 +506,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		#region -- Ctor ---------------------------------------------------------------
 
-		public FileReadOnlyCredentialProvider(CredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
+		public FileReadOnlyCredentialProvider(ICredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
 			: base(package, fileName, protector, shadowFileName)
 		{
 		} // ctor
