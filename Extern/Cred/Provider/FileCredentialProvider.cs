@@ -70,7 +70,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
 			} // ctor
 
-			public bool GetTouched()
+			public virtual bool GetTouched()
 			{
 				var s = isTouched;
 				isTouched = false;
@@ -102,7 +102,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 					propertyChanged |= (property & PropertyName.All);
 				else
 				{
-					for (var i = 0; i < 4; i++)
+					for (var i = 0; i < 5; i++)
 					{
 						var n = (PropertyName)(1 << (i + 1));
 						if ((property & n) != 0)
@@ -176,6 +176,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 			=> OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, new ICredentialInfo[] { item }));
 
 		ICredentialInfo ICredentialProvider.Append(ICredentialInfo newItem)
+			=> AppendItem(newItem);
+
+		protected ICredentialInfo AppendItem(ICredentialInfo newItem)
 		{
 			var item = Find(newItem.TargetName);
 			if (item == null)
@@ -183,17 +186,22 @@ namespace Neo.PerfectWorking.Cred.Provider
 				item = CreateNew(newItem);
 				items.Add(item);
 				OnItemAdded(item);
+				item.NotifyPropertyChanged();
 
 				return item;
 			}
 			else
 			{
 				item.Update(null, newItem);
+				item.NotifyPropertyChanged();
 				return item;
 			}
-		} // proc Append
+		} // proc AppendItem
 
 		bool ICredentialProvider.Remove(string targetName)
+			=> RemoveItem(targetName);
+
+		protected bool RemoveItem(string targetName)
 		{
 			var item = Find(targetName);
 			if (item == null)
@@ -206,13 +214,22 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 			else
 				return false;
-		} // func Remove
+		} // func RemoveItem
 
 		public NetworkCredential GetCredential(Uri uri, string authType)
 			=> CredPackage.FindCredentials(Name, uri, this);
 
 		protected IEnumerable<CredentialItemBase> GetItems()
 			=> items;
+
+		protected void RemoveInVisibleItems()
+		{
+			for (var i = items.Count - 1; i >= 0; i--)
+			{
+				if (!items[i].IsVisible)
+					items.RemoveAt(i);
+			}
+		} // proc RemoveInVisibleItems
 
 		public IEnumerator<ICredentialInfo> GetEnumerator()
 			=> items.Where(c => c.IsVisible).GetEnumerator();
@@ -443,7 +460,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		public abstract bool IsModified { get; }
 		public DateTime LastModificationTime => lastModification;
 
-		public int Count => items.Count;
+		public int Count => items.Count(c => c.IsVisible);
 
 		protected string FileName => fileName;
 		protected string ShadowFileName => shadowFileName;
@@ -622,6 +639,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 				UpdateCore(null, item);
 			} // ctor
 
+			public override bool GetTouched()
+				=> state != CredentialItemState.Original || base.GetTouched();
+
 			#endregion
 
 			#region -- Update/Remove --------------------------------------------------
@@ -755,7 +775,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 						case CredentialItemState.Deleted:
 							userName = null;
 							comment = null;
-							lastWritten = DateTime.MinValue;
 							encryptedPassword = null;
 							break;
 					}
@@ -893,7 +912,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		#region -- Ctor/Dtor ----------------------------------------------------------
 
-		public FileCredentialProvider(CredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
+		public FileCredentialProvider(ICredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
 			: base(package, fileName, protector, shadowFileName)
 		{
 			if (shadowFileName == null)
@@ -992,11 +1011,17 @@ namespace Neo.PerfectWorking.Cred.Provider
 			base.OnItemAdded(item);
 		} // proc OnItemAdded
 
+		public void Append(ICredentialInfo newItem)
+			=> AppendItem(newItem);
+
 		protected override void OnItemRemoved(CredentialItemBase item)
 		{
 			SetModified();
 			base.OnItemRemoved(item);
 		} // proc OnItemRemoved
+
+		public bool Remove(string targetName)
+			=> RemoveItem(targetName);
 
 		private string GetElementName(CredentialItemState state)
 		{
@@ -1058,6 +1083,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 			// write content in file
 			var tmpFileName = fileName + "~";
 			XmlCredentialItem.Save(tmpFileName, this.Cast<IXmlCredentialItem>());
+
+			// remove deleted items
+			RemoveInVisibleItems();
 
 			// Update original file
 			var m = CopyFileSafe(new FileInfo(tmpFileName), new FileInfo(fileName), true);

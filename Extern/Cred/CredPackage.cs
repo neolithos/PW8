@@ -41,7 +41,7 @@ namespace Neo.PerfectWorking.Cred
 
 		#region -- Ctor -----------------------------------------------------------------
 
-		public CredPackage(IPwGlobal global) 
+		public CredPackage(IPwGlobal global)
 			: base(global, nameof(CredPackage))
 		{
 			credentialProviders = global.RegisterCollection<ICredentialProvider>(this);
@@ -149,7 +149,7 @@ namespace Neo.PerfectWorking.Cred
 				return null;
 
 			// encrypt the password
-			return (protector ?? defaultProtector) .Encrypt(password);
+			return (protector ?? defaultProtector).Encrypt(password);
 		} // proc EncryptPassword
 
 		public SecureString DecryptPassword(object encryptedPassword, ICredentialProtector protector = null)

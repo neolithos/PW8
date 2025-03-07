@@ -19,6 +19,7 @@ using Neo.PerfectWorking.Cred.Provider;
 using Neo.PerfectWorking.Data;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -28,6 +29,7 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using TecWare.DE.Stuff;
 
 namespace PW.Core.Tests
 {
@@ -42,17 +44,51 @@ namespace PW.Core.Tests
 			}
 
 			public object EncryptPassword(SecureString password, ICredentialProtector protector = null)
-			{
-				throw new NotImplementedException();
-			}
+				=> protector.Encrypt(password);
 
 			public SecureString DecryptPassword(object encryptedPassword, ICredentialProtector protector = null)
-			{
-				throw new NotImplementedException();
-			}
+				=> protector.TryDecrypt(encryptedPassword, out var pwd) ? pwd : null;
 
 			public string Name => "Cred";
 		} // class CredPackageMock
+
+		private sealed class CredentialInfo : ICredentialInfo
+		{
+			public event PropertyChangedEventHandler PropertyChanged;
+
+			private readonly ICredentialProvider provider;
+			private readonly string targetName;
+			private readonly string userName;
+			private readonly string comment;
+			private readonly string password;
+			private readonly DateTime lastWritten;
+
+			public CredentialInfo(ICredentialProvider provider, string targetName, string userName, string comment, string password, DateTime lastWritten)
+			{
+				this.provider = provider;
+				this.targetName = targetName;
+				this.userName = userName;
+				this.comment = comment;
+				this.password = password;
+				this.lastWritten = lastWritten;
+			}
+
+			public SecureString GetPassword()
+				=> Protector.NoProtector.TryDecrypt("0" + password, out var pwd) ? pwd : null;
+
+			public void SetPassword(SecureString password)
+			{
+				throw new NotImplementedException();
+			}
+
+			public ICredentialProvider Provider => provider;
+			public object Image => null;
+
+			public string TargetName => targetName;
+			public string UserName { get => userName; set => throw new NotImplementedException(); }
+			public string Comment { get => comment; set => throw new NotImplementedException(); }
+			public DateTime LastWritten => lastWritten;
+		}
 
 		private static readonly ICredPackage package = new CredPackageMock();
 
@@ -117,7 +153,6 @@ namespace PW.Core.Tests
 			TestCredItem("ftp://test4", "user4", "pwd4", "ftp test4", (IXmlCredentialItem)ro.Skip(1).FirstOrDefault());
 		}
 
-
 		[TestMethod]
 		public void XmlReadOnlyTestShadow()
 		{
@@ -139,6 +174,50 @@ namespace PW.Core.Tests
 			Assert.AreEqual(2, ro.Count);
 			TestCredItem("ftp://test1", "user3", "pwd1", "ftp test3", (IXmlCredentialItem)ro.FirstOrDefault());
 			TestCredItem("ftp://test4", "user4", "pwd4", "ftp test4", (IXmlCredentialItem)ro.Skip(1).FirstOrDefault());
+		}
+
+		[TestMethod]
+		public void XmlDirectSaveTest()
+		{
+			DeleteFile(@"Cred\Save.xml");
+			var f = new FileCredentialProvider(package, @"Cred\Save.xml", Protector.NoProtector, null);
+			Assert.AreEqual(0,f.Count);
+
+			// test new entry
+			f.Append(new CredentialInfo(f, "http://neu1", "user1", "comment1", "pwd1", DateTime.UtcNow));
+
+			// load new stuff from disk
+			CopyFile(@"Cred\XmlParseTest.xml", @"Cred\Save.xml");
+
+			f.Append(new CredentialInfo(f, "http://test2", "usr2", "c2", "pwd2", DateTime.UtcNow));
+
+			((IPwAutoSaveFile)f).Reload();
+			Assert.IsTrue(f.IsModified);
+
+			// save combination
+			((IPwAutoSaveFile)f).Save();
+			Assert.IsFalse(f.IsModified);
+
+			// test
+			var data = XmlCredentialItem.Load(@"Cred\Save.xml").ToArray();
+			TestCredItem("http://neu1", "user1", "0pwd1", "comment1", data[0]);
+			TestCredItem("http://test2", "usr2", "0pwd2", "c2", data[1]);
+			TestCredItem("ftp://test1", "user1", "pwd1", "ftp test1", data[2]);
+
+			CopyFile(@"Cred\XmlParseTest.xml", @"Cred\Save.xml");
+			Thread.Sleep(100);
+
+			f.Remove("ftp://test1");
+			((IPwAutoSaveFile)f).Reload();
+			Assert.IsTrue(f.IsModified);
+
+			((IPwAutoSaveFile)f).Save();
+			Assert.IsFalse(f.IsModified);
+
+			data = XmlCredentialItem.Load(@"Cred\Save.xml").ToArray();
+			TestCredItem("http://test2", "user2", "pwd2", "http test2", data[0]);
+
+			Assert.AreEqual(1, f.Count);
 		}
 	} // class CredTests
 }
