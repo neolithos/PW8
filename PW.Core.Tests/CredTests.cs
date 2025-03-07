@@ -22,8 +22,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Reflection;
 using System.Security;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PW.Core.Tests
@@ -61,6 +64,29 @@ namespace PW.Core.Tests
 			Assert.AreEqual(cmt, item.Comment);
 		}
 
+		private static Task[] GetActiveTasks()
+		{
+			var mi = typeof(Task).GetMethod("GetActiveTasks", BindingFlags.NonPublic | BindingFlags.Static);
+			return (Task[])mi.Invoke(null, Array.Empty<object>());
+		}
+
+		private static void DeleteFile(string fileName)
+		{
+			var fi = new FileInfo(fileName);
+			if(fi.Exists)
+			{
+				if ((fi.Attributes & FileAttributes.ReadOnly) != 0)
+					fi.Attributes &= ~FileAttributes.ReadOnly;
+				fi.Delete();
+			}
+		}
+
+		private static void CopyFile(string srcName, string dstName)
+		{	
+			File.Copy(srcName, dstName, true);
+			File.SetLastWriteTimeUtc(dstName, DateTime.UtcNow);
+		}
+
 		[TestMethod]
 		public void XmlParseTest()
 		{
@@ -80,33 +106,39 @@ namespace PW.Core.Tests
 		[TestMethod]
 		public void XmlReadOnlyTest()
 		{
-			File.Copy(@"Cred\XmlParseTest.xml", @"Cred\XmlReadOnly.xml", true);
+			CopyFile(@"Cred\XmlParseTest.xml", @"Cred\XmlReadOnly.xml");
 			var ro = new FileReadOnlyCredentialProvider(package, @"Cred\XmlReadOnly.xml", Protector.NoProtector, null);
 			Assert.AreEqual(2, ro.Count);
 
-			File.Copy(@"Cred\XmlParseChg.xml", @"Cred\XmlReadOnly.xml", true);
+			CopyFile(@"Cred\XmlParseChg.xml", @"Cred\XmlReadOnly.xml");
 			((IPwAutoSaveFile)ro).Reload();
 			Assert.AreEqual(2, ro.Count);
 			TestCredItem("ftp://test1", "user3", "pwd1", "ftp test3", (IXmlCredentialItem)ro.FirstOrDefault());
 			TestCredItem("ftp://test4", "user4", "pwd4", "ftp test4", (IXmlCredentialItem)ro.Skip(1).FirstOrDefault());
 		}
 
+
 		[TestMethod]
 		public void XmlReadOnlyTestShadow()
 		{
-			var shadowInfo = new FileInfo(@"Cred\XmlReadOnly.Shadow.xml");
-			if (File.Exists(@"Cred\XmlReadOnly.xml"))
-				File.Delete(@"Cred\XmlReadOnly.xml");
-			if (shadowInfo.Exists)
-			{
-				shadowInfo.Attributes = shadowInfo.Attributes & ~FileAttributes.ReadOnly;
-				shadowInfo.Delete();
-			}
+			DeleteFile(@"Cred\XmlReadOnly.Shadow.xml");
+			DeleteFile(@"Cred\XmlReadOnly.xml");
 
 			var ro = new FileReadOnlyCredentialProvider(package, @"Cred\XmlReadOnly.xml", Protector.NoProtector, @"Cred\XmlReadOnly.Shadow.xml");
-			File.Copy(@"Cred\XmlParseTest.xml", @"Cred\XmlReadOnly.xml", true);
+
+			Assert.AreEqual(0, ro.Count);
+
+			CopyFile(@"Cred\XmlParseTest.xml", @"Cred\XmlReadOnly.xml");
 			((IPwAutoSaveFile)ro).Reload();
-			todo
+			Task.WaitAll(GetActiveTasks());
+			Assert.AreEqual(2, ro.Count);
+
+			CopyFile(@"Cred\XmlParseChg.xml", @"Cred\XmlReadOnly.xml");
+			((IPwAutoSaveFile)ro).Reload();
+			Task.WaitAll(GetActiveTasks());
+			Assert.AreEqual(2, ro.Count);
+			TestCredItem("ftp://test1", "user3", "pwd1", "ftp test3", (IXmlCredentialItem)ro.FirstOrDefault());
+			TestCredItem("ftp://test4", "user4", "pwd4", "ftp test4", (IXmlCredentialItem)ro.Skip(1).FirstOrDefault());
 		}
 	} // class CredTests
 }

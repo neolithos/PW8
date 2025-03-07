@@ -953,6 +953,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			// load local copy
 			if (changeFileName != null)
 			{
+				var lastModification = File.GetLastWriteTimeUtc(changeFileName);
 				using var xml = XmlReader.Create(changeFileName, Procs.XmlReaderSettings);
 
 				xml.MoveToContent();
@@ -964,7 +965,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				while (xml.NodeType == XmlNodeType.Element)
 				{
 					var state = GetStateFromName(xml.Name);
-					var data = XmlCredentialItem.Read(xml, xml.GetAttribute("uri"));
+					var data = XmlCredentialItem.Read(xml, xml.GetAttribute("uri"), lastModification);
 
 					var item = Find(data.TargetName);
 					if (item == null)

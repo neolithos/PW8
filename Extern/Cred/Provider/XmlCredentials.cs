@@ -184,7 +184,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func OpenFileStream
 
-		public static IXmlCredentialItem Read(XmlReader xml, string targetName)
+		public static IXmlCredentialItem Read(XmlReader xml, string targetName, DateTime lastModification)
 		{
 			string GetAttr(string name)
 			{
@@ -192,8 +192,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 				return String.IsNullOrEmpty(r) ? null : r;
 			} // func GetAttr
 
-			DateTime ConvertDateTime(string value)
-				=> value != null && Int64.TryParse(value, out var dt) ? DateTime.FromFileTimeUtc(dt) : DateTime.MinValue;
+			DateTime ConvertDateTime(string value, DateTime def)
+				=> value != null && Int64.TryParse(value, out var dt) ? DateTime.FromFileTimeUtc(dt) : def;
 
 			object ReadEncryptedPassword(string fmt)
 			{
@@ -206,7 +206,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 			var userName = GetAttr("uname");
 			var comment = GetAttr("comment");
-			var lastWritten = ConvertDateTime(GetAttr("written"));
+			var lastWritten = ConvertDateTime(GetAttr("written"), lastModification);
 
 			// read password
 			object encryptedPassword = null;
@@ -233,7 +233,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			return new XmlCredentialItem(targetName, userName, comment, lastWritten, encryptedPassword);
 		} // func Read
 
-		public static IEnumerable<IXmlCredentialItem> Load(XmlReader xml)
+		public static IEnumerable<IXmlCredentialItem> Load(XmlReader xml, DateTime lastModification)
 		{
 			xml.ReadStartElement(rootNodeName.LocalName);
 			while (xml.NodeType == XmlNodeType.Element)
@@ -242,22 +242,22 @@ namespace Neo.PerfectWorking.Cred.Provider
 				if (targetName == null)
 					xml.Skip();
 				else
-					yield return Read(xml, targetName);
+					yield return Read(xml, targetName, lastModification);
 			}
 		} // func Load
 
-		public static IEnumerable<IXmlCredentialItem> Load(Stream stream, XmlReaderSettings settings = null)
+		public static IEnumerable<IXmlCredentialItem> Load(Stream stream, DateTime lastModification, XmlReaderSettings settings = null)
 		{
 			if (settings != null)
 				settings.CloseInput = true;
 
 			using var xml = XmlReader.Create(stream, settings ?? Procs.XmlReaderSettings);
-			foreach (var c in Load(xml))
+			foreach (var c in Load(xml, lastModification))
 				yield return c;
 		} // func Load
 
 		public static IEnumerable<IXmlCredentialItem> Load(string fileName)
-			=> Load(OpenFileStream(fileName));
+			=> Load(OpenFileStream(fileName), File.GetLastWriteTimeUtc(fileName));
 
 		#endregion
 
