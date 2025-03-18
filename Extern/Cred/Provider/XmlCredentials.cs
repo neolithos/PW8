@@ -66,6 +66,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 	internal sealed class XmlCredentialItem : IXmlCredentialItem, IEquatable<IXmlCredentialItem>, IComparable<IXmlCredentialItem>
 	{
 		private static readonly XName rootNodeName = "passwords";
+		private static readonly XName rootChanges = "changes";
 		private static readonly XName entryName = "entry";
 
 		private readonly string targetName;
@@ -235,7 +236,16 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		public static IEnumerable<IXmlCredentialItem> Load(XmlReader xml, DateTime lastModification)
 		{
-			xml.ReadStartElement(rootNodeName.LocalName);
+			// check root element
+			xml.MoveToContent();
+			if (xml.LocalName == rootNodeName.LocalName)
+				xml.Read();
+			else if (xml.LocalName == rootChanges.LocalName)
+				xml.Read();
+			else
+				throw new XmlException("Invalid root element.");
+
+			// parse entries
 			while (xml.NodeType == XmlNodeType.Element)
 			{
 				var targetName = xml.GetAttribute("uri");

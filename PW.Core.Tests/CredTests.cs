@@ -219,5 +219,52 @@ namespace PW.Core.Tests
 
 			Assert.AreEqual(1, f.Count);
 		}
+
+		[TestMethod]
+		public void XmlShadowSaveTest()
+		{
+			DeleteFile(@"Cred\Save.xml");
+			DeleteFile(@"Cred\Save-shadow.xml");
+			DeleteFile(@"Cred\Save-changes.xml");
+			var f = new FileCredentialProvider(package, @"Cred\Save.xml", Protector.NoProtector, @"Cred\Save-shadow.xml");
+			Assert.AreEqual(0, f.Count);
+
+			// test new entry
+			f.Append(new CredentialInfo(f, "http://neu1", "user1", "comment1", "pwd1", DateTime.UtcNow));
+			((IPwAutoSaveFile)f).Save(false);
+
+			// load new stuff from disk
+			CopyFile(@"Cred\XmlParseTest.xml", @"Cred\Save.xml");
+
+			f.Append(new CredentialInfo(f, "http://test2", "usr2", "c2", "pwd2", DateTime.UtcNow));
+
+			((IPwAutoSaveFile)f).Reload();
+			Assert.IsTrue(f.IsModified);
+
+			// save combination
+			((IPwAutoSaveFile)f).Save();
+			Assert.IsFalse(f.IsModified);
+
+			// test
+			var data = XmlCredentialItem.Load(@"Cred\Save-changes.xml").ToArray();
+			TestCredItem("http://neu1", "user1", "0pwd1", "comment1", data[0]);
+			TestCredItem("http://test2", "usr2", "0pwd2", "c2", data[1]);
+			
+			CopyFile(@"Cred\XmlParseTest.xml", @"Cred\Save.xml");
+			Thread.Sleep(100);
+
+			f.Remove("ftp://test1");
+			((IPwAutoSaveFile)f).Reload();
+			Assert.IsTrue(f.IsModified);
+
+			((IPwAutoSaveFile)f).Save();
+			Assert.IsFalse(f.IsModified);
+
+			Assert.AreEqual(2, f.Count);
+
+
+			f = new FileCredentialProvider(package, @"Cred\Save.xml", Protector.NoProtector, @"Cred\Save-shadow.xml");
+			Assert.AreEqual(2, f.Count);
+		}
 	} // class CredTests
 }

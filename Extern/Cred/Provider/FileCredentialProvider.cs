@@ -28,6 +28,7 @@ using System.Net;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Xml;
@@ -155,9 +156,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 			this.shadowFileName = shadowFileName;
 
 			lastModification = DateTime.MinValue;
-
-			// Start load
-			Load(true, true);
 		} // ctor
 
 		#endregion
@@ -529,6 +527,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 		public FileReadOnlyCredentialProvider(ICredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
 			: base(package, fileName, protector, shadowFileName)
 		{
+			// Start load
+			Load(true, true);
 		} // ctor
 
 		private static Exception GetReadOnlyException()
@@ -718,7 +718,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 						lastWritten = item.LastWritten;
 
 						OnPropertyChanged(props, true);
-						SetState(original is null ? CredentialItemState.New : CredentialItemState.Modified);
+						if (s == CredentialItemState.Deleted)
+							SetState(CredentialItemState.Deleted);
+						else
+							SetState(original is null ? CredentialItemState.New : CredentialItemState.Modified);
 
 						return props != PropertyName.None;
 					}
@@ -922,6 +925,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var i = shadowFileName.LastIndexOf("-shadow");
 				changeFileName = shadowFileName.Substring(0, i) + "-changes" + shadowFileName.Substring(i + 7);
 			}
+
+			// Start load
+			Load(true, true);
 		} // ctor
 
 		#endregion
@@ -970,7 +976,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				yield return cur;
 
 			// load local copy
-			if (changeFileName != null)
+			if (changeFileName != null && File.Exists(changeFileName))
 			{
 				var lastModification = File.GetLastWriteTimeUtc(changeFileName);
 				using var xml = XmlReader.Create(changeFileName, Procs.XmlReaderSettings);
@@ -1039,7 +1045,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (String.IsNullOrEmpty(name))
 				throw new ArgumentNullException(nameof(name));
 
-			return name[1] switch
+			return name[0] switch
 			{
 				'n' => CredentialItemState.New,
 				'm' => CredentialItemState.Modified,
@@ -1054,7 +1060,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 			// Persist changes
 			var tmpFileName = changeFileName + "~";
-			using var xml = XmlWriter.Create(tmpFileName, Procs.XmlWriterSettings);
+			using (var xml = XmlWriter.Create(tmpFileName, Procs.XmlWriterSettings))
 			{
 				xml.WriteStartDocument();
 				xml.WriteStartElement("changes");
@@ -1071,6 +1077,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 			var m = CopyFileSafe(new FileInfo(tmpFileName), new FileInfo(changeFileName), true);
 			if (!(m is null))
 				Log.Default.FileProviderSaveFailed(Name, changeFileName, m);
+
+			isModified = false;
 
 			if (hasChanges)
 				StartSync();
