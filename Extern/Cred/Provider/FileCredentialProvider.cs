@@ -142,6 +142,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private readonly ICredentialProtector protector;
 		private readonly string fileName;
 		private readonly string shadowFileName; // Local copy for network files
+		private readonly SemaphoreSlim shadowLock = new SemaphoreSlim(0, 1);
 
 		private DateTime lastModification;
 		private readonly List<CredentialItemBase> items = new List<CredentialItemBase>();
@@ -291,11 +292,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // proc CopyFileSync
 
-		private async Task<bool> UpdateShadowFileAsync()
+		protected virtual async Task<bool> UpdateShadowFileCoreAsync()
 		{
-			if (shadowFileName == null)
-				return false;
-
 			var shadowFileInfo = new FileInfo(shadowFileName);
 			var sourceFileInfo = new FileInfo(fileName);
 
@@ -311,7 +309,36 @@ namespace Neo.PerfectWorking.Cred.Provider
 				Log.Default.SourceFileIsOffline(Name, sourceFileInfo.FullName);
 
 			return false;
-		} // func PullShadowFileAsync
+		} // proc UpdateShadowFileCoreAsync
+
+		protected async Task<bool> UpdateShadowFileAsync()
+		{
+			if (shadowFileName == null)
+				return false;
+
+			// only run one
+			await shadowLock.WaitAsync();
+			try
+			{
+				return await UpdateShadowFileCoreAsync();
+			}
+			finally
+			{
+				shadowLock.Release();
+			}
+		} // func UpdateShadowFileAsync
+
+		private void ContinueShadowFile(Task<bool> task)
+		{
+			task?.ContinueWith(
+				t =>
+				{
+					if (t.Result) // reload new version
+						Load(false, false);
+				}
+				, TaskContinuationOptions.ExecuteSynchronously
+			);
+		} // proc ContinueShadowFile
 
 		#endregion
 
@@ -423,25 +450,22 @@ namespace Neo.PerfectWorking.Cred.Provider
 				LoadItemsSync();
 
 			// wait for shadow copy
-			shadowFileSynced?.ContinueWith(
-				t =>
-				{
-					if (t.Result) // reload new version
-						Load(false, false);
-				}
-				, TaskContinuationOptions.ExecuteSynchronously
-			);
+			ContinueShadowFile(shadowFileSynced);
 		} // proc Load
 
 		#endregion
 
-		protected abstract void Save(bool force);
+		protected abstract bool Save(bool force);
 
 		void IPwAutoSaveFile.Reload()
 			=> Load(false, true);
 
 		void IPwAutoSaveFile.Save(bool force)
-			=> Save(force);
+		{
+			var allowSyncData = Save(force);
+			if (allowSyncData)
+				ContinueShadowFile(UpdateShadowFileAsync());
+		} // proc IPwAutoSaveFile.Save
 
 		string IPwAutoSaveFile.FileName => fileName;
 
@@ -550,7 +574,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		protected override void OnItemRemoved(CredentialItemBase item)
 			=> throw GetReadOnlyException();
 
-		protected override void Save(bool force)
+		protected override bool Save(bool force)
 			=> throw GetReadOnlyException();
 
 		#endregion
@@ -962,15 +986,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 				return base.GetLastWriteTimeSafe();
 		} // func GetLastWriteTimeSafe
 
-		private void StartSync()
-		{
-
-		}
-
 		protected override IEnumerable<IXmlCredentialItem> LoadItemsCore()
 		{
-			var hasLocalChanges = false;
-
 			// load shadow content
 			foreach (var cur in base.LoadItemsCore())
 				yield return cur;
@@ -997,12 +1014,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 						yield return new CredentialItem(this, state, data);
 					else
 						item.Update(data, state);
-					hasLocalChanges = true;
 				}
 			}
-
-			if (hasLocalChanges)
-				StartSync();
 		} // proc LoadItemsCore
 
 		protected override CredentialItemBase CreateItem(IXmlCredentialItem item)
@@ -1054,7 +1067,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			};
 		} // func GetStateFromName
 
-		private void SaveChangeMode()
+		private bool SaveChangeMode()
 		{
 			var hasChanges = false;
 
@@ -1079,9 +1092,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				Log.Default.FileProviderSaveFailed(Name, changeFileName, m);
 
 			isModified = false;
-
-			if (hasChanges)
-				StartSync();
+			return hasChanges;
 		} // proc SaveChangeMode
 
 		private void SaveDirectMode()
@@ -1109,12 +1120,15 @@ namespace Neo.PerfectWorking.Cred.Provider
 			isModified = false;
 		} // proc SaveDirectMode
 
-		protected override void Save(bool force)
+		protected override bool Save(bool force)
 		{
 			if (changeFileName != null)
-				SaveChangeMode();
+				return SaveChangeMode();
 			else
+			{
 				SaveDirectMode();
+				return false;
+			}
 		} // proc Save
 
 		#endregion
