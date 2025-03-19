@@ -120,6 +120,15 @@ namespace Neo.PerfectWorking
 
 		#endregion
 
+		#region -- Auto Save ----------------------------------------------------------
+
+		[Event(30, Channel = EventChannel.Operational, Level = EventLevel.Informational, Keywords = EventKeywords.None, 
+			Message = "AutoSave pending task ({0}) failed: {1}")]
+		public void AutoSavePendingTaskFailed(string autoSaveName, string message)
+			=> WriteEvent(30, autoSaveName, message);
+
+		#endregion
+
 		public static Log Default { get; } = new Log();
 	} // class Log
 }

@@ -14,6 +14,8 @@
 //
 #endregion
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Data
 {
@@ -33,6 +35,22 @@ namespace Neo.PerfectWorking.Data
 		bool IsModified { get; }
 		/// <summary>Filename</summary>
 		string FileName { get; }
+	} // interface IPwAutoSaveFile
+
+	#endregion
+
+	#region -- interface IPwAutoSaveFile ----------------------------------------------
+
+	/// <summary>Extension to reload or save files asynchron.</summary>
+	public interface IPwAutoSaveFile2 : IPwAutoSaveFile
+	{
+		/// <summary></summary>
+		/// <param name="force"></param>
+		/// <returns></returns>
+		Task SaveAsync(bool force = false);
+		/// <summary></summary>
+		/// <returns></returns>
+		Task ReloadAsync();
 	} // interface IPwAutoSaveFile
 
 	#endregion

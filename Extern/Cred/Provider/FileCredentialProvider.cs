@@ -38,7 +38,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 {
 	#region -- class FileCredentialProviderBase ---------------------------------------
 
-	internal abstract class FileCredentialProviderBase : ICredentialProvider, IPwAutoSaveFile
+	internal abstract class FileCredentialProviderBase : ICredentialProvider, IPwAutoSaveFile2
 	{
 		#region -- class CredentialItemBase -------------------------------------------
 
@@ -328,16 +328,16 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func UpdateShadowFileAsync
 
-		private void ContinueShadowFile(Task<bool> task)
+		private Task ContinueShadowFile(Task<bool> task)
 		{
-			task?.ContinueWith(
+			return task?.ContinueWith(
 				t =>
 				{
 					if (t.Result) // reload new version
 						Load(false, false);
 				}
 				, TaskContinuationOptions.ExecuteSynchronously
-			);
+			) ?? Task.CompletedTask;
 		} // proc ContinueShadowFile
 
 		#endregion
@@ -429,7 +429,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			lastModification = lm;
 		} // proc LoadItemsSync
 
-		protected void Load(bool force, bool allowSyncData)
+		protected Task Load(bool force, bool allowSyncData)
 		{
 			Task<bool> shadowFileSynced = null;
 
@@ -450,7 +450,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				LoadItemsSync();
 
 			// wait for shadow copy
-			ContinueShadowFile(shadowFileSynced);
+			return ContinueShadowFile(shadowFileSynced) ?? Task.CompletedTask;
 		} // proc Load
 
 		#endregion
@@ -460,12 +460,47 @@ namespace Neo.PerfectWorking.Cred.Provider
 		void IPwAutoSaveFile.Reload()
 			=> Load(false, true);
 
-		void IPwAutoSaveFile.Save(bool force)
+		private async Task<DateTime> GetLastWriteTimeUtcAsync(string fileName)
 		{
-			var allowSyncData = Save(force);
-			if (allowSyncData)
-				ContinueShadowFile(UpdateShadowFileAsync());
-		} // proc IPwAutoSaveFile.Save
+			return await Task.Run(() =>
+			{
+				try
+				{
+					return File.GetLastWriteTimeUtc(fileName);
+				}
+				catch (IOException)
+				{
+					return DateTime.MinValue;
+				}
+			});
+		} // func GetLastWriteTimeUtcAsync
+
+		async Task IPwAutoSaveFile2.ReloadAsync()
+		{
+			if (shadowFileName == null)
+				await Load(false, true);
+			else
+			{
+				var shadowFileDate = File.Exists(shadowFileName) ? File.GetLastWriteTimeUtc(shadowFileName) : DateTime.MinValue;
+				var fileDate = await GetLastWriteTimeUtcAsync(fileName); // get remote file time
+
+				if (shadowFileDate < fileDate) // need resync
+				{
+					var isChanged = await UpdateShadowFileAsync();
+					if (isChanged)
+						await Load(false, false);
+				}
+			}
+		} // func IPwAutoSaveFile2.ReloadAsync
+
+		private Task SaveCoreAsync(bool force)
+			=> Save(force) ? ContinueShadowFile(UpdateShadowFileAsync()) : Task.CompletedTask;
+
+		void IPwAutoSaveFile.Save(bool force)
+			=> SaveCoreAsync(force);
+
+		Task IPwAutoSaveFile2.SaveAsync(bool force)
+			=> SaveCoreAsync(force);
 
 		string IPwAutoSaveFile.FileName => fileName;
 
