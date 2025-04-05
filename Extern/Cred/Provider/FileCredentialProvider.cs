@@ -299,6 +299,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 			// run refresh in background
 			await Task.Run(new Action(sourceFileInfo.Refresh));
+
 			// check download needed
 			if (sourceFileInfo.Exists)
 			{
@@ -988,6 +989,172 @@ namespace Neo.PerfectWorking.Cred.Provider
 			// Start load
 			Load(true, true);
 		} // ctor
+
+		#endregion
+
+		#region -- Synchronization ----------------------------------------------------
+
+		private async Task<Tuple<FileStream, DateTime>> OpenFileSafeAsync(string fileName, bool create)
+		{
+			var tries = 0;
+			while (true)
+			{
+				var r = await Task.Run<object>(() =>
+				{
+					try
+					{
+						var dt = create ? DateTime.MinValue : File.GetLastWriteTimeUtc(fileName);
+						return new Tuple<FileStream, DateTime>(new FileStream(fileName, create ? FileMode.CreateNew : FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None), dt);
+					}
+					catch (IOException e)
+					{
+						return e;
+					}
+				});
+
+				if (r is Tuple<FileStream, DateTime> t)
+					return t;
+				else if (tries++ < 6)
+				{
+					await Task.Delay(500);
+				}
+				else
+				{
+					var ex = (Exception)r;
+					Log.FileProviderSaveFailed(Name, ex);
+				}
+			}
+		} // func OpenFileSafeAsync
+
+		private async Task DeleteFileSaveAsync(string fileName)
+		{
+			await Task.Run(() =>
+			{
+				try
+				{
+					File.Delete(fileName);
+				}
+				catch { }
+			});
+		} // func DeleteFileSaveAsync
+
+		private async Task<FileStream> OpenBackupFileAsync(string backupFile)
+		{
+			var di = new DirectoryInfo(Path.GetDirectoryName(backupFile));
+			var lastIndex = 0;
+			var lastOfMonth = new Dictionary<int, FileInfo>();
+			var safeAllDate = DateTime.UtcNow.AddDays(-60);
+			var deleteTasks = new List<Task>();
+
+			foreach (var fi in await Task.Run(() => di.EnumerateFiles(backupFile + ".*").ToArray()))
+			{
+				// search highest index
+				var p = fi.Name.LastIndexOf('.');
+				if (Int32.TryParse(fi.Name.Substring(p + 1), out var currentIndex) && lastIndex < currentIndex)
+					lastIndex = currentIndex;
+
+				// only hold one per month
+				var currentTime = fi.LastWriteTimeUtc;
+				var key = currentTime.Year * 100 + currentTime.Month;
+				if (lastOfMonth.TryGetValue(key, out var currentFileInfo))
+				{
+					if (currentFileInfo.LastWriteTimeUtc < currentTime && currentTime < safeAllDate)
+					{
+						deleteTasks.Add(DeleteFileSaveAsync(currentFileInfo.FullName));
+						lastOfMonth[key] = fi;
+					}
+					else
+						deleteTasks.Add(DeleteFileSaveAsync(fi.FullName));
+				}
+				else
+					lastOfMonth[key] = fi;
+			}
+
+			// await all delete actions
+			if (deleteTasks.Count > 0)
+				await Task.WhenAll(deleteTasks);
+
+			// create file
+			return (await OpenFileSafeAsync(backupFile + "." + (lastIndex + 1), true)).Item1;
+		} // func OpenBackupFileAsync
+
+		private async Task<bool> SyncChangesAsync()
+		{
+			var (trg, lastWriteTime) = await OpenFileSafeAsync(FileName, false);
+			using (trg)
+			{
+				if (trg == null)
+					return false;
+
+				// create a copy of the current version
+				if (trg.Length > 0)
+				{
+					using (var bak = await OpenBackupFileAsync(Path.ChangeExtension(FileName, ".bak")))
+						await trg.CopyToAsync(bak);
+					trg.Position = 0;
+				}
+
+				// read current content
+				var readSettings = new XmlReaderSettings
+				{
+					IgnoreComments = true,
+					IgnoreWhitespace = true,
+					CloseInput = false
+				};
+				var syncItems = await Task.Run(() =>
+				{
+					using var xml = XmlReader.Create(trg, readSettings);
+					return XmlCredentialItem.Load(xml, lastWriteTime).ToList();
+				});
+				trg.Position = 0;
+
+				// apply modifications
+				foreach (var cur in GetItems().Cast<CredentialItem>())
+				{
+					if (cur.State != CredentialItemState.Original)
+					{
+						var idx = syncItems.FindIndex(c => String.Compare(c.TargetName, cur.TargetName, StringComparison.OrdinalIgnoreCase) == 0);
+
+						if (cur.State == CredentialItemState.New || cur.State == CredentialItemState.Modified)
+						{
+							if (idx == -1)
+								syncItems.Add(cur);
+							else
+								syncItems[idx] = cur;
+						}
+						else if (cur.State == CredentialItemState.Deleted)
+						{
+							if (idx != -1)
+								syncItems.RemoveAt(idx);
+						}
+					}
+				}
+
+				// save elements
+				var writeSettings = Procs.XmlWriterSettings;
+				writeSettings.CloseOutput = false;
+				using (var xml = XmlWriter.Create(trg, writeSettings))
+					XmlCredentialItem.Save(xml, syncItems);
+				trg.SetLength(trg.Position);
+
+				// copy to shadow
+				using (var shadow = (await OpenFileSafeAsync(ShadowFileName, false)).Item1)
+					await trg.CopyToAsync(shadow);
+
+				// remove cleared items
+				RemoveInVisibleItems();
+
+				return true; // reload complete list
+			}
+		} // func SyncChangesAsync
+
+		protected override Task<bool> UpdateShadowFileCoreAsync()
+		{
+			// test for local modifications
+			var hasLocalModifications = GetItems().Cast<CredentialItem>().Any(c => c.State != CredentialItemState.Original);
+
+			return hasLocalModifications ? base.UpdateShadowFileCoreAsync() : SyncChangesAsync();
+		} // proc UpdateShadowFileCoreAsync
 
 		#endregion
 
