@@ -23,6 +23,7 @@ using System.Data;
 using System.Diagnostics.Eventing.Reader;
 using System.Dynamic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Security;
@@ -142,7 +143,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private readonly ICredentialProtector protector;
 		private readonly string fileName;
 		private readonly string shadowFileName; // Local copy for network files
-		private readonly SemaphoreSlim shadowLock = new SemaphoreSlim(0, 1);
+		private readonly SemaphoreSlim shadowLock = new SemaphoreSlim(1, 1);
 
 		private DateTime lastModification;
 		private readonly List<CredentialItemBase> items = new List<CredentialItemBase>();
@@ -306,7 +307,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				if (!shadowFileInfo.Exists || sourceFileInfo.LastWriteTimeUtc > shadowFileInfo.LastWriteTimeUtc)
 					return await CopyFileAsync(sourceFileInfo, shadowFileInfo);
 			}
-			else
+			else if (!sourceFileInfo.Directory.Root.Exists)
 				Log.Default.SourceFileIsOffline(Name, sourceFileInfo.FullName);
 
 			return false;
@@ -364,7 +365,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 		protected virtual IEnumerable<IXmlCredentialItem> LoadItemsCore()
 		{
 			var loadFileName = shadowFileName ?? fileName;
-			return File.Exists(loadFileName) ? XmlCredentialItem.Load(loadFileName) : Array.Empty<IXmlCredentialItem>();
+			var fi = new FileInfo(loadFileName);
+			return fi.Exists && fi.Length > 0 ? XmlCredentialItem.Load(loadFileName) : Array.Empty<IXmlCredentialItem>();
 		} // func LoadItemsCore
 
 		protected abstract CredentialItemBase CreateItem(IXmlCredentialItem item);
@@ -461,9 +463,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 		void IPwAutoSaveFile.Reload()
 			=> Load(false, true);
 
-		private async Task<DateTime> GetLastWriteTimeUtcAsync(string fileName)
+		private Task<DateTime> GetLastWriteTimeUtcAsync(string fileName)
 		{
-			return await Task.Run(() =>
+			return Task.Run(() =>
 			{
 				try
 				{
@@ -485,7 +487,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var shadowFileDate = File.Exists(shadowFileName) ? File.GetLastWriteTimeUtc(shadowFileName) : DateTime.MinValue;
 				var fileDate = await GetLastWriteTimeUtcAsync(fileName); // get remote file time
 
-				if (shadowFileDate < fileDate) // need resync
+				if (shadowFileDate < fileDate || GetLocalModifications()) // need resync
 				{
 					var isChanged = await UpdateShadowFileAsync();
 					if (isChanged)
@@ -503,8 +505,12 @@ namespace Neo.PerfectWorking.Cred.Provider
 		Task IPwAutoSaveFile2.SaveAsync(bool force)
 			=> SaveCoreAsync(force);
 
-		string IPwAutoSaveFile.FileName => fileName;
+		protected virtual bool GetLocalModifications()
+			=> false;
 
+
+		string IPwAutoSaveFile.FileName => fileName;
+		
 		#endregion
 
 		protected CredentialItemBase Find(string targetName)
@@ -994,17 +1000,31 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		#region -- Synchronization ----------------------------------------------------
 
-		private async Task<Tuple<FileStream, DateTime>> OpenFileSafeAsync(string fileName, bool create)
+		private async Task<Tuple<FileStream, DateTime>> OpenFileSafeAsync(string fileName, bool createNew)
 		{
+			var canCreateDirectory = true;
 			var tries = 0;
 			while (true)
 			{
 				var r = await Task.Run<object>(() =>
 				{
+
 					try
 					{
-						var dt = create ? DateTime.MinValue : File.GetLastWriteTimeUtc(fileName);
-						return new Tuple<FileStream, DateTime>(new FileStream(fileName, create ? FileMode.CreateNew : FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None), dt);
+						var dt = createNew ? DateTime.MinValue : File.GetLastWriteTimeUtc(fileName);
+						return new Tuple<FileStream, DateTime>(new FileStream(fileName, createNew ? FileMode.CreateNew : FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None), dt);
+					}
+					catch (DirectoryNotFoundException) when (canCreateDirectory)
+					{
+						canCreateDirectory = false;
+						try
+						{
+							return Directory.CreateDirectory(Path.GetDirectoryName(fileName));
+						}
+						catch (IOException e)
+						{
+							return e;
+						}
 					}
 					catch (IOException e)
 					{
@@ -1014,10 +1034,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 				if (r is Tuple<FileStream, DateTime> t)
 					return t;
+				else if (r is DirectoryInfo)
+				{ }
 				else if (tries++ < 6)
-				{
 					await Task.Delay(500);
-				}
 				else
 				{
 					var ex = (Exception)r;
@@ -1046,7 +1066,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			var safeAllDate = DateTime.UtcNow.AddDays(-60);
 			var deleteTasks = new List<Task>();
 
-			foreach (var fi in await Task.Run(() => di.EnumerateFiles(backupFile + ".*").ToArray()))
+			foreach (var fi in await Task.Run(() => di.EnumerateFiles(Path.GetFileName(backupFile) + ".*").ToArray()))
 			{
 				// search highest index
 				var p = fi.Name.LastIndexOf('.');
@@ -1083,30 +1103,36 @@ namespace Neo.PerfectWorking.Cred.Provider
 			var (trg, lastWriteTime) = await OpenFileSafeAsync(FileName, false);
 			using (trg)
 			{
+				List<IXmlCredentialItem> syncItems;
+
 				if (trg == null)
 					return false;
 
-				// create a copy of the current version
-				if (trg.Length > 0)
+				if (trg.Length > 0) // is there a content
 				{
-					using (var bak = await OpenBackupFileAsync(Path.ChangeExtension(FileName, ".bak")))
+					// create a copy of the current version
+					using (var bak = await OpenBackupFileAsync(Path.ChangeExtension(FileName, ".bak.gz")))
+					using (var dst = new GZipStream(bak, CompressionLevel.Optimal, true))
 						await trg.CopyToAsync(bak);
 					trg.Position = 0;
-				}
 
-				// read current content
-				var readSettings = new XmlReaderSettings
-				{
-					IgnoreComments = true,
-					IgnoreWhitespace = true,
-					CloseInput = false
-				};
-				var syncItems = await Task.Run(() =>
-				{
-					using var xml = XmlReader.Create(trg, readSettings);
-					return XmlCredentialItem.Load(xml, lastWriteTime).ToList();
-				});
-				trg.Position = 0;
+
+					// read current content
+					var readSettings = new XmlReaderSettings
+					{
+						IgnoreComments = true,
+						IgnoreWhitespace = true,
+						CloseInput = false
+					};
+					syncItems = await Task.Run(() =>
+					{
+						using var xml = XmlReader.Create(trg, readSettings);
+						return XmlCredentialItem.Load(xml, lastWriteTime).ToList();
+					});
+					trg.Position = 0;
+				}
+				else
+					syncItems = new List<IXmlCredentialItem>();
 
 				// apply modifications
 				foreach (var cur in GetItems().Cast<CredentialItem>())
@@ -1114,18 +1140,17 @@ namespace Neo.PerfectWorking.Cred.Provider
 					if (cur.State != CredentialItemState.Original)
 					{
 						var idx = syncItems.FindIndex(c => String.Compare(c.TargetName, cur.TargetName, StringComparison.OrdinalIgnoreCase) == 0);
-
-						if (cur.State == CredentialItemState.New || cur.State == CredentialItemState.Modified)
+						if (idx == -1)
 						{
-							if (idx == -1)
+							if (cur.State == CredentialItemState.New || cur.State == CredentialItemState.Modified)
 								syncItems.Add(cur);
-							else
-								syncItems[idx] = cur;
 						}
-						else if (cur.State == CredentialItemState.Deleted)
+						else if (cur.LastWritten > syncItems[idx].LastWritten)
 						{
-							if (idx != -1)
+							if (cur.State == CredentialItemState.Deleted)
 								syncItems.RemoveAt(idx);
+							else if (cur.State == CredentialItemState.New || cur.State == CredentialItemState.Modified)
+								syncItems[idx] = cur;
 						}
 					}
 				}
@@ -1141,9 +1166,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 				using (var shadow = (await OpenFileSafeAsync(ShadowFileName, false)).Item1)
 					await trg.CopyToAsync(shadow);
 
-				// remove cleared items
-				RemoveInVisibleItems();
-
 				return true; // reload complete list
 			}
 		} // func SyncChangesAsync
@@ -1151,10 +1173,13 @@ namespace Neo.PerfectWorking.Cred.Provider
 		protected override Task<bool> UpdateShadowFileCoreAsync()
 		{
 			// test for local modifications
-			var hasLocalModifications = GetItems().Cast<CredentialItem>().Any(c => c.State != CredentialItemState.Original);
+			var hasLocalModifications = GetLocalModifications();
 
-			return hasLocalModifications ? base.UpdateShadowFileCoreAsync() : SyncChangesAsync();
+			return hasLocalModifications ? SyncChangesAsync() : base.UpdateShadowFileCoreAsync();
 		} // proc UpdateShadowFileCoreAsync
+
+		protected override bool GetLocalModifications()
+			=> GetItems().Cast<CredentialItem>().Any(c => c.State != CredentialItemState.Original);
 
 		#endregion
 

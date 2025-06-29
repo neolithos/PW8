@@ -92,7 +92,7 @@ d {
 
 package("test",
 	function (self)
-		self.passwordStore = creds:CreateFileCredentialProvider("pwds", cryptKey.Protector);
+		self.passwordStore = creds:CreateFileCredentialProvider("M:\\Data\\PW-Debug\\pwds\\data.xcreds", cryptKey.Protector);
 		-- self.tecwareCreds = creds:CreateFileCredentialProvider('C:\\Temp\\Test\\tecware.xcreds', cryptKey.twDes, true);
 
 

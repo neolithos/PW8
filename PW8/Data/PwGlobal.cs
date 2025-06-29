@@ -618,7 +618,7 @@ namespace Neo.PerfectWorking.Data
 			{
 				if (autoSavePendingTasks[i].IsFinsied())
 					autoSavePendingTasks.RemoveAt(i);
-				if (autoSavePendingTasks[i].IsMe(autoSave))
+				else if (autoSavePendingTasks[i].IsMe(autoSave))
 					exists = true;
 			}
 			return exists;
