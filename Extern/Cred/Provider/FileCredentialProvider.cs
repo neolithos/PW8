@@ -14,6 +14,7 @@
 //
 #endregion
 using Neo.PerfectWorking.Data;
+using Neo.PerfectWorking.Stuff;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -39,7 +40,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 {
 	#region -- class FileCredentialProviderBase ---------------------------------------
 
-	internal abstract class FileCredentialProviderBase : ICredentialProvider, IPwAutoSaveFile2
+	internal abstract class FileCredentialProviderBase : ICredentialProvider, IPwAutoPersistFileAsync
 	{
 		#region -- class CredentialItemBase -------------------------------------------
 
@@ -143,9 +144,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private readonly ICredentialProtector protector;
 		private readonly string fileName;
 		private readonly string shadowFileName; // Local copy for network files
-		private readonly SemaphoreSlim shadowLock = new SemaphoreSlim(1, 1);
 
-		private DateTime lastModification;
+		private DateTime lastModification = DateTime.MinValue;
+		// todo: private DateTime lastReloadTime = DateTime.MinValue;
 		private readonly List<CredentialItemBase> items = new List<CredentialItemBase>();
 
 		#region -- Ctor/Dtor ----------------------------------------------------------
@@ -156,8 +157,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 			this.fileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
 			this.protector = protector ?? throw new ArgumentNullException(nameof(protector));
 			this.shadowFileName = shadowFileName;
-
-			lastModification = DateTime.MinValue;
 		} // ctor
 
 		#endregion
@@ -239,7 +238,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		#endregion
 
-		#region -- IPwAutoSaveFile - members ------------------------------------------
+		#region -- IPwAutoPersistFileAsync - members ----------------------------------
 
 		#region -- Update Shadow File -------------------------------------------------
 
@@ -318,49 +317,28 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (shadowFileName == null)
 				return false;
 
-			// only run one
-			await shadowLock.WaitAsync();
-			try
-			{
-				return await UpdateShadowFileCoreAsync();
-			}
-			finally
-			{
-				shadowLock.Release();
-			}
+			return await UpdateShadowFileCoreAsync();
 		} // func UpdateShadowFileAsync
-
-		private Task ContinueShadowFile(Task<bool> task)
-		{
-			return task?.ContinueWith(
-				t =>
-				{
-					if (t.Result) // reload new version
-						Load(false, false);
-				}
-				, TaskContinuationOptions.ExecuteSynchronously
-			) ?? Task.CompletedTask;
-		} // proc ContinueShadowFile
 
 		#endregion
 
 		#region -- Load ---------------------------------------------------------------
 
-		protected virtual DateTime GetLastWriteTimeSafe()
-		{
-			try
-			{
-				var f = shadowFileName ?? fileName;
-				return File.Exists(f) ? File.GetLastWriteTime(f) : DateTime.MinValue;
-			}
-			catch (IOException)
-			{
-				return DateTime.MinValue;
-			}
-		} // func GetLastWriteTimeSafe
+		//protected virtual DateTime GetLastWriteTimeSafe()
+		//{
+		//	try
+		//	{
+		//		var f = shadowFileName ?? fileName;
+		//		return File.Exists(f) ? File.GetLastWriteTime(f) : DateTime.MinValue;
+		//	}
+		//	catch (IOException)
+		//	{
+		//		return DateTime.MinValue;
+		//	}
+		//} // func GetLastWriteTimeSafe
 
-		protected bool IsNewDataOnDisk()
-			=> lastModification < GetLastWriteTimeSafe();
+		//protected bool IsNewDataOnDisk()
+		//	=> lastModification < GetLastWriteTimeSafe();
 
 		protected virtual IEnumerable<IXmlCredentialItem> LoadItemsCore()
 		{
@@ -371,7 +349,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		protected abstract CredentialItemBase CreateItem(IXmlCredentialItem item);
 
-		private void LoadItemsSync()
+		private void LoadItemsSync(DateTime lastWriteTime)
 		{
 			var itemsAdded = new List<ICredentialInfo>();
 			var itemsRemoved = new List<ICredentialInfo>();
@@ -379,7 +357,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 			var itemsCount = items.Count;
 
 			// update items
-			var lm = GetLastWriteTimeSafe();
 			foreach (var cur in LoadItemsCore())
 			{
 				if (cur is CredentialItemBase item)
@@ -429,87 +406,66 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (itemsRemoved.Count > 0)
 				OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, itemsRemoved));
 
-			lastModification = lm;
+			lastModification = lastWriteTime;
 		} // proc LoadItemsSync
-
-		protected Task Load(bool force, bool allowSyncData)
-		{
-			Task<bool> shadowFileSynced = null;
-
-			// try sync shadow file
-			if (allowSyncData)
-			{
-				shadowFileSynced = UpdateShadowFileAsync();
-				if (shadowFileSynced.Wait(200))
-				{
-					if (shadowFileSynced.Result)
-						force = true;
-					shadowFileSynced = null;
-				}
-			}
-
-			// update items
-			if (force || IsNewDataOnDisk())
-				LoadItemsSync();
-
-			// wait for shadow copy
-			return ContinueShadowFile(shadowFileSynced) ?? Task.CompletedTask;
-		} // proc Load
 
 		#endregion
 
-		protected abstract bool Save(bool force);
+		//private Task<DateTime> GetLastWriteTimeUtcAsync(string fileName)
+		//{
+		//	return Task.Run(() =>
+		//	{
+		//		try
+		//		{
+		//			return File.GetLastWriteTimeUtc(fileName);
+		//		}
+		//		catch (IOException)
+		//		{
+		//			return DateTime.MinValue;
+		//		}
+		//	});
+		//} // func GetLastWriteTimeUtcAsync
 
-		void IPwAutoSaveFile.Reload()
-			=> Load(false, true);
-
-		private Task<DateTime> GetLastWriteTimeUtcAsync(string fileName)
+		async Task IPwAutoPersistFileAsync.ReloadAsync()
 		{
-			return Task.Run(() =>
+			void LoadItemsFromLocalDisk(string fileName)
 			{
-				try
-				{
-					return File.GetLastWriteTimeUtc(fileName);
-				}
-				catch (IOException)
-				{
-					return DateTime.MinValue;
-				}
-			});
-		} // func GetLastWriteTimeUtcAsync
+				var dt = GetLastWriteTimeSecure(fileName);
+				if (dt.HasValue && dt.Value > lastModification)
+					LoadItemsSync(dt.Value);
+			} // proc LoadItemsFromLocalDisk
 
-		async Task IPwAutoSaveFile2.ReloadAsync()
-		{
-			if (shadowFileName == null)
-				await Load(false, true);
-			else
+			// first check file time stamp
+			if (shadowFileName is null) // shadow is null, we a have a local file
+				LoadItemsFromLocalDisk(fileName);
+			else // shadow file shows a remote source
 			{
-				var shadowFileDate = File.Exists(shadowFileName) ? File.GetLastWriteTimeUtc(shadowFileName) : DateTime.MinValue;
-				var fileDate = await GetLastWriteTimeUtcAsync(fileName); // get remote file time
+				var enforceReload = false;
 
-				if (shadowFileDate < fileDate || GetLocalModifications()) // need resync
-				{
-					var isChanged = await UpdateShadowFileAsync();
-					if (isChanged)
-						await Load(false, false);
-				}
+				// first load what we have
+				LoadItemsFromLocalDisk(fileName);
+
+				// that try get the remote file
+				if ((DateTime.Now - lastReloadTime).TotalMinutes > 5) // only check every 5 minutes
+					enforceReload = await UpdateShadowFileCoreAsync();
+
+				// do we need a reload
+				if (enforceReload)
+					LoadItemsFromLocalDisk(fileName);
 			}
-		} // func IPwAutoSaveFile2.ReloadAsync
+		} // proc IPwAutoPersistFileAsync.ReloadAsync
 
-		private Task SaveCoreAsync(bool force)
-			=> Save(force) ? ContinueShadowFile(UpdateShadowFileAsync()) : Task.CompletedTask;
+		Task IPwAutoPersistFileAsync.SaveAsync(bool force)
+		{
+			if (shadowFileName is null)
+			{
+				var dt = File.GetLastWriteTimeUtc(FileName);
 
-		void IPwAutoSaveFile.Save(bool force)
-			=> SaveCoreAsync(force);
+				SaveItemsCore();
+			}
+		} // proc IPwAutoPersistFileAsync.SaveAsync
 
-		Task IPwAutoSaveFile2.SaveAsync(bool force)
-			=> SaveCoreAsync(force);
-
-		protected virtual bool GetLocalModifications()
-			=> false;
-
-
-		string IPwAutoSaveFile.FileName => fileName;
+		string IPwAutoPersist.FileName => fileName;
 		
 		#endregion
 

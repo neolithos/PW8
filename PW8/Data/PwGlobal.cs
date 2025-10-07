@@ -669,7 +669,7 @@ namespace Neo.PerfectWorking.Data
 								if (dt.HasValue && dt.Value != c.LastModificationTime)
 									s.Reload();
 							}
-							else if (c is IPwAutoPersistFileAsync a && (DateTime.Now - a.LastSuccessfulReload) > a.ReloadIntervall) // Spawn task to test for changes
+							else if (c is IPwAutoPersistFileAsync a) // Spawn task to test for changes
 							{
 								AppendAutoSavePendingTask(a, a.ReloadAsync);
 							}

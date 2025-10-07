@@ -380,7 +380,7 @@ namespace Neo.PerfectWorking.Data
 								ReadProperties(xml, this);
 						}
 
-						lastFileModification = fileInfo.LastWriteTime;
+						lastFileModification = fileInfo.LastWriteTimeUtc;
 					}
 					catch
 					{
@@ -413,13 +413,13 @@ namespace Neo.PerfectWorking.Data
 			}
 
 			fileInfo.Refresh();
-			lastFileModification = fileInfo.LastWriteTime;
+			lastFileModification = fileInfo.LastWriteTimeUtc;
 		} // proc Save
 
 		void IPwAutoPersistFile.Reload()
 			=> Load();
 
-		DateTime IPwAutoPersistFile.LastWriteTime => fileInfo.LastWriteTime;
+		DateTime IPwAutoPersistFile.LastWriteTime => fileInfo.LastWriteTimeUtc;
 		DateTime IPwAutoPersist.LastModificationTime => lastFileModification;
 
 		#endregion

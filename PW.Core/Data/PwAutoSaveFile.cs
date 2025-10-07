@@ -59,14 +59,9 @@ namespace Neo.PerfectWorking.Data
 		/// <param name="force"></param>
 		/// <returns></returns>
 		Task SaveAsync(bool force = false);
-		/// <summary></summary>
+		/// <summary>Gets called all the time to reload a file</summary>
 		/// <returns></returns>
 		Task ReloadAsync();
-
-		/// <summary>Return the last reload.</summary>
-		DateTime LastSuccessfulReload { get; }
-		/// <summary>Defines the time between reloads.</summary>
-		TimeSpan ReloadIntervall { get; }
 	} // interface IPwAutoPersistFileAsync
 
 	#endregion
