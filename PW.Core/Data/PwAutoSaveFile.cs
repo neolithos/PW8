@@ -19,9 +19,24 @@ using System.Threading.Tasks;
 
 namespace Neo.PerfectWorking.Data
 {
-	#region -- interface IPwAutoSaveFile ----------------------------------------------
+	#region -- interface IPwAutoPersist -----------------------------------------------
 
-	public interface IPwAutoSaveFile
+	public interface IPwAutoPersist
+	{
+		/// <summary>Modification time, the file was loaded</summary>
+		DateTime LastModificationTime { get; }
+		/// <summary>Is the file modificated and ready to save.</summary>
+		bool IsModified { get; }
+
+		/// <summary>Filename, only for debug and visualisation.</summary>
+		string FileName { get; }
+	} // interface IPwAutoPersist
+
+	#endregion
+
+	#region -- interface IPwAutoPersistFile -------------------------------------------
+
+	public interface IPwAutoPersistFile : IPwAutoPersist
 	{
 		/// <summary>Save file</summary>
 		/// <param name="force"></param>
@@ -29,20 +44,16 @@ namespace Neo.PerfectWorking.Data
 		/// <summary>Reload file from disk.</summary>
 		void Reload();
 
-		/// <summary>Modification time, the file was loaded</summary>
-		DateTime LastModificationTime { get; }
-		/// <summary>Is the file modificated.</summary>
-		bool IsModified { get; }
-		/// <summary>Filename</summary>
-		string FileName { get; }
-	} // interface IPwAutoSaveFile
+		/// <summary>Reads the last write time of the monitored file from disk.</summary>
+		DateTime LastWriteTime { get; }
+	} // interface IPwAutoPersistFile
 
 	#endregion
 
-	#region -- interface IPwAutoSaveFile ----------------------------------------------
+	#region -- interface IPwAutoPersistFileAsync --------------------------------------
 
 	/// <summary>Extension to reload or save files asynchron.</summary>
-	public interface IPwAutoSaveFile2 : IPwAutoSaveFile
+	public interface IPwAutoPersistFileAsync : IPwAutoPersist
 	{
 		/// <summary></summary>
 		/// <param name="force"></param>
@@ -51,7 +62,12 @@ namespace Neo.PerfectWorking.Data
 		/// <summary></summary>
 		/// <returns></returns>
 		Task ReloadAsync();
-	} // interface IPwAutoSaveFile
+
+		/// <summary>Return the last reload.</summary>
+		DateTime LastSuccessfulReload { get; }
+		/// <summary>Defines the time between reloads.</summary>
+		TimeSpan ReloadIntervall { get; }
+	} // interface IPwAutoPersistFileAsync
 
 	#endregion
 }

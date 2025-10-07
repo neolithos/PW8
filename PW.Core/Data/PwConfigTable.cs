@@ -28,7 +28,7 @@ using TecWare.DE.Stuff;
 
 namespace Neo.PerfectWorking.Data
 {
-	public sealed class PwConfigTable : LuaTable, IPwAutoSaveFile, IDisposable
+	public sealed class PwConfigTable : LuaTable, IPwAutoPersistFile, IDisposable
 	{
 		const string rootNodeName = "config";
 		const string xElementName = "x";
@@ -416,15 +416,16 @@ namespace Neo.PerfectWorking.Data
 			lastFileModification = fileInfo.LastWriteTime;
 		} // proc Save
 
-		void IPwAutoSaveFile.Reload()
+		void IPwAutoPersistFile.Reload()
 			=> Load();
+
+		DateTime IPwAutoPersistFile.LastWriteTime => fileInfo.LastWriteTime;
+		DateTime IPwAutoPersist.LastModificationTime => lastFileModification;
 
 		#endregion
 
 		public bool IsModified => lastFileModification < lastDataModification;
 		public bool IsLoading => isLoading;
 		public string FileName => fileInfo.FullName;
-
-		DateTime IPwAutoSaveFile.LastModificationTime => lastFileModification;
 	} // class PwConfigTable
 }

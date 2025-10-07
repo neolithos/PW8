@@ -157,7 +157,7 @@ namespace Neo.PerfectWorking.Data
 
 		private readonly List<string> resolvePaths = new List<string>();
 		private readonly IPwCollection<IPwPackageServiceProvider> serviceProviders;
-		private readonly IPwCollection<IPwAutoSaveFile> autoSaveFiles;
+		private readonly IPwCollection<IPwAutoPersist> autoPersist;
 		private readonly List<AutoSavePendingTask> autoSavePendingTasks = new List<AutoSavePendingTask>();
 		private readonly IPwCollection<ICredentials> credentials;
 
@@ -175,7 +175,7 @@ namespace Neo.PerfectWorking.Data
 			Actions = RegisterCollection<IPwAction>(this);
 			WindowHooks = RegisterCollection<PwWindowHook>(this);
 			serviceProviders = RegisterCollection<IPwPackageServiceProvider>(this);
-			autoSaveFiles = RegisterCollection<IPwAutoSaveFile>(this);
+			autoPersist = RegisterCollection<IPwAutoPersist>(this);
 			credentials = RegisterCollection<ICredentials>(this);
 
 			// add resolver paths
@@ -569,18 +569,20 @@ namespace Neo.PerfectWorking.Data
 
 		#region -- Auto Save Files Manager --------------------------------------------
 
+		#region -- class AutoSavePendingTask ------------------------------------------
+
 		private sealed class AutoSavePendingTask
 		{
-			private readonly IPwAutoSaveFile owner;
+			private readonly IPwAutoPersistFileAsync owner;
 			private readonly Task task;
 
-			public AutoSavePendingTask(IPwAutoSaveFile owner, Task task)
+			public AutoSavePendingTask(IPwAutoPersistFileAsync owner, Task task)
 			{
 				this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
 				this.task = task ?? throw new ArgumentNullException(nameof(task));
 			} // ctor
 
-			public bool IsMe(IPwAutoSaveFile autoSave)
+			public bool IsMe(IPwAutoPersistFileAsync autoSave)
 				=> ReferenceEquals(autoSave, owner);
 
 			public bool IsFinsied()
@@ -599,11 +601,13 @@ namespace Neo.PerfectWorking.Data
 			} // func IsFinished
 		} // class AutoSavePendingTask
 
-		private DateTime? GetLastWriteTimeSecure(string fullPath)
+		#endregion
+
+		private DateTime? GetLastWriteTimeSecure(IPwAutoPersistFile autoSave)
 		{
 			try
 			{
-				return File.GetLastWriteTime(fullPath);
+				return autoSave.LastWriteTime;
 			}
 			catch
 			{
@@ -611,7 +615,7 @@ namespace Neo.PerfectWorking.Data
 			}
 		} // func GetLastWriteTimeSecure
 
-		private bool IsAutoSavePendingTaskExists(IPwAutoSaveFile2 autoSave)
+		private bool IsAutoSavePendingTaskExists(IPwAutoPersistFileAsync autoSave)
 		{
 			var exists = false;
 			for (var i = autoSavePendingTasks.Count - 1; i >= 0; i--)
@@ -624,7 +628,7 @@ namespace Neo.PerfectWorking.Data
 			return exists;
 		} // proc AutoSavePendingTaskExists
 
-		private void AppendAutoSavePendingTask(IPwAutoSaveFile2 autoSave, Func<Task> task)
+		private void AppendAutoSavePendingTask(IPwAutoPersistFileAsync autoSave, Func<Task> task)
 		{
 			if (IsAutoSavePendingTaskExists(autoSave))
 				return;
@@ -644,25 +648,32 @@ namespace Neo.PerfectWorking.Data
 		{
 			if (elapsed > 100)
 			{
-				lock (autoSaveFiles.SyncRoot)
+				lock (autoPersist.SyncRoot)
 				{
-					foreach (var c in autoSaveFiles)
+					foreach (var c in autoPersist)
 					{
-						if (c.IsModified)
+						if (c.IsModified) // needs a save
 						{
-							if (c is IPwAutoSaveFile2 c2)
-								AppendAutoSavePendingTask(c2, () => c2.SaveAsync());
+							if (c is IPwAutoPersistFileAsync a)
+								AppendAutoSavePendingTask(a, () => a.SaveAsync());
+							else if (c is IPwAutoPersistFile s)
+								s.Save();
 							else
-								c.Save();
+								throw new InvalidOperationException($"AutoPersist object '{c.GetType().Name}' does not support save.");
 						}
-						else if (FileSystemItem.IsLocalDrive(c.FileName)) // test reload in main thread
+						else
 						{
-							var dt = GetLastWriteTimeSecure(c.FileName);
-							if (dt.HasValue && dt.Value != c.LastModificationTime)
-								c.Reload();
+							if (c is IPwAutoPersistFile s) // test reload in main thread
+							{
+								var dt = GetLastWriteTimeSecure(s);
+								if (dt.HasValue && dt.Value != c.LastModificationTime)
+									s.Reload();
+							}
+							else if (c is IPwAutoPersistFileAsync a && (DateTime.Now - a.LastSuccessfulReload) > a.ReloadIntervall) // Spawn task to test for changes
+							{
+								AppendAutoSavePendingTask(a, a.ReloadAsync);
+							}
 						}
-						else if (c is IPwAutoSaveFile2 c2) // Spawn task to test for changes
-							AppendAutoSavePendingTask(c2, c2.ReloadAsync);
 					}
 				}
 				return false;
