@@ -145,8 +145,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private readonly string fileName;
 		private readonly string shadowFileName; // Local copy for network files
 
+		private readonly SemaphoreSlim shadowSemaphore = new SemaphoreSlim(1, 1);
 		private DateTime lastModification = DateTime.MinValue;
-		// todo: private DateTime lastReloadTime = DateTime.MinValue;
+		private DateTime lastReloadTime = DateTime.MinValue;
 		private readonly List<CredentialItemBase> items = new List<CredentialItemBase>();
 
 		#region -- Ctor/Dtor ----------------------------------------------------------
@@ -304,7 +305,11 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (sourceFileInfo.Exists)
 			{
 				if (!shadowFileInfo.Exists || sourceFileInfo.LastWriteTimeUtc > shadowFileInfo.LastWriteTimeUtc)
-					return await CopyFileAsync(sourceFileInfo, shadowFileInfo);
+				{
+					var copied = await CopyFileAsync(sourceFileInfo, shadowFileInfo);
+					lastReloadTime = DateTime.UtcNow;
+					return copied;
+				}
 			}
 			else if (!sourceFileInfo.Directory.Root.Exists)
 				Log.Default.SourceFileIsOffline(Name, sourceFileInfo.FullName);
@@ -317,28 +322,31 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (shadowFileName == null)
 				return false;
 
-			return await UpdateShadowFileCoreAsync();
+			await shadowSemaphore.WaitAsync();
+			try
+			{
+				return await UpdateShadowFileCoreAsync();
+			}
+			finally
+			{
+				shadowSemaphore.Release();
+			}
 		} // func UpdateShadowFileAsync
+
+		private void BeginUpdateShadowFile()
+		{
+			UpdateShadowFileAsync()
+				.ContinueWith(EndUpdateShadowFile);
+		} // proc BeginUpdateShadowFile
+
+		private void EndUpdateShadowFile(Task<bool> task)
+		{
+			task.Wait();
+		} // proc EndUpdateShadowFile
 
 		#endregion
 
 		#region -- Load ---------------------------------------------------------------
-
-		//protected virtual DateTime GetLastWriteTimeSafe()
-		//{
-		//	try
-		//	{
-		//		var f = shadowFileName ?? fileName;
-		//		return File.Exists(f) ? File.GetLastWriteTime(f) : DateTime.MinValue;
-		//	}
-		//	catch (IOException)
-		//	{
-		//		return DateTime.MinValue;
-		//	}
-		//} // func GetLastWriteTimeSafe
-
-		//protected bool IsNewDataOnDisk()
-		//	=> lastModification < GetLastWriteTimeSafe();
 
 		protected virtual IEnumerable<IXmlCredentialItem> LoadItemsCore()
 		{
@@ -409,59 +417,81 @@ namespace Neo.PerfectWorking.Cred.Provider
 			lastModification = lastWriteTime;
 		} // proc LoadItemsSync
 
-		#endregion
-
-		//private Task<DateTime> GetLastWriteTimeUtcAsync(string fileName)
-		//{
-		//	return Task.Run(() =>
-		//	{
-		//		try
-		//		{
-		//			return File.GetLastWriteTimeUtc(fileName);
-		//		}
-		//		catch (IOException)
-		//		{
-		//			return DateTime.MinValue;
-		//		}
-		//	});
-		//} // func GetLastWriteTimeUtcAsync
-
-		async Task IPwAutoPersistFileAsync.ReloadAsync()
+		private async Task ReloadAsync()
 		{
-			void LoadItemsFromLocalDisk(string fileName)
-			{
-				var dt = GetLastWriteTimeSecure(fileName);
-				if (dt.HasValue && dt.Value > lastModification)
-					LoadItemsSync(dt.Value);
-			} // proc LoadItemsFromLocalDisk
-
 			// first check file time stamp
 			if (shadowFileName is null) // shadow is null, we a have a local file
-				LoadItemsFromLocalDisk(fileName);
+				await LoadItemsFromLocalDiskAsync(fileName);
 			else // shadow file shows a remote source
 			{
 				var enforceReload = false;
 
 				// first load what we have
-				LoadItemsFromLocalDisk(fileName);
+				await LoadItemsFromLocalDiskAsync(shadowFileName);
 
 				// that try get the remote file
 				if ((DateTime.Now - lastReloadTime).TotalMinutes > 5) // only check every 5 minutes
-					enforceReload = await UpdateShadowFileCoreAsync();
+					enforceReload = await UpdateShadowFileAsync();
 
 				// do we need a reload
 				if (enforceReload)
-					LoadItemsFromLocalDisk(fileName);
+					await LoadItemsFromLocalDiskAsync(shadowFileName);
 			}
-		} // proc IPwAutoPersistFileAsync.ReloadAsync
+		} // proc ReloadAsync
 
-		Task IPwAutoPersistFileAsync.SaveAsync(bool force)
+		protected void BeginReload()
+			=> ReloadAsync().ContinueWith(EndReload);
+
+		private void EndReload(Task task)
+			=> task.Wait();
+
+		#endregion
+
+		protected abstract void SaveItemsSync();
+		
+		private Task<DateTime?> GetLastWriteTimeUtcAsync(string fileName)
+		{
+			return Task.Run(() =>
+			{
+				try
+				{
+					return File.GetLastWriteTimeUtc(fileName);
+				}
+				catch (IOException)
+				{
+					return (DateTime?)null;
+				}
+			});
+		} // func GetLastWriteTimeUtcAsync
+
+		private async Task LoadItemsFromLocalDiskAsync(string fileName)
+		{
+			var dt = await GetLastWriteTimeUtcAsync(fileName);
+			if (dt.HasValue && dt.Value > lastModification)
+				LoadItemsSync(dt.Value);
+		} // proc LoadItemsFromLocalDisk
+
+		Task IPwAutoPersistFileAsync.ReloadAsync()
+			=> ReloadAsync();
+
+		async Task IPwAutoPersistFileAsync.SaveAsync(bool force)
 		{
 			if (shadowFileName is null)
 			{
-				var dt = File.GetLastWriteTimeUtc(FileName);
+				// get current version from Disk
+				await LoadItemsFromLocalDiskAsync(fileName);
 
-				SaveItemsCore();
+				// Save changes
+				if (IsModified)
+					SaveItemsSync();
+			}
+			else
+			{
+				// Save current changes to disk
+				SaveItemsSync();
+
+				// Start synchronisation
+				BeginUpdateShadowFile();
 			}
 		} // proc IPwAutoPersistFileAsync.SaveAsync
 
@@ -549,8 +579,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		public FileReadOnlyCredentialProvider(ICredPackage package, string fileName, ICredentialProtector protector, string shadowFileName)
 			: base(package, fileName, protector, shadowFileName)
 		{
-			// Start load
-			Load(true, true);
+			BeginReload(); // Start load
 		} // ctor
 
 		private static Exception GetReadOnlyException()
@@ -572,7 +601,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		protected override void OnItemRemoved(CredentialItemBase item)
 			=> throw GetReadOnlyException();
 
-		protected override bool Save(bool force)
+		protected override void SaveItemsSync()
 			=> throw GetReadOnlyException();
 
 		#endregion
@@ -948,8 +977,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				changeFileName = shadowFileName.Substring(0, i) + "-changes" + shadowFileName.Substring(i + 7);
 			}
 
-			// Start load
-			Load(true, true);
+			BeginReload(); // Start load
 		} // ctor
 
 		#endregion
@@ -1126,6 +1154,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func SyncChangesAsync
 
+		private bool GetLocalModifications()
+			=> GetItems().Cast<CredentialItem>().Any(c => c.State != CredentialItemState.Original);
+
 		protected override Task<bool> UpdateShadowFileCoreAsync()
 		{
 			// test for local modifications
@@ -1134,9 +1165,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 			return hasLocalModifications ? SyncChangesAsync() : base.UpdateShadowFileCoreAsync();
 		} // proc UpdateShadowFileCoreAsync
 
-		protected override bool GetLocalModifications()
-			=> GetItems().Cast<CredentialItem>().Any(c => c.State != CredentialItemState.Original);
-
 		#endregion
 
 		#region -- Load/Save ----------------------------------------------------------
@@ -1144,30 +1172,30 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private void SetModified()
 			=> isModified = true;
 
-		protected override DateTime GetLastWriteTimeSafe()
-		{
-			if (changeFileName != null)
-			{
-				try
-				{
-					var dtChangeFile = DateTime.MinValue;
-					var dtShadowFile = DateTime.MinValue;
+		//protected override DateTime GetLastWriteTimeSafe()
+		//{
+		//	if (changeFileName != null)
+		//	{
+		//		try
+		//		{
+		//			var dtChangeFile = DateTime.MinValue;
+		//			var dtShadowFile = DateTime.MinValue;
 
-					if (File.Exists(changeFileName))
-						dtChangeFile = File.GetLastWriteTime(changeFileName);
-					else if (File.Exists(ShadowFileName))
-						dtShadowFile = File.GetLastWriteTime(ShadowFileName);
+		//			if (File.Exists(changeFileName))
+		//				dtChangeFile = File.GetLastWriteTime(changeFileName);
+		//			else if (File.Exists(ShadowFileName))
+		//				dtShadowFile = File.GetLastWriteTime(ShadowFileName);
 
-					return dtShadowFile < dtChangeFile ? dtChangeFile : dtShadowFile;
-				}
-				catch (IOException)
-				{
-					return DateTime.MinValue;
-				}
-			}
-			else
-				return base.GetLastWriteTimeSafe();
-		} // func GetLastWriteTimeSafe
+		//			return dtShadowFile < dtChangeFile ? dtChangeFile : dtShadowFile;
+		//		}
+		//		catch (IOException)
+		//		{
+		//			return DateTime.MinValue;
+		//		}
+		//	}
+		//	else
+		//		return base.GetLastWriteTimeSafe();
+		//} // func GetLastWriteTimeSafe
 
 		protected override IEnumerable<IXmlCredentialItem> LoadItemsCore()
 		{
@@ -1250,7 +1278,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			};
 		} // func GetStateFromName
 
-		private bool SaveChangeMode()
+		private void SaveChangeMode()
 		{
 			var hasChanges = false;
 
@@ -1275,7 +1303,8 @@ namespace Neo.PerfectWorking.Cred.Provider
 				Log.Default.FileProviderSaveFailed(Name, changeFileName, m);
 
 			isModified = false;
-			return hasChanges;
+			if (hasChanges)
+				BeginReload();
 		} // proc SaveChangeMode
 
 		private void SaveDirectMode()
@@ -1294,7 +1323,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 			if (m is null)
 			{
 				// reload data
-				Load(true, false);
+				BeginReload();
 			}
 			else
 				Log.Default.FileProviderSaveFailed(Name, fileName, m);
@@ -1303,16 +1332,13 @@ namespace Neo.PerfectWorking.Cred.Provider
 			isModified = false;
 		} // proc SaveDirectMode
 
-		protected override bool Save(bool force)
+		protected override void SaveItemsSync()
 		{
 			if (changeFileName != null)
-				return SaveChangeMode();
+				SaveChangeMode();
 			else
-			{
 				SaveDirectMode();
-				return false;
-			}
-		} // proc Save
+		} // proc SaveItemsSync
 
 		#endregion
 
