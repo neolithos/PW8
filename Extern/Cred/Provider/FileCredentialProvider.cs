@@ -307,7 +307,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 				if (!shadowFileInfo.Exists || sourceFileInfo.LastWriteTimeUtc > shadowFileInfo.LastWriteTimeUtc)
 				{
 					var copied = await CopyFileAsync(sourceFileInfo, shadowFileInfo);
-					lastReloadTime = DateTime.UtcNow;
 					return copied;
 				}
 			}
@@ -317,15 +316,20 @@ namespace Neo.PerfectWorking.Cred.Provider
 			return false;
 		} // proc UpdateShadowFileCoreAsync
 
-		protected async Task<bool> UpdateShadowFileAsync()
+		protected async Task UpdateShadowFileAsync()
 		{
 			if (shadowFileName == null)
-				return false;
+				return;
 
 			await shadowSemaphore.WaitAsync();
 			try
 			{
-				return await UpdateShadowFileCoreAsync();
+				var enforceReload = await UpdateShadowFileCoreAsync();
+				lastReloadTime = DateTime.UtcNow;
+
+				// do we need a reload
+				if (enforceReload)
+					await LoadItemsFromLocalDiskAsync(shadowFileName);
 			}
 			finally
 			{
@@ -339,9 +343,16 @@ namespace Neo.PerfectWorking.Cred.Provider
 				.ContinueWith(EndUpdateShadowFile);
 		} // proc BeginUpdateShadowFile
 
-		private void EndUpdateShadowFile(Task<bool> task)
+		private void EndUpdateShadowFile(Task task)
 		{
-			task.Wait();
+			try
+			{
+				task.Wait();
+			}
+			catch (Exception e)
+			{
+				Log.FileProviderLoadFailed(Name, e);
+			}
 		} // proc EndUpdateShadowFile
 
 		#endregion
@@ -424,18 +435,12 @@ namespace Neo.PerfectWorking.Cred.Provider
 				await LoadItemsFromLocalDiskAsync(fileName);
 			else // shadow file shows a remote source
 			{
-				var enforceReload = false;
-
 				// first load what we have
 				await LoadItemsFromLocalDiskAsync(shadowFileName);
 
 				// that try get the remote file
-				if ((DateTime.Now - lastReloadTime).TotalMinutes > 5) // only check every 5 minutes
-					enforceReload = await UpdateShadowFileAsync();
-
-				// do we need a reload
-				if (enforceReload)
-					await LoadItemsFromLocalDiskAsync(shadowFileName);
+				if ((DateTime.UtcNow - lastReloadTime).TotalMinutes > 5) // only check every 5 minutes
+					await UpdateShadowFileAsync();
 			}
 		} // proc ReloadAsync
 
@@ -443,12 +448,21 @@ namespace Neo.PerfectWorking.Cred.Provider
 			=> ReloadAsync().ContinueWith(EndReload);
 
 		private void EndReload(Task task)
-			=> task.Wait();
+		{
+			try
+			{
+				task.Wait();
+			}
+			catch (Exception e)
+			{
+				Log.FileProviderLoadFailed(Name, e);
+			}
+		} // proc EndReload
 
 		#endregion
 
 		protected abstract void SaveItemsSync();
-		
+
 		private Task<DateTime?> GetLastWriteTimeUtcAsync(string fileName)
 		{
 			return Task.Run(() =>
@@ -496,7 +510,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 		} // proc IPwAutoPersistFileAsync.SaveAsync
 
 		string IPwAutoPersist.FileName => fileName;
-		
+
 		#endregion
 
 		protected CredentialItemBase Find(string targetName)
@@ -763,16 +777,21 @@ namespace Neo.PerfectWorking.Cred.Provider
 						else
 							props = PropertyName.All;
 
-						userName = item.UserName;
-						comment = item.Comment;
-						encryptedPassword = item.EncryptedPassword;
-						lastWritten = item.LastWritten;
+						if (props != PropertyName.None)
+						{
+							userName = item.UserName;
+							comment = item.Comment;
+							encryptedPassword = item.EncryptedPassword;
+							lastWritten = item.LastWritten;
 
-						OnPropertyChanged(props, true);
-						if (s == CredentialItemState.Deleted)
-							SetState(CredentialItemState.Deleted);
+							OnPropertyChanged(props, true);
+							if (s == CredentialItemState.Deleted)
+								SetState(CredentialItemState.Deleted);
+							else
+								SetState(original is null ? CredentialItemState.New : CredentialItemState.Modified);
+						}
 						else
-							SetState(original is null ? CredentialItemState.New : CredentialItemState.Modified);
+							SetState(CredentialItemState.Original);
 
 						return props != PropertyName.None;
 					}
@@ -1010,6 +1029,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 							return e;
 						}
 					}
+					catch (UnauthorizedAccessException e)
+					{
+						return e;
+					}
 					catch (IOException e)
 					{
 						return e;
@@ -1026,6 +1049,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 				{
 					var ex = (Exception)r;
 					Log.FileProviderSaveFailed(Name, ex);
+					return new Tuple<FileStream, DateTime>(null, DateTime.MinValue);
 				}
 			}
 		} // func OpenFileSafeAsync
@@ -1062,13 +1086,16 @@ namespace Neo.PerfectWorking.Cred.Provider
 				var key = currentTime.Year * 100 + currentTime.Month;
 				if (lastOfMonth.TryGetValue(key, out var currentFileInfo))
 				{
-					if (currentFileInfo.LastWriteTimeUtc < currentTime && currentTime < safeAllDate)
+					if (currentFileInfo.LastWriteTimeUtc < safeAllDate)
 					{
-						deleteTasks.Add(DeleteFileSaveAsync(currentFileInfo.FullName));
-						lastOfMonth[key] = fi;
+						if (currentFileInfo.LastWriteTimeUtc > currentTime) // der erst im Monat soll bleiben
+						{
+							deleteTasks.Add(DeleteFileSaveAsync(currentFileInfo.FullName));
+							lastOfMonth[key] = fi;
+						}
+						else
+							deleteTasks.Add(DeleteFileSaveAsync(fi.FullName));
 					}
-					else
-						deleteTasks.Add(DeleteFileSaveAsync(fi.FullName));
 				}
 				else
 					lastOfMonth[key] = fi;
@@ -1097,7 +1124,7 @@ namespace Neo.PerfectWorking.Cred.Provider
 					// create a copy of the current version
 					using (var bak = await OpenBackupFileAsync(Path.ChangeExtension(FileName, ".bak.gz")))
 					using (var dst = new GZipStream(bak, CompressionLevel.Optimal, true))
-						await trg.CopyToAsync(bak);
+						await trg.CopyToAsync(dst);
 					trg.Position = 0;
 
 
@@ -1119,6 +1146,9 @@ namespace Neo.PerfectWorking.Cred.Provider
 					syncItems = new List<IXmlCredentialItem>();
 
 				// apply modifications
+				var deleted = 0;
+				var added = 0;
+				var modified = 0;
 				foreach (var cur in GetItems().Cast<CredentialItem>())
 				{
 					if (cur.State != CredentialItemState.Original)
@@ -1127,14 +1157,23 @@ namespace Neo.PerfectWorking.Cred.Provider
 						if (idx == -1)
 						{
 							if (cur.State == CredentialItemState.New || cur.State == CredentialItemState.Modified)
+							{
 								syncItems.Add(cur);
+								added++;
+							}
 						}
-						else if (cur.LastWritten > syncItems[idx].LastWritten)
+						else if (cur.LastWritten >= syncItems[idx].LastWritten)
 						{
 							if (cur.State == CredentialItemState.Deleted)
+							{
 								syncItems.RemoveAt(idx);
+								deleted++;
+							}
 							else if (cur.State == CredentialItemState.New || cur.State == CredentialItemState.Modified)
+							{
 								syncItems[idx] = cur;
+								modified++;
+							}
 						}
 					}
 				}
@@ -1145,10 +1184,30 @@ namespace Neo.PerfectWorking.Cred.Provider
 				using (var xml = XmlWriter.Create(trg, writeSettings))
 					XmlCredentialItem.Save(xml, syncItems);
 				trg.SetLength(trg.Position);
+				Log.Default.FileProviderSaveSuccess(Name, added, modified, deleted);
 
 				// copy to shadow
-				using (var shadow = (await OpenFileSafeAsync(ShadowFileName, false)).Item1)
-					await trg.CopyToAsync(shadow);
+				var shadowFileInfo = new FileInfo(ShadowFileName);
+				if (shadowFileInfo.Exists)
+					shadowFileInfo.Attributes = shadowFileInfo.Attributes & ~FileAttributes.ReadOnly;
+				try
+				{
+					using (var shadow = (await OpenFileSafeAsync(shadowFileInfo.FullName, false)).Item1)
+					{
+						if (shadow is null)
+							throw new Exception("Could not copy shadow file.");
+
+						trg.Position = 0;
+						await trg.CopyToAsync(shadow);
+
+						// abschneiden der Daten
+						shadow.SetLength(shadow.Position);
+					}
+				}
+				finally
+				{
+					shadowFileInfo.Attributes = shadowFileInfo.Attributes | FileAttributes.ReadOnly;
+				}
 
 				return true; // reload complete list
 			}
@@ -1172,31 +1231,6 @@ namespace Neo.PerfectWorking.Cred.Provider
 		private void SetModified()
 			=> isModified = true;
 
-		//protected override DateTime GetLastWriteTimeSafe()
-		//{
-		//	if (changeFileName != null)
-		//	{
-		//		try
-		//		{
-		//			var dtChangeFile = DateTime.MinValue;
-		//			var dtShadowFile = DateTime.MinValue;
-
-		//			if (File.Exists(changeFileName))
-		//				dtChangeFile = File.GetLastWriteTime(changeFileName);
-		//			else if (File.Exists(ShadowFileName))
-		//				dtShadowFile = File.GetLastWriteTime(ShadowFileName);
-
-		//			return dtShadowFile < dtChangeFile ? dtChangeFile : dtShadowFile;
-		//		}
-		//		catch (IOException)
-		//		{
-		//			return DateTime.MinValue;
-		//		}
-		//	}
-		//	else
-		//		return base.GetLastWriteTimeSafe();
-		//} // func GetLastWriteTimeSafe
-
 		protected override IEnumerable<IXmlCredentialItem> LoadItemsCore()
 		{
 			// load shadow content
@@ -1206,26 +1240,36 @@ namespace Neo.PerfectWorking.Cred.Provider
 			// load local copy
 			if (changeFileName != null && File.Exists(changeFileName))
 			{
+				var isLocalStateChanged = false;
 				var lastModification = File.GetLastWriteTimeUtc(changeFileName);
-				using var xml = XmlReader.Create(changeFileName, Procs.XmlReaderSettings);
-
-				xml.MoveToContent();
-				if (xml.Name != "changes")
-					throw new ArgumentException();
-
-				xml.Read();
-
-				while (xml.NodeType == XmlNodeType.Element)
+				using (var xml = XmlReader.Create(changeFileName, Procs.XmlReaderSettings))
 				{
-					var state = GetStateFromName(xml.Name);
-					var data = XmlCredentialItem.Read(xml, xml.GetAttribute("uri"), lastModification);
+					xml.MoveToContent();
+					if (xml.Name != "changes")
+						throw new ArgumentException();
 
-					var item = Find(data.TargetName);
-					if (item == null)
-						yield return new CredentialItem(this, state, data);
-					else
-						item.Update(data, state);
+					xml.Read();
+
+					while (xml.NodeType == XmlNodeType.Element)
+					{
+						var state = GetStateFromName(xml.Name);
+						var data = XmlCredentialItem.Read(xml, xml.GetAttribute("uri"), lastModification);
+
+						var item = Find(data.TargetName);
+						if (item == null)
+							yield return new CredentialItem(this, state, data);
+						else
+						{
+							if (item.Update(data, state)) // notify changes
+								item.NotifyPropertyChanged();
+							isLocalStateChanged |= ((CredentialItem)item).State != state;
+						}
+					}
 				}
+
+				// Store local changes
+				if (isLocalStateChanged)
+					SaveChangeMode();
 			}
 		} // proc LoadItemsCore
 

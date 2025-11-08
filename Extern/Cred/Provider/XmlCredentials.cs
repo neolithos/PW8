@@ -256,18 +256,15 @@ namespace Neo.PerfectWorking.Cred.Provider
 			}
 		} // func Load
 
-		public static IEnumerable<IXmlCredentialItem> Load(Stream stream, DateTime lastModification, XmlReaderSettings settings = null)
+		public static IEnumerable<IXmlCredentialItem> Load(Stream stream, DateTime lastModification, XmlReaderSettings settings)
 		{
-			if (settings != null)
-				settings.CloseInput = true;
-
-			using var xml = XmlReader.Create(stream, settings ?? Procs.XmlReaderSettings);
+			using var xml = XmlReader.Create(stream, settings);
 			foreach (var c in Load(xml, lastModification))
 				yield return c;
 		} // func Load
 
 		public static IEnumerable<IXmlCredentialItem> Load(string fileName)
-			=> Load(OpenFileStream(fileName), File.GetLastWriteTimeUtc(fileName));
+			=> Load(OpenFileStream(fileName), File.GetLastWriteTimeUtc(fileName), Procs.XmlReaderSettings);
 
 		#endregion
 

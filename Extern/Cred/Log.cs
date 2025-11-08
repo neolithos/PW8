@@ -64,6 +64,10 @@ namespace Neo.PerfectWorking.Cred
 		public void FileProviderSaveFailed(string provider, string message, string exception)
 			=> WriteEvent(1004, provider, message, exception);
 
+		[Event(1005, Channel = EventChannel.Operational, Tags = Tags.FileProvider, Level = EventLevel.Informational, Message = "[{0}] Synchronization zum Server: neu: {1}, geändert: {2}, gelöscht: {3}")]
+		public void FileProviderSaveSuccess(string provider, int added, int modified, int deleted)
+			=> WriteEvent(1005, provider, added, modified, deleted);
+
 		#endregion
 
 		public static Log Default { get; } = new Log();
