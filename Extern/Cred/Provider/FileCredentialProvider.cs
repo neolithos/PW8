@@ -14,15 +14,12 @@
 //
 #endregion
 using Neo.PerfectWorking.Data;
-using Neo.PerfectWorking.Stuff;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
-using System.Diagnostics.Eventing.Reader;
-using System.Dynamic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -30,8 +27,6 @@ using System.Net;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using System.Xml;
 using TecWare.DE.Stuff;
@@ -236,6 +231,50 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		IEnumerator IEnumerable.GetEnumerator()
 			=> GetEnumerator();
+
+		#endregion
+
+		#region -- Import --------------------------------------------------------------
+
+		private sealed class ImportItemModel : ICredentialInfo
+		{
+			public event PropertyChangedEventHandler PropertyChanged { add { } remove { } }
+		
+			private readonly FileCredentialProviderBase provider;
+			private readonly IXmlCredentialItem importItem;
+
+			public ImportItemModel(FileCredentialProviderBase provider, IXmlCredentialItem importItem)
+			{
+				this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
+				this.importItem = importItem ?? throw new ArgumentNullException(nameof(importItem));
+			} // ctor
+
+			public SecureString GetPassword()
+				=> provider.package.DecryptPassword(importItem.EncryptedPassword, provider.Protector);
+
+			public void SetPassword(SecureString password)
+				=> throw new NotSupportedException();
+
+			public string TargetName => importItem.TargetName;
+
+			public string UserName { get => importItem.UserName; set => throw new NotSupportedException(); }
+			public string Comment { get => importItem.Comment; set => throw new NotSupportedException(); }
+
+			public DateTime LastWritten => importItem.LastWritten;
+
+			public ICredentialProvider Provider => provider;
+			public object Image => null;
+		} // class ImportItemModel
+
+		public void Import(string fileName)
+		{
+			foreach (var cur in XmlCredentialItem.Load(fileName))
+			{
+				var item = Find(cur.TargetName);
+				if (item is null || XmlCredentialItem.Compare(item, cur, true) != XmlCredentialProperty.None)
+					AppendItem(new ImportItemModel(this, cur));
+			}
+		} // proc Import
 
 		#endregion
 
