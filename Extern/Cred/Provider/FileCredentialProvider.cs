@@ -267,8 +267,10 @@ namespace Neo.PerfectWorking.Cred.Provider
 			public object Image => null;
 		} // class ImportItemModel
 
-		public void Import(string fileName)
+		private async Task ImportAsync(string fileName)
 		{
+			await UpdateShadowFileAsync();
+
 			var sb = new StringBuilder();
 			var added = 0;
 			var changed = 0;
@@ -296,7 +298,22 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 			if (added > 0 || changed > 0)
 				((PwPackageBase)package).Global.UI.MsgBox($"Import abgeschlossen:\n{added} hinzugefügt\n{changed} geändert\n{unchanged} nicht importiert", icon: "i");
-		} // proc Import
+		} // func ImportAsync
+
+		public void Import(string fileName)
+			=> ImportAsync(fileName).ContinueWith(EndImport, TaskContinuationOptions.ExecuteSynchronously);
+
+		private void EndImport(Task t)
+		{
+			try
+			{
+				t.Wait();
+			}
+			catch (Exception e)
+			{
+				((PwPackageBase)package).Global.UI.ShowException(e);
+			}
+		} // proc EndImport
 
 		#endregion
 

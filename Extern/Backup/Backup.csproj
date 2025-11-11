@@ -13,7 +13,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Diagnostics.Tracing.EventRegister" Version="1.1.28" />
-		<PackageReference Include="TecWare.DES.Core" Version="3.4.119" />
+		<PackageReference Include="TecWare.DES.Core" Version="3.4.125" />
 	</ItemGroup>
 
 	<ItemGroup>
