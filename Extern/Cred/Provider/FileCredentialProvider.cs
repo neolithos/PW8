@@ -25,6 +25,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Security;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media;
@@ -268,12 +269,33 @@ namespace Neo.PerfectWorking.Cred.Provider
 
 		public void Import(string fileName)
 		{
+			var sb = new StringBuilder();
+			var added = 0;
+			var changed = 0;
+			var unchanged = 0;
 			foreach (var cur in XmlCredentialItem.Load(fileName))
 			{
 				var item = Find(cur.TargetName);
-				if (item is null || XmlCredentialItem.Compare(item, cur, true) != XmlCredentialProperty.None)
+				if (item is null)
+				{
+					sb.Append("New: ").AppendLine(cur.TargetName);
 					AppendItem(new ImportItemModel(this, cur));
+					added++;
+				}
+				else if (item.LastWritten < cur.LastWritten)
+				{
+					sb.Append("Chg: ").AppendLine(cur.TargetName);
+					AppendItem(new ImportItemModel(this, cur));
+					changed++;
+				}
+				else
+					unchanged++;
 			}
+			sb.AppendLine($"==> {added} added, {changed} modified, {unchanged} unchanged");
+			File.WriteAllText(Path.Combine(Path.GetTempPath(), Path.GetFileNameWithoutExtension(fileName) + ".txt"), sb.ToString());
+
+			if (added > 0 || changed > 0)
+				((PwPackageBase)package).Global.UI.MsgBox($"Import abgeschlossen:\n{added} hinzugefügt\n{changed} geändert\n{unchanged} nicht importiert", icon: "i");
 		} // proc Import
 
 		#endregion
